@@ -7,6 +7,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { Material } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
 import { levelOf, levelColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
+import { ReminderService } from '../service/ReminderService';
 
 interface RouteParams {
   id?: number;
@@ -75,6 +76,8 @@ struct ItemDetail {
   private async doDelete(): Promise<void> {
     try {
       await this.db.remove(this.id);
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      ReminderService.getInstance().syncDailyReminder(ctx);
       this.getUIContext().showToast({ message: '已删除' });
       router.back();
     } catch (e) {

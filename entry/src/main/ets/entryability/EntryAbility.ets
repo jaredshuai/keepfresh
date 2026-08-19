@@ -1,6 +1,7 @@
 import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { ReminderService } from '../service/ReminderService';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'EntryAbility';
@@ -8,10 +9,26 @@ const TAG: string = 'EntryAbility';
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onCreate');
+    if (want?.parameters?.filterLevel) {
+      AppStorage.setOrCreate('targetFilterLevel', want.parameters.filterLevel as string);
+    }
+    ReminderService.getInstance().syncDailyReminder(this.context).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, `Failed to sync daily reminder in onCreate: ${err.message}`);
+    });
   }
 
   onDestroy(): void {
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onDestroy');
+  }
+
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onNewWant');
+    if (want?.parameters?.filterLevel) {
+      AppStorage.setOrCreate('targetFilterLevel', want.parameters.filterLevel as string);
+    }
+    ReminderService.getInstance().syncDailyReminder(this.context).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, `Failed to sync daily reminder in onNewWant: ${err.message}`);
+    });
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
@@ -31,6 +48,9 @@ export default class EntryAbility extends UIAbility {
 
   onForeground(): void {
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onForeground');
+    ReminderService.getInstance().syncDailyReminder(this.context).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, `Failed to sync daily reminder in onForeground: ${err.message}`);
+    });
   }
 
   onBackground(): void {

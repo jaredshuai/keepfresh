@@ -11,6 +11,7 @@ import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
 import { scanAndMatchProduct, ScanMatchedResult } from '../service/ScanService';
 import { pickAndRecognizeDate } from '../service/OcrService';
 import { ParsedDateResult } from '../service/DateTextParser';
+import { ReminderService } from '../service/ReminderService';
 
 interface RouteParams {
   id?: number;
@@ -230,6 +231,7 @@ struct AddItem {
       } else {
         await this.db.insert(material);
       }
+      ReminderService.getInstance().syncDailyReminder(ctx);
       this.getUIContext().showToast({ message: this.isEdit ? '已保存' : '已添加' });
       router.back();
     } catch (e) {
