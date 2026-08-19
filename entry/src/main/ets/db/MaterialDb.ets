@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS ${TABLE} (
   expiry_date TEXT NOT NULL,
   note TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  barcode TEXT
 )
 `;
 
@@ -48,6 +49,11 @@ export class MaterialDb {
     };
     this.store = await relationalStore.getRdbStore(context, config);
     await this.store.executeSql(CREATE_TABLE_SQL);
+    try {
+      await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN barcode TEXT;`);
+    } catch (e) {
+      // Column might already exist, ignore error
+    }
   }
 
   private getStore(): relationalStore.RdbStore {
@@ -58,6 +64,14 @@ export class MaterialDb {
   }
 
   private rowToMaterial(rs: relationalStore.ResultSet): Material {
+    const barcodeIndex: number = rs.getColumnIndex('barcode');
+    let barcode: string | undefined = undefined;
+    if (barcodeIndex >= 0 && !rs.isColumnNull(barcodeIndex)) {
+      const val: string = rs.getString(barcodeIndex);
+      if (val && val.length > 0) {
+        barcode = val;
+      }
+    }
     const m: Material = {
       id: rs.getLong(rs.getColumnIndex('id')),
       name: rs.getString(rs.getColumnIndex('name')),
@@ -69,7 +83,8 @@ export class MaterialDb {
       expiryDate: rs.getString(rs.getColumnIndex('expiry_date')),
       note: rs.getString(rs.getColumnIndex('note')),
       createdAt: rs.getString(rs.getColumnIndex('created_at')),
-      updatedAt: rs.getString(rs.getColumnIndex('updated_at'))
+      updatedAt: rs.getString(rs.getColumnIndex('updated_at')),
+      barcode: barcode
     };
     return m;
   }
@@ -85,7 +100,8 @@ export class MaterialDb {
       'expiry_date': m.expiryDate,
       'note': m.note,
       'created_at': m.createdAt,
-      'updated_at': m.updatedAt
+      'updated_at': m.updatedAt,
+      'barcode': m.barcode ?? ''
     };
     return row;
   }
@@ -112,6 +128,25 @@ export class MaterialDb {
       m = this.rowToMaterial(rs);
     }
     rs.close();
+    return m;
+  }
+
+  async getByBarcode(barcode: string): Promise<Material | undefined> {
+    if (!barcode) {
+      return undefined;
+    }
+    const predicates = new relationalStore.RdbPredicates(TABLE);
+    predicates.equalTo('barcode', barcode.trim());
+    predicates.orderByDesc('id');
+    const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+    let m: Material | undefined = undefined;
+    try {
+      if (rs.goToNextRow()) {
+        m = this.rowToMaterial(rs);
+      }
+    } finally {
+      rs.close();
+    }
     return m;
   }
 

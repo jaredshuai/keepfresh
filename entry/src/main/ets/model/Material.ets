@@ -14,6 +14,7 @@ export interface Material {
   note: string;
   createdAt: string;
   updatedAt: string;
+  barcode?: string;
 }
 
 export enum ExpiryLevel {
