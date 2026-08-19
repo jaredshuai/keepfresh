@@ -1,7 +1,7 @@
 /**
  * 新增 / 编辑物资页 —— 鸿蒙官方设计风格。
  */
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, DEFAULT_CATEGORIES, DEFAULT_UNITS, SHELF_PRESET_DAYS } from '../model/Material';
@@ -121,16 +121,16 @@ struct AddItem {
       }
 
       if (result.source === 'history') {
-        this.getUIContext().showToast({ message: `已匹配历史记录：${result.name}` });
+        promptAction.showToast({ message: `已匹配历史记录：${result.name}` });
       } else if (result.source === 'preset') {
-        this.getUIContext().showToast({ message: `已匹配商品预设：${result.name}` });
+        promptAction.showToast({ message: `已匹配商品预设：${result.name}` });
       } else {
-        this.getUIContext().showToast({ message: `已扫描条码：${result.barcode}，请补充名称` });
+        promptAction.showToast({ message: `已扫描条码：${result.barcode}，请补充名称` });
       }
     } catch (e) {
       const err = e as BusinessError;
       console.error(`handleScanBarcode error: ${err.message || JSON.stringify(err)}`);
-      this.getUIContext().showToast({ message: err.message || '扫码未完成' });
+      promptAction.showToast({ message: err.message || '扫码未完成' });
     }
   }
 
@@ -155,34 +155,34 @@ struct AddItem {
       }
 
       if (result.productionDate && result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
-        this.getUIContext().showToast({
+        promptAction.showToast({
           message: `已识别生产日期: ${result.productionDate}, 保质期: ${result.shelfLifeDays}天`
         });
       } else if (result.expiryDate) {
-        this.getUIContext().showToast({
+        promptAction.showToast({
           message: `已识别到期日: ${result.expiryDate}`
         });
       } else if (result.productionDate) {
-        this.getUIContext().showToast({
+        promptAction.showToast({
           message: `已识别生产日期: ${result.productionDate}`
         });
       } else if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
-        this.getUIContext().showToast({
+        promptAction.showToast({
           message: `已识别保质期: ${result.shelfLifeDays}天`
         });
       } else if (result.rawMatchedText && result.rawMatchedText.length > 0) {
-        this.getUIContext().showToast({
+        promptAction.showToast({
           message: '未提取到标准日期格式，请手动核对'
         });
       } else {
-        this.getUIContext().showToast({
+        promptAction.showToast({
           message: '未在图片中识别到有效日期'
         });
       }
     } catch (e) {
       const err = e as BusinessError;
       console.error(`handleOcrDate error: ${err.message || JSON.stringify(err)}`);
-      this.getUIContext().showToast({ message: err.message || '识别失败' });
+      promptAction.showToast({ message: err.message || '识别失败' });
     } finally {
       this.isRecognizing = false;
     }
@@ -232,7 +232,7 @@ struct AddItem {
         await this.db.insert(material);
       }
       ReminderService.getInstance().syncDailyReminder(ctx);
-      this.getUIContext().showToast({ message: this.isEdit ? '已保存' : '已添加' });
+      promptAction.showToast({ message: this.isEdit ? '已保存' : '已添加' });
       router.back();
     } catch (e) {
       const err: BusinessError = e as BusinessError;

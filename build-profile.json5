@@ -4,14 +4,15 @@
     "products": [
       {
         "name": "default",
-        "compatibleSdkVersion": "5.0.0(23)",
+        "compatibleSdkVersion": "6.1.1(24)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {
             "caseSensitiveCheck": true,
             "useNormalizedOHMUrl": true
           }
-        }
+        },
+        "targetSdkVersion": "6.1.1(24)"
       }
     ],
     "buildModeSet": [

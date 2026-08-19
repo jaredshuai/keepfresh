@@ -2,7 +2,7 @@
  * 代理提醒服务：首选项配置管理与代理提醒调度。
  */
 import { preferences } from '@kit.ArkData';
-import { Context, wantAgent } from '@kit.AbilityKit';
+import { Context } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { reminderAgentManager } from '@kit.BackgroundTasksKit';
@@ -99,7 +99,7 @@ export class ReminderService {
 
     const db: MaterialDb = MaterialDb.getInstance();
     await db.init(context);
-    const materials: Material[] = await db.getAll();
+    const materials: Material[] = await db.listAll();
 
     let expiredCount: number = 0;
     let nearCount: number = 0;
@@ -129,22 +129,6 @@ export class ReminderService {
     const textContent: string = `${parts.join('，')}，请及时处理`;
 
     try {
-      const wantAgentInfo: wantAgent.WantAgentInfo = {
-        wants: [
-          {
-            bundleName: 'com.jaredshuai.keepfresh',
-            abilityName: 'EntryAbility',
-            parameters: {
-              filterLevel: 'NEAR'
-            }
-          }
-        ],
-        operationType: wantAgent.OperationType.START_ABILITY,
-        requestCode: 1001,
-        wantAgentFlags: [wantAgent.WantAgentFlags.UPDATE_PRESENT_FLAG]
-      };
-      const agent = await wantAgent.getWantAgent(wantAgentInfo);
-
       const calendarReq: reminderAgentManager.ReminderRequestCalendar = {
         reminderType: reminderAgentManager.ReminderType.REMINDER_TYPE_CALENDAR,
         hour: settings.hour,
@@ -157,7 +141,10 @@ export class ReminderService {
         ],
         title: 'KeepFresh 临期提醒',
         content: textContent,
-        wantAgent: agent,
+        wantAgent: {
+          pkgName: 'com.jaredshuai.keepfresh',
+          abilityName: 'EntryAbility'
+        },
         ringDuration: 5,
         snoozeTimes: 0,
         timeInterval: 0,

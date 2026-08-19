@@ -1,7 +1,7 @@
 /**
  * 首页：临期概览 + 物资列表（按到期日升序）—— 鸿蒙官方设计风格。
  */
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, ExpiryLevel } from '../model/Material';
@@ -116,7 +116,7 @@ struct Index {
     };
     await ReminderService.getInstance().updateSettings(settings);
     await ReminderService.getInstance().syncDailyReminder(ctx);
-    this.getUIContext().showToast({ message: '已更新提醒设置' });
+    promptAction.showToast({ message: '已更新提醒设置' });
   }
 
   private async setupNotification(ctx: common.UIAbilityContext): Promise<void> {

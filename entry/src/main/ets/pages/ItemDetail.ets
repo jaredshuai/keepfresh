@@ -1,7 +1,7 @@
 /**
  * 物资详情页：信息展示 + 编辑入口 + 删除 —— 鸿蒙官方设计风格。
  */
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material } from '../model/Material';
@@ -26,20 +26,20 @@ struct ItemDetail {
   @State m: Material | undefined = undefined;
   @State loading: boolean = true;
   private db: MaterialDb = MaterialDb.getInstance();
-  private id: number = -1;
+  private itemId: number = -1;
 
   onPageShow(): void {
-    if (this.id < 0) {
+    if (this.itemId < 0) {
       const params = router.getParams() as RouteParams;
       if (params && params.id !== undefined) {
-        this.id = params.id;
+        this.itemId = params.id;
       }
     }
-    if (this.id >= 0) {
+    if (this.itemId >= 0) {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       this.db.init(ctx)
         .then(() => {
-          return this.db.getById(this.id);
+          return this.db.getById(this.itemId);
         })
         .then((m?: Material) => {
           this.m = m;
@@ -75,10 +75,10 @@ struct ItemDetail {
 
   private async doDelete(): Promise<void> {
     try {
-      await this.db.remove(this.id);
+      await this.db.remove(this.itemId);
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       ReminderService.getInstance().syncDailyReminder(ctx);
-      this.getUIContext().showToast({ message: '已删除' });
+      promptAction.showToast({ message: '已删除' });
       router.back();
     } catch (e) {
       console.error(`delete failed: ${(e as BusinessError).message}`);
@@ -165,7 +165,7 @@ struct ItemDetail {
                 .fontColor(Color.White)
                 .fontSize(16)
                 .onClick(() => {
-                  router.pushUrl({ url: 'pages/AddItem', params: { id: this.id } });
+                  router.pushUrl({ url: 'pages/AddItem', params: { id: this.itemId } });
                 })
               Button('删除')
                 .layoutWeight(1)

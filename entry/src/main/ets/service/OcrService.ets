@@ -15,6 +15,10 @@ import { parseDateFromText, ParsedDateResult } from './DateTextParser';
 const DOMAIN: number = 0x0000;
 const TAG: string = 'OcrService';
 
+interface OcrResult {
+  value?: string;
+}
+
 /**
  * 唤起系统相册选择包装特写图片并执行 OCR 文字识别与日期抽取
  * @param context UIAbility 上下文
@@ -86,9 +90,9 @@ export async function pickAndRecognizeDate(
     const visionImage: textRecognition.VisionInfo = {
       pixelMap: pixelMap
     };
-    const recognitionResult: textRecognition.VisionText = await textRecognition.recognizeText(visionImage);
-    if (recognitionResult && recognitionResult.value) {
-      const textVal = recognitionResult.value.trim();
+    const recognitionResult: OcrResult = await textRecognition.recognizeText(visionImage) as OcrResult;
+    if (recognitionResult && typeof recognitionResult.value === 'string') {
+      const textVal: string = recognitionResult.value.trim();
       if (textVal.length > 0) {
         textLines.push(textVal);
       }
