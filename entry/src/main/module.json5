@@ -22,6 +22,11 @@
         "startWindowBackground": "$color:start_window_background",
         "exported": true
       }
+    ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.PUBLISH_AGENT_REMINDER"
+      }
     ]
   }
 }
