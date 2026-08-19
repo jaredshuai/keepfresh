@@ -8,6 +8,7 @@ import { Material, ExpiryLevel } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
 import { ExpiryStats, levelOf, levelColor, levelText, remainingDays, statsOf } from '../service/ExpiryService';
 import { ensureNotificationEnabled, publishExpiryAlert, requestNotificationEnable } from '../service/NotificationService';
+import { ReminderService, ReminderSettings } from '../service/ReminderService';
 
 /* ───── 鸿蒙官方色值体系 ───── */
 const CLR_BRAND = '#2FA84F';
@@ -37,10 +38,25 @@ struct Index {
   @State stats: ExpiryStats = { total: 0, expired: 0, near: 0, safe: 0 };
   @State filter: ListFilter = ListFilter.ALL;
   @State loading: boolean = true;
+  @State showSettingsDialog: boolean = false;
+  @State reminderEnabled: boolean = true;
+  @State reminderHour: number = 9;
+  @State reminderMinute: number = 0;
   private db: MaterialDb = MaterialDb.getInstance();
 
   onPageShow(): void {
+    const targetFilter = AppStorage.get<string>('targetFilterLevel');
+    if (targetFilter === 'NEAR') {
+      this.filter = ListFilter.NEAR;
+      AppStorage.setOrCreate('targetFilterLevel', undefined);
+    } else if (targetFilter === 'EXPIRED') {
+      this.filter = ListFilter.EXPIRED;
+      AppStorage.setOrCreate('targetFilterLevel', undefined);
+    }
+
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    this.loadReminderSettings(ctx);
+
     this.db.init(ctx)
       .then(() => {
         return this.refresh();
@@ -50,6 +66,57 @@ struct Index {
         this.loading = false;
       });
     this.setupNotification(ctx);
+  }
+
+  private async loadReminderSettings(ctx: common.UIAbilityContext): Promise<void> {
+    try {
+      await ReminderService.getInstance().init(ctx);
+      const settings: ReminderSettings = await ReminderService.getInstance().getSettings();
+      this.reminderEnabled = settings.enabled;
+      this.reminderHour = settings.hour;
+      this.reminderMinute = settings.minute;
+    } catch (e) {
+      console.error(`load reminder settings failed: ${(e as BusinessError).message}`);
+    }
+  }
+
+  private openReminderSettingsDialog(): void {
+    this.showSettingsDialog = true;
+  }
+
+  private formatTime(hour: number, minute: number): string {
+    const h = hour < 10 ? `0${hour}` : `${hour}`;
+    const m = minute < 10 ? `0${minute}` : `${minute}`;
+    return `${h}:${m}`;
+  }
+
+  private pickReminderTime(): void {
+    const selectedDate = new Date();
+    selectedDate.setHours(this.reminderHour, this.reminderMinute, 0, 0);
+    this.getUIContext().showTimePickerDialog({
+      selected: selectedDate,
+      useMilitaryTime: true,
+      onAccept: async (value: TimePickerResult) => {
+        if (value.hour !== undefined && value.minute !== undefined) {
+          this.reminderHour = value.hour;
+          this.reminderMinute = value.minute;
+          await this.saveReminderSettings();
+        }
+      }
+    });
+  }
+
+  private async saveReminderSettings(): Promise<void> {
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    await ReminderService.getInstance().init(ctx);
+    const settings: ReminderSettings = {
+      enabled: this.reminderEnabled,
+      hour: this.reminderHour,
+      minute: this.reminderMinute
+    };
+    await ReminderService.getInstance().updateSettings(settings);
+    await ReminderService.getInstance().syncDailyReminder(ctx);
+    this.getUIContext().showToast({ message: '已更新提醒设置' });
   }
 
   private async setupNotification(ctx: common.UIAbilityContext): Promise<void> {
@@ -104,7 +171,20 @@ struct Index {
               .margin({ top: 4 })
           }
           .alignItems(HorizontalAlign.Start)
+
           Blank()
+
+          Button({ type: ButtonType.Circle, stateEffect: true }) {
+            SymbolGlyph($r('sys.symbol.bell'))
+              .fontSize(20)
+              .fontColor([this.reminderEnabled ? CLR_BRAND : CLR_TEXT_SUB])
+          }
+          .backgroundColor(CLR_CARD)
+          .width(40)
+          .height(40)
+          .onClick(() => {
+            this.openReminderSettingsDialog();
+          })
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 16, bottom: 12 })
@@ -172,6 +252,105 @@ struct Index {
     .width('100%')
     .height('100%')
     .backgroundColor(CLR_BG)
+    .bindSheet($$this.showSettingsDialog, this.reminderSettingsSheet(), {
+      height: SheetSize.FIT_CONTENT,
+      dragBar: true,
+      backgroundColor: CLR_CARD,
+      onDisappear: () => {
+        this.showSettingsDialog = false;
+      }
+    })
+  }
+
+  @Builder
+  reminderSettingsSheet() {
+    Column({ space: 16 }) {
+      Row() {
+        Text('临期提醒设置')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(CLR_TEXT)
+        Blank()
+      }
+      .width('100%')
+      .padding({ top: 8, bottom: 4 })
+
+      Row() {
+        Column({ space: 4 }) {
+          Text('每日临期汇总提醒')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(CLR_TEXT)
+          Text('每天定时检查物资，有临期或过期物品时推送通知')
+            .fontSize(12)
+            .fontColor(CLR_TEXT_SUB)
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+
+        Toggle({ type: ToggleType.Switch, isOn: this.reminderEnabled })
+          .selectedColor(CLR_BRAND)
+          .onChange(async (isOn: boolean) => {
+            this.reminderEnabled = isOn;
+            await this.saveReminderSettings();
+          })
+      }
+      .width('100%')
+      .padding(14)
+      .borderRadius(14)
+      .backgroundColor(CLR_BG)
+
+      if (this.reminderEnabled) {
+        Row() {
+          Column({ space: 4 }) {
+            Text('提醒时间')
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(CLR_TEXT)
+            Text('设定每天触发离线提醒的时间')
+              .fontSize(12)
+              .fontColor(CLR_TEXT_SUB)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+
+          Row({ space: 6 }) {
+            Text(this.formatTime(this.reminderHour, this.reminderMinute))
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(CLR_BRAND)
+            SymbolGlyph($r('sys.symbol.chevron_right'))
+              .fontSize(16)
+              .fontColor([CLR_TEXT_SUB])
+          }
+          .padding({ left: 12, right: 10, top: 8, bottom: 8 })
+          .borderRadius(8)
+          .backgroundColor(CLR_CARD)
+          .onClick(() => {
+            this.pickReminderTime();
+          })
+        }
+        .width('100%')
+        .padding(14)
+        .borderRadius(14)
+        .backgroundColor(CLR_BG)
+      }
+
+      Button('完成')
+        .width('100%')
+        .height(44)
+        .borderRadius(12)
+        .backgroundColor(CLR_BRAND)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Color.White)
+        .margin({ top: 8, bottom: 16 })
+        .onClick(() => {
+          this.showSettingsDialog = false;
+        })
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
   }
 
   @Builder
