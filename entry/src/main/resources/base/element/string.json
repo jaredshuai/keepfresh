@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "KeepFresh 物资保质期管理主模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "KeepFresh 物资保质期管理"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "KeepFresh"
+    }
+  ]
+}

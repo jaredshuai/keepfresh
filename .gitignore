@@ -1,0 +1,28 @@
+# HarmonyOS / DevEco Studio
+/node_modules
+/oh_modules
+/local.properties
+/.idea
+**/build
+/.hvigor
+.cxx
+/.clangd
+/.clang-format
+/.clang-tidy
+**/.test
+/.appanalyzer
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+
+# code analysis index
+/.codegraph
+/.codebase-memory
+
+# IDE local data
+/.arts
+/.codeartsdoer

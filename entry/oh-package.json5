@@ -1,0 +1,9 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "KeepFresh 物资保质期管理主模块",
+  "main": "",
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}
