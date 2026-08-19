@@ -1,9 +1,24 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\jared\\.ohos\\config\\default_keepfresh_jGz2zAMGooIIJmKlkE_0O_QLiCp1UqiSiOvl2NAE95M=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001AB964F80DCA13EDB38FD421B55EC90A1F3122513D93B96F25FE2C9F9DF26EF561A2797F4C0090",
+          "profile": "C:\\Users\\jared\\.ohos\\config\\default_keepfresh_jGz2zAMGooIIJmKlkE_0O_QLiCp1UqiSiOvl2NAE95M=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\jared\\.ohos\\config\\default_keepfresh_jGz2zAMGooIIJmKlkE_0O_QLiCp1UqiSiOvl2NAE95M=.p12",
+          "storePassword": "0000001AEDF20204B692FDA3C2817D42B46F78BF7306A0AB8515BA29ED8DFC6493C1EC51C862A1319B99"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",
+        "signingConfig": "default",
         "compatibleSdkVersion": "6.1.1(24)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
@@ -21,6 +36,33 @@
       },
       {
         "name": "release"
+      }
+    ],
+    "capabilities": [
+      {
+        "bundleName": "com.jaredshuai.keepfresh",
+        "config": [
+          {
+            "name": "webAccessServiceForAIQA",
+            "capability": "webAccessServiceForAIQA"
+          },
+          {
+            "name": "Push Kit",
+            "capability": "com.huawei.service.push.base_service"
+          },
+          {
+            "name": "Device status detection",
+            "capability": "com.huawei.service.device_security.device_verify"
+          },
+          {
+            "name": "Map Kit",
+            "capability": "com.huawei.service.mapkit"
+          },
+          {
+            "name": "Safety Detect",
+            "capability": "com.huawei.service.device_security.safety_detect"
+          }
+        ]
       }
     ]
   },
