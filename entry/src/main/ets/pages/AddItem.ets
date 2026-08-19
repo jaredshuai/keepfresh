@@ -8,6 +8,9 @@ import { Material, DEFAULT_CATEGORIES, DEFAULT_UNITS, SHELF_PRESET_DAYS } from '
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
+import { scanAndMatchProduct, ScanMatchedResult } from '../service/ScanService';
+import { pickAndRecognizeDate } from '../service/OcrService';
+import { ParsedDateResult } from '../service/DateTextParser';
 
 interface RouteParams {
   id?: number;
@@ -34,7 +37,9 @@ struct AddItem {
   @State productionDate: string = todayStr();
   @State shelfLifeStr: string = '30';
   @State note: string = '';
+  @State barcode: string = '';
   @State saving: boolean = false;
+  @State isRecognizing: boolean = false;
   @State errorMsg: string = '';
   private db: MaterialDb = MaterialDb.getInstance();
   private editId: number = -1;
@@ -60,6 +65,7 @@ struct AddItem {
             this.shelfLifeStr = m.shelfLifeDays.toString();
             this.note = m.note;
             this.loadedCreatedAt = m.createdAt;
+            this.barcode = m.barcode || '';
           }
         })
         .catch((e: BusinessError) => {
@@ -89,6 +95,90 @@ struct AddItem {
 
   private presetLabels(): string[] {
     return SHELF_PRESET_DAYS.map((d: number): string => `${d}天`);
+  }
+
+  private async handleScanBarcode(): Promise<void> {
+    try {
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      await this.db.init(ctx);
+      const result: ScanMatchedResult | undefined = await scanAndMatchProduct(ctx, this.db);
+      if (!result) {
+        return;
+      }
+      this.barcode = result.barcode;
+      if (result.name) {
+        this.name = result.name;
+      }
+      if (result.category) {
+        this.category = result.category;
+      }
+      if (result.unit) {
+        this.unit = result.unit;
+      }
+      if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
+        this.shelfLifeStr = result.shelfLifeDays.toString();
+      }
+
+      if (result.source === 'history') {
+        this.getUIContext().showToast({ message: `已匹配历史记录：${result.name}` });
+      } else if (result.source === 'preset') {
+        this.getUIContext().showToast({ message: `已匹配商品预设：${result.name}` });
+      } else {
+        this.getUIContext().showToast({ message: `已扫描条码：${result.barcode}，请补充名称` });
+      }
+    } catch (e) {
+      const err = e as BusinessError;
+      console.error(`handleScanBarcode error: ${err.message || JSON.stringify(err)}`);
+      this.getUIContext().showToast({ message: err.message || '扫码未完成' });
+    }
+  }
+
+  private async handleOcrDate(): Promise<void> {
+    if (this.isRecognizing) {
+      return;
+    }
+    this.isRecognizing = true;
+    try {
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      const result: ParsedDateResult | undefined = await pickAndRecognizeDate(ctx);
+      if (!result) {
+        return;
+      }
+      if (result.productionDate) {
+        this.productionDate = result.productionDate;
+      }
+      if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
+        this.shelfLifeStr = result.shelfLifeDays.toString();
+      }
+
+      if (result.productionDate && result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
+        this.getUIContext().showToast({
+          message: `已识别：生产日期 ${result.productionDate}，保质期 ${result.shelfLifeDays} 天`
+        });
+      } else if (result.productionDate) {
+        this.getUIContext().showToast({
+          message: `已识别生产日期：${result.productionDate}`
+        });
+      } else if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
+        this.getUIContext().showToast({
+          message: `已识别保质期：${result.shelfLifeDays} 天`
+        });
+      } else if (result.rawMatchedText && result.rawMatchedText.length > 0) {
+        this.getUIContext().showToast({
+          message: '未提取到标准日期格式，请手动核对'
+        });
+      } else {
+        this.getUIContext().showToast({
+          message: '未在图片中识别到有效日期'
+        });
+      }
+    } catch (e) {
+      const err = e as BusinessError;
+      console.error(`handleOcrDate error: ${err.message || JSON.stringify(err)}`);
+      this.getUIContext().showToast({ message: err.message || '识别失败' });
+    } finally {
+      this.isRecognizing = false;
+    }
   }
 
   async save(): Promise<void> {
@@ -123,7 +213,8 @@ struct AddItem {
       expiryDate: calcExpiryDate(this.productionDate, Math.floor(days)),
       note: this.note.trim(),
       createdAt: this.isEdit ? this.loadedCreatedAt : now,
-      updatedAt: now
+      updatedAt: now,
+      barcode: this.barcode.trim().length > 0 ? this.barcode.trim() : undefined
     };
     try {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
@@ -187,6 +278,53 @@ struct AddItem {
               .width('100%')
           }
 
+          Row({ space: 12 }) {
+            Button() {
+              Row({ space: 6 }) {
+                SymbolGlyph($r('sys.symbol.camera'))
+                  .fontSize(16)
+                  .fontColor([Color.White])
+                Text('扫条码录入')
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(Color.White)
+              }
+            }
+            .layoutWeight(1)
+            .height(44)
+            .borderRadius(22)
+            .backgroundColor(CLR_BRAND)
+            .onClick(() => {
+              this.handleScanBarcode();
+            })
+
+            Button() {
+              Row({ space: 6 }) {
+                if (this.isRecognizing) {
+                  LoadingProgress().width(16).height(16).color(CLR_BRAND)
+                } else {
+                  SymbolGlyph($r('sys.symbol.magnifyingglass'))
+                    .fontSize(16)
+                    .fontColor([CLR_BRAND])
+                }
+                Text(this.isRecognizing ? '识别中...' : '拍日期 OCR')
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(CLR_BRAND)
+              }
+            }
+            .layoutWeight(1)
+            .height(44)
+            .borderRadius(22)
+            .backgroundColor(CLR_CARD)
+            .border({ width: 1.5, color: CLR_BRAND })
+            .enabled(!this.isRecognizing)
+            .onClick(() => {
+              this.handleOcrDate();
+            })
+          }
+          .width('100%')
+
           Column() {
             this.fieldLabel('物资名称 *')
             TextInput({ text: this.name, placeholder: '如：牛奶、感冒灵、洗面奶' })
@@ -196,6 +334,27 @@ struct AddItem {
               .onChange((v: string) => {
                 this.name = v;
               })
+
+            if (this.barcode.trim().length > 0) {
+              this.fieldLabel('条形码')
+              Row() {
+                Text(this.barcode)
+                  .fontSize(15)
+                  .fontColor(CLR_TEXT)
+                  .layoutWeight(1)
+                Text('清除')
+                  .fontSize(13)
+                  .fontColor(CLR_DANGER)
+                  .padding({ left: 8, right: 4, top: 4, bottom: 4 })
+                  .onClick(() => {
+                    this.barcode = '';
+                  })
+              }
+              .width('100%')
+              .padding(14)
+              .borderRadius(12)
+              .backgroundColor(CLR_INPUT_BG)
+            }
 
             this.fieldLabel('分类')
             this.chipGroup(DEFAULT_CATEGORIES, this.category, (v: string) => {

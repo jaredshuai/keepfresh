@@ -139,6 +139,9 @@ struct ItemDetail {
               this.infoRow('保质期', `${this.m.shelfLifeDays} 天`)
               this.infoRow('到期日期', this.m.expiryDate)
               this.infoRow('距到期', remainingText(this.m))
+              if (this.m.barcode && this.m.barcode.trim().length > 0) {
+                this.infoRow('条形码', this.m.barcode)
+              }
               if (this.m.note !== '') {
                 this.infoRow('备注', this.m.note)
               }
