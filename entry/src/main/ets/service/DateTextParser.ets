@@ -3,7 +3,7 @@
  * 从 OCR 识别出的原始文本或行列表中提取生产日期、到期日、保质期时长并进行联动推导。
  */
 
-import { addDays, diffDays, pad2 } from '../common/DateUtils';
+import { addDays, diffDays, pad2, todayStr } from '../common/DateUtils';
 
 export interface ParsedDateResult {
   productionDate?: string;     // 生产日期 (YYYY-MM-DD)
@@ -305,6 +305,15 @@ export function parseDateFromText(input: string | string[]): ParsedDateResult {
   // 6.3 生产日期 + 到期日 -> 计算保质期天数
   else if (productionDate && expiryDate && shelfLifeDays === undefined) {
     shelfLifeDays = Math.abs(diffDays(expiryDate, productionDate));
+  }
+  // 6.4 仅匹配到到期日 -> 默认将生产日期设为今天，天数设为距到期日的差值（若为正数）
+  else if (!productionDate && expiryDate && shelfLifeDays === undefined) {
+    const today = todayStr();
+    const diff = diffDays(expiryDate, today);
+    if (diff > 0) {
+      productionDate = today;
+      shelfLifeDays = diff;
+    }
   }
 
   return {

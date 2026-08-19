@@ -48,17 +48,25 @@ export async function pickAndRecognizeDate(
   }
 
   // 2. 读取图片并转化为 PixelMap
+  let imageSource: image.ImageSource | undefined = undefined;
   let pixelMap: image.PixelMap | undefined = undefined;
   let file: fs.File | undefined = undefined;
   try {
     file = fs.openSync(uri, fs.OpenMode.READ_ONLY);
-    const imageSource = image.createImageSource(file.fd);
+    imageSource = image.createImageSource(file.fd);
     pixelMap = await imageSource.createPixelMap();
   } catch (err) {
     const e: BusinessError = err as BusinessError;
     hilog.error(DOMAIN, TAG, 'Read image pixelMap failed: %{public}s, code: %{public}d', e.message, e.code);
     throw new Error(`读取图片失败: ${e.message || e.code}`);
   } finally {
+    if (imageSource !== undefined) {
+      try {
+        await imageSource.release();
+      } catch (relErr) {
+        hilog.warn(DOMAIN, TAG, 'Release imageSource failed: %{public}s', JSON.stringify(relErr));
+      }
+    }
     if (file !== undefined) {
       try {
         fs.closeSync(file);

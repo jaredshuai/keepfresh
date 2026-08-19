@@ -149,19 +149,25 @@ struct AddItem {
       }
       if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
         this.shelfLifeStr = result.shelfLifeDays.toString();
+      } else if (!result.productionDate && result.expiryDate) {
+        this.productionDate = result.expiryDate;
       }
 
       if (result.productionDate && result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
         this.getUIContext().showToast({
-          message: `已识别：生产日期 ${result.productionDate}，保质期 ${result.shelfLifeDays} 天`
+          message: `已识别生产日期: ${result.productionDate}, 保质期: ${result.shelfLifeDays}天`
+        });
+      } else if (result.expiryDate) {
+        this.getUIContext().showToast({
+          message: `已识别到期日: ${result.expiryDate}`
         });
       } else if (result.productionDate) {
         this.getUIContext().showToast({
-          message: `已识别生产日期：${result.productionDate}`
+          message: `已识别生产日期: ${result.productionDate}`
         });
       } else if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
         this.getUIContext().showToast({
-          message: `已识别保质期：${result.shelfLifeDays} 天`
+          message: `已识别保质期: ${result.shelfLifeDays}天`
         });
       } else if (result.rawMatchedText && result.rawMatchedText.length > 0) {
         this.getUIContext().showToast({

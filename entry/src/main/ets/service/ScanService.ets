@@ -39,8 +39,8 @@ export async function scanAndMatchProduct(
     }
   } catch (err) {
     const e: BusinessError = err as BusinessError;
-    hilog.error(DOMAIN, TAG, 'startScanForResult failed, code: %{public}d, msg: %{public}s', e.code, e.message);
-    throw new Error(`扫码未完成或不可用: ${e.message || e.code}`);
+    hilog.info(DOMAIN, TAG, 'startScanForResult cancelled or ended, code: %{public}d, msg: %{public}s', e.code, e.message);
+    return undefined;
   }
 
   if (!barcodeValue) {
