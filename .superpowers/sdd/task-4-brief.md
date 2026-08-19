@@ -1,28 +1,47 @@
-# Task 4 Brief: 封装 OCR 识别与照片选择服务 (`OcrService.ets`)
+# Task 4 Brief: 首页 `Index.ets` 交互联动与提醒设置面板
 
 ## Files
-- Create: `entry/src/main/ets/service/OcrService.ets`
+- Modify: `entry/src/main/ets/pages/Index.ets`
 
 ## Requirements
-1. Create `entry/src/main/ets/service/OcrService.ets`:
-   - Import necessary modules:
+1. In `Index.ets`:
+   - Import `ReminderService`, `ReminderSettings` from `../service/ReminderService`.
+   - On `onPageShow()`:
+     - Check `AppStorage.get<string>('targetFilterLevel')`.
+     - If `'NEAR'`, set `this.filter = ListFilter.NEAR` and clear `AppStorage.setOrCreate('targetFilterLevel', undefined)`.
+     - If `'EXPIRED'`, set `this.filter = ListFilter.EXPIRED` and clear `AppStorage.setOrCreate('targetFilterLevel', undefined)`.
+   - Add state for reminder settings dialog:
+     - `@State showSettingsDialog: boolean = false;`
+     - `@State reminderEnabled: boolean = true;`
+     - `@State reminderHour: number = 9;`
+     - `@State reminderMinute: number = 0;`
+   - In `onPageShow()`, load current settings via `ReminderService.getInstance().getSettings()`:
      ```typescript
-     import { common } from '@kit.AbilityKit';
-     import { photoAccessHelper } from '@kit.MediaLibraryKit';
-     import { textRecognition } from '@kit.CoreVisionKit';
-     import { image } from '@kit.ImageKit';
-     import { fileIo as fs } from '@kit.CoreFileKit';
-     import { BusinessError } from '@kit.BasicServicesKit';
-     import { hilog } from '@kit.PerformanceAnalysisKit';
-     import { parseDateFromText, ParsedDateResult } from './DateTextParser';
+     const settings = await ReminderService.getInstance().getSettings();
+     this.reminderEnabled = settings.enabled;
+     this.reminderHour = settings.hour;
+     this.reminderMinute = settings.minute;
      ```
-   - Export function `pickAndRecognizeDate(context: common.UIAbilityContext): Promise<ParsedDateResult | undefined>`:
-     - 1. Open photo picker with `PhotoSelectOptions` (`MIMEType: IMAGE_TYPE`, `maxSelectNumber: 1`).
-     - 2. Retrieve selected image URI. If cancelled/no URI, return `undefined`.
-     - 3. Read image file via `fs.openSync(uri, fs.OpenMode.READ_ONLY)` -> `image.createImageSource(file.fd).createPixelMap()`, ensure `fs.closeSync(file)` in `finally`.
-     - 4. Recognize text with `textRecognition.recognizeText({ pixelMap })`, ensure `pixelMap.release()` in `finally`.
-     - 5. Handle errors gracefully with try/catch and logging.
-     - 6. If recognized text lines exist, pipe text through `parseDateFromText(textLines)` and return the `ParsedDateResult`.
-     - 7. If no text or unrecognized, return `{ rawMatchedText: [] }`.
-2. Commit the changes:
-   - Commit message: `feat(service): implement CoreVisionKit OCR date extraction service`
+   - In the header `Row()` of `Index.ets`:
+     - On the right side (after `Blank()`), add a bell/settings button:
+       ```typescript
+       Button({ type: ButtonType.Circle, stateEffect: true }) {
+         SymbolGlyph($r('sys.symbol.bell'))
+           .fontSize(20)
+           .fontColor([this.reminderEnabled ? CLR_BRAND : CLR_TEXT_SUB])
+       }
+       .backgroundColor(CLR_CARD)
+       .width(40)
+       .height(40)
+       .onClick(() => {
+         this.openReminderSettingsDialog();
+       })
+       ```
+   - Implement `openReminderSettingsDialog()`:
+     - Use `this.getUIContext().showAlertDialog` or a clean CustomDialog/Sheet providing:
+       - 每日临期汇总开关
+       - 提醒时间选择（如利用 `showTimePickerDialog` 选择小时与分钟）
+       - 保存时调用 `ReminderService.getInstance().updateSettings(...)` 和 `ReminderService.getInstance().syncDailyReminder(ctx)`，并 Toast 提示 `已更新提醒设置`。
+2. Verify ArkTS / HarmonyOS syntax and typing.
+3. Commit with message:
+   `feat(ui): add reminder settings panel and handle notification deep-link filter`

@@ -1,26 +1,34 @@
-# Task 1 Implementation Report: 数据模型与条码字典扩展
+# Task 1 Report: 权限声明与首选项配置层
 
-## Status: COMPLETED
+## 1. 任务概述
+- **任务名称**: Task 1 权限声明与首选项配置层
+- **目标文件**:
+  - `entry/src/main/module.json5`
+  - `entry/src/main/ets/service/ReminderService.ets`
+- **状态**: ✅ 完成 (Completed)
 
-### Summary of Changes
-1. **`entry/src/main/ets/model/Material.ets`**:
-   - Added optional `barcode?: string;` to the `Material` interface.
+## 2. 变更详情
+1. **权限配置 (`entry/src/main/module.json5`)**:
+   - 在 `module` 节点下增加 `requestPermissions` 数组：
+     ```json5
+     "requestPermissions": [
+       {
+         "name": "ohos.permission.PUBLISH_AGENT_REMINDER"
+       }
+     ]
+     ```
+2. **首选项管理与单例服务 (`entry/src/main/ets/service/ReminderService.ets`)**:
+   - 定义配置接口 `ReminderSettings { enabled: boolean; hour: number; minute: number; }`。
+   - 实现单例 `ReminderService`:
+     - `init(context: Context)`: 初始化 preferences 存储实例 `keepfresh_reminder_prefs`。
+     - `getSettings()`: 读取提醒开关与时间配置，默认值为 `enabled: true, hour: 9, minute: 0`。
+     - `updateSettings(settings: ReminderSettings)`: 更新持久化配置并执行 `flush()`。
+     - 包含异常捕获与 `hilog` 日志记录。
 
-2. **`entry/src/main/ets/model/BarcodeProduct.ets`**:
-   - Created `BarcodeProductInfo` interface (`barcode`, `name`, `category`, `unit`, `defaultShelfLifeDays`).
-   - Created `PRESET_BARCODE_PRODUCTS` constant array with preset items across food, medicine, and daily necessities.
-   - Created `findPresetBarcode(barcode: string): BarcodeProductInfo | undefined` helper function with trim and null-check support.
+## 3. Git 提交
+- **Commit**: `2536a41`
+- **Message**: `feat(reminder): add reminder permission and preferences configuration`
 
-3. **`entry/src/main/ets/db/MaterialDb.ets`**:
-   - Updated `CREATE_TABLE_SQL` to include `barcode TEXT`.
-   - Updated `init()` to execute `ALTER TABLE materials ADD COLUMN barcode TEXT;` with try/catch to maintain backward compatibility for existing SQLite databases.
-   - Updated `rowToMaterial()` and `toRow()` to read/write the `barcode` column.
-   - Implemented `getByBarcode(barcode: string): Promise<Material | undefined>` that queries the database ordered by `id DESC` with `ResultSet` proper cleanup.
-
-### Git Commit
-- **Commit SHA**: `de5bc78`
-- **Commit Message**: `feat(model,db): add barcode support and preset product dictionary`
-
-### Verification Summary
-- Validated barcode lookup helper with Node runner covering exact match, whitespace trimming, and non-existent barcode handling.
-- Syntax and typing inspected and confirmed compliant with ArkTS / HarmonyOS NEXT standard.
+## 4. 自检与验证
+- ArkTS 语法与类型定义校验通过。
+- 遵循模块化单例模式，API 与下一阶段 Task 2 (`ReminderService` 代理提醒扩展) 完全契合。

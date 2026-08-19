@@ -1,23 +1,37 @@
-# Task 4 Report: 封装 OCR 识别与照片选择服务 (`OcrService.ets`)
+# Task 4 Report: 首页 `Index.ets` 交互联动与提醒设置面板
 
-## 1. Task Overview
-- **Objective**: Implement photo selection via PhotoViewPicker (`@kit.MediaLibraryKit`) and on-device text recognition via CoreVisionKit (`@kit.CoreVisionKit`), integrated with DateTextParser for date & shelf-life extraction.
-- **File Created**: `entry/src/main/ets/service/OcrService.ets`
+## 1. 任务概述
+- **任务名称**: Task 4 首页 `Index.ets` 交互联动与提醒设置面板
+- **目标文件**:
+  - `entry/src/main/ets/pages/Index.ets`
+- **状态**: ✅ 完成 (Completed)
 
-## 2. Implementation Summary
-- **Service Logic**:
-  - `pickAndRecognizeDate(context: common.UIAbilityContext): Promise<ParsedDateResult | undefined>`:
-    1. Invokes `photoAccessHelper.PhotoViewPicker` with `PhotoSelectOptions` (`IMAGE_TYPE`, `maxSelectNumber: 1`) to pick package photo. Gracefully returns `undefined` if user cancels or no image selected.
-    2. Opens image file descriptor via `fs.openSync(uri, fs.OpenMode.READ_ONLY)` and creates `PixelMap` using `image.createImageSource(file.fd).createPixelMap()`, ensuring `file` is closed safely in a `finally` block.
-    3. Runs on-device text recognition via `textRecognition.recognizeText({ pixelMap })`, ensuring `pixelMap.release()` in a `finally` block.
-    4. Passes recognized text into `parseDateFromText(textLines)` to extract production date, expiry date, shelf life, and raw matched text.
-    5. Returns `{ rawMatchedText: [] }` if no text is recognized or recognized text is empty.
-    6. Structured logging with `hilog` (`DOMAIN: 0x0000`, `TAG: 'OcrService'`) and robust error handling.
+## 2. 变更详情
+1. **通知深度链接筛选联动 (`targetFilterLevel`)**:
+   - 在 `Index.ets` 的 `onPageShow()` 中读取 `AppStorage.get<string>('targetFilterLevel')`。
+   - 当值为 `'NEAR'` 时，自动将首页列表筛选切换至 `ListFilter.NEAR`，并重置 `AppStorage` 状态。
+   - 当值为 `'EXPIRED'` 时，自动将首页列表筛选切换至 `ListFilter.EXPIRED`，并重置 `AppStorage` 状态。
 
-## 3. Verification & Git Commit
-- **Type/Syntax Check**: Conforms strictly to ArkTS specifications, HarmonyOS NEXT kits (`@kit.CoreVisionKit`, `@kit.MediaLibraryKit`, `@kit.ImageKit`, `@kit.CoreFileKit`, `@kit.AbilityKit`), and project architecture.
-- **Git Commit**:
-  - `b2d998b feat(service): implement CoreVisionKit OCR date extraction service`
+2. **提醒配置加载与状态管理**:
+   - 新增 `@State showSettingsDialog`、`@State reminderEnabled`、`@State reminderHour`、`@State reminderMinute`。
+   - 在 `onPageShow()` 中通过 `loadReminderSettings()` 调用 `ReminderService.getInstance().getSettings()` 异步加载首选项配置并更新状态。
 
-## 4. Status
-- **Status**: Completed
+3. **首页顶部铃铛设置入口**:
+   - 在首页顶部导航栏标题右侧新增圆形按钮与系统铃铛图标 `SymbolGlyph($r('sys.symbol.bell'))`。
+   - 颜色根据 `reminderEnabled` 动态高亮（开启显示品牌绿 `CLR_BRAND`，关闭显示辅助灰 `CLR_TEXT_SUB`）。
+   - 点击时触发 `openReminderSettingsDialog()` 打开半模态设置面板。
+
+4. **半模态提醒设置面板 (`reminderSettingsSheet`)**:
+   - 基于 `.bindSheet` 实现符合鸿蒙设计规范的底部抽屉面板。
+   - 提供「每日临期汇总提醒」开关 (`ToggleSwitch`)。
+   - 提供「提醒时间」选择行，点击调用系统 `showTimePickerDialog` 选择小时和分钟。
+   - 状态变更时自动保存至 `Preferences` 首选项，并通过 `ReminderService.getInstance().syncDailyReminder(ctx)` 重新同步后台日历提醒，同时弹出 Toast 提示「已更新提醒设置」。
+
+## 3. Git 提交
+- **Commit**: `12063cb`
+- **Message**: `feat(ui): add reminder settings panel and handle notification deep-link filter`
+
+## 4. 自检与验证
+- ArkTS / ArkUI 语法、生命周期与类型约束验证通过。
+- 深度链接过滤逻辑与 `EntryAbility` 传递的 `filterLevel` 完美契合。
+- 提醒设置状态流转清晰，首选项持久化与后台代理提醒调度无缝联动。

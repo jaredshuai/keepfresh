@@ -1,44 +1,29 @@
-# Task 3 Brief: 封装条码扫码服务 (`ScanService.ets`)
+# Task 3 Brief: 物资生命周期与启动时自动同步 (`AddItem.ets`, `ItemDetail.ets`, `EntryAbility.ets`)
 
 ## Files
-- Create: `entry/src/main/ets/service/ScanService.ets`
+- Modify: `entry/src/main/ets/entryability/EntryAbility.ets`
+- Modify: `entry/src/main/ets/pages/AddItem.ets`
+- Modify: `entry/src/main/ets/pages/ItemDetail.ets`
 
 ## Requirements
-1. Create `entry/src/main/ets/service/ScanService.ets`:
-   - Import necessary modules:
-     ```typescript
-     import { scanBarcode, scanCore } from '@kit.ScanKit';
-     import { common } from '@kit.AbilityKit';
-     import { BusinessError } from '@kit.BasicServicesKit';
-     import { hilog } from '@kit.PerformanceAnalysisKit';
-     import { MaterialDb } from '../db/MaterialDb';
-     import { findPresetBarcode, BarcodeProductInfo } from '../model/BarcodeProduct';
-     import { Material } from '../model/Material';
-     ```
-   - Export interface `ScanMatchedResult`:
-     ```typescript
-     export interface ScanMatchedResult {
-       barcode: string;
-       name?: string;
-       category?: string;
-       unit?: string;
-       shelfLifeDays?: number;
-       source: 'history' | 'preset' | 'raw_barcode';
-     }
-     ```
-   - Export function `scanAndMatchProduct(context: common.UIAbilityContext, db: MaterialDb): Promise<ScanMatchedResult | undefined>`:
-     - Calls `scanBarcode.startScanForResult(context, options)` with options:
-       ```typescript
-       const options: scanBarcode.ScanOptions = {
-         scanTypes: [scanCore.ScanType.ALL],
-         enableMultiMode: false,
-         enableAlbum: true
-       };
-       ```
-     - Handles errors with `try/catch` (log via `hilog.error` and throw descriptive error or return undefined gracefully).
-     - Extract `barcodeValue` from `result.originalValue` (trimmed). If empty, return `undefined`.
-     - Step 1: Query `db.getByBarcode(barcodeValue)`. If found, return matched info with `source: 'history'`.
-     - Step 2: Query `findPresetBarcode(barcodeValue)`. If found, return matched info with `source: 'preset'`.
-     - Step 3: Otherwise, return `{ barcode: barcodeValue, source: 'raw_barcode' }`.
-2. Commit the changes:
-   - Commit message: `feat(service): implement ScanKit barcode scanning and product matching service`
+1. In `entry/src/main/ets/entryability/EntryAbility.ets`:
+   - Import `ReminderService` from `../service/ReminderService`.
+   - In `onCreate(want: Want, launchParam: AbilityConstant.LaunchParam)`:
+     - Check if `want?.parameters?.filterLevel` is provided. If so, store in `AppStorage.setOrCreate('targetFilterLevel', want.parameters.filterLevel as string)`.
+     - Call `ReminderService.getInstance().syncDailyReminder(this.context)` (catch errors gracefully).
+   - In `onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam)`:
+     - If `want?.parameters?.filterLevel` is provided, store in `AppStorage.setOrCreate('targetFilterLevel', want.parameters.filterLevel as string)`.
+     - Call `ReminderService.getInstance().syncDailyReminder(this.context)` (catch errors gracefully).
+   - In `onForeground()`:
+     - Call `ReminderService.getInstance().syncDailyReminder(this.context)` to refresh daily reminder on app foreground.
+2. In `entry/src/main/ets/pages/AddItem.ets`:
+   - Import `ReminderService` from `../service/ReminderService`.
+   - In `save()`, after successfully inserting or updating database:
+     - `ReminderService.getInstance().syncDailyReminder(ctx);`
+3. In `entry/src/main/ets/pages/ItemDetail.ets`:
+   - Import `ReminderService` from `../service/ReminderService`.
+   - In `doDelete()`, after successfully removing item:
+     - `const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;`
+     - `ReminderService.getInstance().syncDailyReminder(ctx);`
+4. Commit with message:
+   `feat(reminder): sync offline reminders on data mutations and app startup`
