@@ -129,16 +129,11 @@ export class ReminderService {
     const textContent: string = `${parts.join('，')}，请及时处理`;
 
     try {
-      const calendarReq: reminderAgentManager.ReminderRequestCalendar = {
-        reminderType: reminderAgentManager.ReminderType.REMINDER_TYPE_CALENDAR,
+      const alarmReq: reminderAgentManager.ReminderRequestAlarm = {
+        reminderType: reminderAgentManager.ReminderType.REMINDER_TYPE_ALARM,
         hour: settings.hour,
         minute: settings.minute,
-        repeatMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-        repeatDays: [
-          1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-          11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-          21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
-        ],
+        daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
         title: 'KeepFresh 临期提醒',
         content: textContent,
         wantAgent: {
@@ -156,7 +151,7 @@ export class ReminderService {
         ]
       };
 
-      const reminderId: number = await reminderAgentManager.publishReminder(calendarReq);
+      const reminderId: number = await reminderAgentManager.publishReminder(alarmReq);
       hilog.info(DOMAIN, TAG, `Reminder published successfully, reminderId: ${reminderId}`);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
