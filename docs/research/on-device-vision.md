@@ -4,6 +4,7 @@
 > 日期: 2026-08-20 ｜ 基线: HarmonyOS API 24（6.1.1(24)），Stage 模型，ArkTS
 > 用途: 为「拍照入库交互定稿」ticket 提供端侧识别能力边界结论与降级建议
 > 多 AI 核验：报告 A（2026-08-21，工具 B）全部 ✅ 同意 + 增量：日期正则纠错引擎（O→0/l/I→1/S→5）、关键词分类建议器（食品/药品/美妆词库）、PixelMap.release() 防 OOM（已并入本文 2.3/4.2 节）
+> 多 AI 核验：报告 B（工具 C）全部 ✅ 同意 + 增量：cameraPicker saveUri 须预建可写文件（否则照片入媒体库）、OCR init/release 生命周期（API 12+）、objectDetection 按 score 置信度过滤做食品预选（已并入本文 3.2/4.2 节）
 
 ## 结论速览（TL;DR）
 
@@ -102,6 +103,7 @@ HarmonyOS 提供 MindSpore Lite Kit（`@kit.MindSporeLiteKit`）端侧推理框�
 
 - 模块：`import { textRecognition } from '@kit.CoreVisionKit'`
 - 起始版本：`recognizeText` 4.0.0(10)；`init()/release()` 5.0.0(12)；系统能力 `SystemCapability.AI.OCR.TextRecognition`；仅 Stage 模型
+- **生命周期（报告 B 增量）**：进入识别页 `await textRecognition.init()` 加载模型，离开时 `release()` 释放——API 12+ 起需显式管理，避免重复加载
 - **输入**：`VisionInfo { pixelMap: image.PixelMap }`，PixelMap 须为 **RGBA_8888** 格式
   - 图片约束（Kit 约束与限制页）：JPEG/JPG/PNG；宽 100~10000px、高 100~15210px；宽高比 ≤10:1；单图文本 ≤10000 字符；拍摄夹角 <30°；建议成像 720p 以上
   - 官方定位为「票据、卡证、表格、报刊、书籍等**印刷品**文字」识别；**手写识别能力弱**（官方原话）
@@ -169,6 +171,7 @@ HarmonyOS 提供 MindSpore Lite Kit（`@kit.MindSporeLiteKit`）端侧推理框�
 1. **首选拍照：`cameraPicker.pick(context, [PickerMediaType.PHOTO], profile)`**
    - 免相机权限、免自研相机 UI；`resultCode === 0` 即成功
    - **建议配置 `saveUri` 指向应用沙箱文件**（先用 `fileIo.createRandomAccessFileSync()` 建文件，`fileUri.getUriFromPath()` 转 URI）：拍摄结果直接落到沙箱，**不污染用户媒体库**，且避免事后读媒体库 URI 的授权差异；`resultUri` 即该文件，直接 `image.createImageSource` 解码
+   - ⚠️ **saveUri 文件必须已存在且可写**（报告 B 增量）：不配置 saveUri 则照片**默认存入系统媒体库**；配置的沙箱路径文件若不存在/不可写则写入失败——务必先建好可写文件再传给 picker
    - 注意：必须在 UIAbility 界面上下文中调用；折叠设备展开态启动后折回会把 picker 推后台
    - 官方指南原话建议：只需要获取即时拍摄的照片/视频，用 CameraPicker 即可
 2. **补充入口：`PhotoViewPicker.select()`**——用户拍过照（如先前拍过包装）可直接从相册选，URI 永久授权，同样免权限
@@ -205,7 +208,7 @@ cameraPicker.pick(saveUri=沙箱文件) → resultUri
 ### 4.2 降级建议（供「拍照入库交互定稿」直接采用）
 
 1. **交互主形态定为「OCR 辅助 + 人工确认」**：拍照 → OCR 日期候选点选 → 分类人工选择（沿用现有 5 分类选择器）。自动分类不可行不阻塞该 ticket。
-2. **objectDetection 作可选增强**：识别出标签 11（食物）时把分类预填为「食品」，并低置信度展示（用户可改）；识别不到就不干预。这是零额外成本的顺手增强，注意其类别是数字编码需自行映射。
+2. **objectDetection 作可选增强**：识别出标签 11（食物）时把分类预填为「食品」，并低置信度展示（用户可改）；识别不到就不干预。这是零额外成本的顺手增强，注意其类别是数字编码需自行映射。**置信度过滤（报告 B 增量）**：用 `VisionObject.score`（0,1）做阈值过滤（如 ≥0.5 才预选「食品」），低置信不做预测只留给用户选择。
 3. **OCR 失败兜底**：无日期候选/识别为空 → 无痕回落手动输入；提示语「见瓶身」类文本一律过滤不展示为候选。
 4. **关键词分类建议器（报告 A 增量）**：基于 OCR 文本做轻量级关键词匹配辅助预选分类，命中后默认高亮推荐、用户一键确认或修改：
    - 食品：`配料表`/`净含量`/`保质期`/`食品生产许可证`/`SC` 等
