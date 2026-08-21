@@ -7,6 +7,7 @@ import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { ReminderService, ReminderSettings } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
+import { BackupService, ImportPreview, ImportResult } from '../service/BackupService';
 
 const CLR_BRAND = '#2FA84F';
 const CLR_BG = '#F1F3F5';
@@ -28,8 +29,12 @@ struct Settings {
   @State reminderEnabled: boolean = true;
   @State reminderHour: number = 8;
   @State reminderMinute: number = 0;
+  @State showImportPreview: boolean = false;
+  @State importPreviewData: ImportPreview | undefined = undefined;
+  @State importOverwriteMode: boolean = false;
   private settingsService: SettingsService = SettingsService.getInstance();
   private reminderService: ReminderService = ReminderService.getInstance();
+  private backupService: BackupService = BackupService.getInstance();
 
   onPageShow(): void {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
@@ -105,6 +110,41 @@ struct Settings {
     } else {
       await this.reminderService.cancelAllReminders();
       promptAction.showToast({ message: '已关闭后台提醒' });
+    }
+  }
+
+  // ── 备份导出/导入 ──
+
+  private async handleExport(): Promise<void> {
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    await this.backupService.exportBackup(ctx);
+  }
+
+  private async handleImport(): Promise<void> {
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    const preview = await this.backupService.importBackup(ctx);
+    if (preview) {
+      this.importPreviewData = preview;
+      this.importOverwriteMode = false;
+      this.showImportPreview = true;
+    }
+  }
+
+  private async confirmImport(): Promise<void> {
+    if (!this.importPreviewData) {
+      return;
+    }
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    const mode: 'merge' | 'overwrite' = this.importOverwriteMode ? 'overwrite' : 'merge';
+    const result: ImportResult = await this.backupService.executeImport(ctx, this.importPreviewData.data, mode);
+    this.showImportPreview = false;
+    this.importPreviewData = undefined;
+    if (result.success) {
+      promptAction.showToast({ message: result.message });
+      // 刷新设置页显示（导入可能改了阈值/提醒设置）
+      await this.loadAllSettings(ctx);
+    } else {
+      promptAction.showToast({ message: result.message });
     }
   }
 
@@ -310,7 +350,7 @@ struct Settings {
                   .height(40)
                   .layoutWeight(1)
                   .onClick(() => {
-                    promptAction.showToast({ message: '备份功能开发中' });
+                    this.handleExport();
                   })
 
                 Button('导入备份')
@@ -322,7 +362,7 @@ struct Settings {
                   .height(40)
                   .layoutWeight(1)
                   .onClick(() => {
-                    promptAction.showToast({ message: '备份功能开发中' });
+                    this.handleImport();
                   })
               }
               .width('100%')
@@ -417,6 +457,135 @@ struct Settings {
     .width('100%')
     .height('100%')
     .backgroundColor(CLR_BG)
+    .bindSheet($$this.showImportPreview, this.importPreviewSheet(), {
+      height: SheetSize.FIT_CONTENT,
+      dragBar: true,
+      backgroundColor: CLR_CARD,
+      onDisappear: () => {
+        this.showImportPreview = false;
+        this.importPreviewData = undefined;
+      }
+    })
+  }
+
+  @Builder
+  importPreviewSheet() {
+    Column({ space: 16 }) {
+      Row() {
+        Text('导入预览')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(CLR_TEXT)
+        Blank()
+      }
+      .width('100%')
+      .padding({ top: 8, bottom: 4 })
+
+      if (this.importPreviewData) {
+        Column({ space: 12 }) {
+          Row() {
+            Text('备份文件包含')
+              .fontSize(15)
+              .fontColor(CLR_TEXT_SUB)
+            Blank()
+            Text(`${this.importPreviewData.data.materials.length} 件物资`)
+              .fontSize(15)
+              .fontColor(CLR_TEXT)
+          }
+          .width('100%')
+
+          Row() {
+            Text('将新增')
+              .fontSize(15)
+              .fontColor(CLR_TEXT_SUB)
+            Blank()
+            Text(`${this.importPreviewData.addCount} 件`)
+              .fontSize(15)
+              .fontColor(CLR_BRAND)
+              .fontWeight(FontWeight.Medium)
+          }
+          .width('100%')
+
+          Row() {
+            Text('将覆盖')
+              .fontSize(15)
+              .fontColor(CLR_TEXT_SUB)
+            Blank()
+            Text(`${this.importPreviewData.overwriteCount} 件`)
+              .fontSize(15)
+              .fontColor(CLR_DANGER)
+              .fontWeight(FontWeight.Medium)
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .padding(14)
+        .borderRadius(14)
+        .backgroundColor(CLR_BG)
+
+        // 清空后导入选项
+        Row() {
+          Column({ space: 4 }) {
+            Text('清空后导入')
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(CLR_TEXT)
+            Text('删除所有现有物资，再导入备份数据')
+              .fontSize(12)
+              .fontColor(CLR_TEXT_SUB)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+
+          Toggle({ type: ToggleType.Switch, isOn: this.importOverwriteMode })
+            .selectedColor(CLR_DANGER)
+            .onChange((isOn: boolean) => {
+              this.importOverwriteMode = isOn;
+            })
+        }
+        .width('100%')
+        .padding(14)
+        .borderRadius(14)
+        .backgroundColor(CLR_BG)
+
+        if (this.importOverwriteMode) {
+          Text('⚠️ 开启后将删除所有现有物资，此操作不可撤销')
+            .fontSize(12)
+            .fontColor(CLR_DANGER)
+            .width('100%')
+        }
+      }
+
+      Row({ space: 12 }) {
+        Button('取消')
+          .layoutWeight(1)
+          .height(44)
+          .borderRadius(12)
+          .backgroundColor(CLR_INPUT_BG)
+          .fontColor(CLR_TEXT)
+          .fontSize(16)
+          .onClick(() => {
+            this.showImportPreview = false;
+            this.importPreviewData = undefined;
+          })
+
+        Button('确认导入')
+          .layoutWeight(1)
+          .height(44)
+          .borderRadius(12)
+          .backgroundColor(CLR_BRAND)
+          .fontColor(Color.White)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .onClick(() => {
+            this.confirmImport();
+          })
+      }
+      .width('100%')
+      .margin({ top: 8, bottom: 16 })
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
   }
 
   @Builder
