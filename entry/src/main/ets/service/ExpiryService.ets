@@ -1,8 +1,21 @@
-/**
- * 到期计算与分级服务。
- */
-import { Material, ExpiryLevel, NEAR_EXPIRY_DAYS } from '../model/Material';
+import type { Material } from '../model/Material';
+import { ExpiryLevel } from '../model/Material';
 import { addDays, diffDays, todayStr } from '../common/DateUtils';
+
+export const DEFAULT_NEAR_EXPIRY_DAYS: number = 7;
+
+/** 模块级临期阈值缓存（保证同步函数高性能） */
+let cachedNearExpiryDays: number = DEFAULT_NEAR_EXPIRY_DAYS;
+
+export function getNearExpiryThreshold(): number {
+  return cachedNearExpiryDays;
+}
+
+export function setNearExpiryThreshold(days: number): void {
+  if (days >= 1 && days <= 365) {
+    cachedNearExpiryDays = Math.floor(days);
+  }
+}
 
 export interface ExpiryStats {
   total: number;
@@ -20,12 +33,13 @@ export function remainingDays(m: Material): number {
   return diffDays(m.expiryDate, todayStr());
 }
 
-export function levelOf(m: Material): ExpiryLevel {
+export function levelOf(m: Material, customThreshold?: number): ExpiryLevel {
   const left: number = remainingDays(m);
   if (left < 0) {
     return ExpiryLevel.EXPIRED;
   }
-  if (left <= NEAR_EXPIRY_DAYS) {
+  const th = customThreshold !== undefined ? customThreshold : cachedNearExpiryDays;
+  if (left <= th) {
     return ExpiryLevel.NEAR;
   }
   return ExpiryLevel.SAFE;
@@ -64,11 +78,12 @@ export function remainingText(m: Material): string {
   return `${left} 天`;
 }
 
-export function statsOf(list: Material[]): ExpiryStats {
+export function statsOf(list: Material[], customThreshold?: number): ExpiryStats {
   let expired: number = 0;
   let near: number = 0;
+  const th = customThreshold !== undefined ? customThreshold : cachedNearExpiryDays;
   for (let i = 0; i < list.length; i++) {
-    const lv: ExpiryLevel = levelOf(list[i]);
+    const lv: ExpiryLevel = levelOf(list[i], th);
     if (lv === ExpiryLevel.EXPIRED) {
       expired++;
     } else if (lv === ExpiryLevel.NEAR) {

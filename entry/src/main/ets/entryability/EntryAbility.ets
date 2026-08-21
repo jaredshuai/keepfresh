@@ -2,6 +2,7 @@ import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { ReminderService } from '../service/ReminderService';
+import { SettingsService } from '../service/SettingsService';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'EntryAbility';
@@ -12,8 +13,10 @@ export default class EntryAbility extends UIAbility {
     if (want?.parameters?.filterLevel) {
       AppStorage.setOrCreate('targetFilterLevel', want.parameters.filterLevel as string);
     }
-    ReminderService.getInstance().syncDailyReminder(this.context).catch((err: Error) => {
-      hilog.error(DOMAIN, TAG, `Failed to sync daily reminder in onCreate: ${err.message}`);
+    SettingsService.getInstance().init(this.context).then(() => {
+      return ReminderService.getInstance().syncDailyReminder(this.context);
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, `Failed to init settings or sync daily reminder in onCreate: ${err.message}`);
     });
   }
 
@@ -26,8 +29,10 @@ export default class EntryAbility extends UIAbility {
     if (want?.parameters?.filterLevel) {
       AppStorage.setOrCreate('targetFilterLevel', want.parameters.filterLevel as string);
     }
-    ReminderService.getInstance().syncDailyReminder(this.context).catch((err: Error) => {
-      hilog.error(DOMAIN, TAG, `Failed to sync daily reminder in onNewWant: ${err.message}`);
+    SettingsService.getInstance().init(this.context).then(() => {
+      return ReminderService.getInstance().syncDailyReminder(this.context);
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, `Failed to init settings or sync daily reminder in onNewWant: ${err.message}`);
     });
   }
 
@@ -48,8 +53,10 @@ export default class EntryAbility extends UIAbility {
 
   onForeground(): void {
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onForeground');
-    ReminderService.getInstance().syncDailyReminder(this.context).catch((err: Error) => {
-      hilog.error(DOMAIN, TAG, `Failed to sync daily reminder in onForeground: ${err.message}`);
+    SettingsService.getInstance().init(this.context).then(() => {
+      return ReminderService.getInstance().syncDailyReminder(this.context);
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, `Failed to init settings or sync daily reminder in onForeground: ${err.message}`);
     });
   }
 
