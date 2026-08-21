@@ -5,6 +5,7 @@ import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material } from '../model/Material';
+import { CustomField } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { levelOf, levelColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
 import { ReminderService } from '../service/ReminderService';
@@ -24,6 +25,7 @@ const CLR_DANGER = '#FA2A2D';
 @Component
 struct ItemDetail {
   @State m: Material | undefined = undefined;
+  @State customFieldsDefs: CustomField[] = [];
   @State loading: boolean = true;
   private db: MaterialDb = MaterialDb.getInstance();
   private itemId: number = -1;
@@ -39,6 +41,10 @@ struct ItemDetail {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       this.db.init(ctx)
         .then(() => {
+          return this.db.listCustomFields();
+        })
+        .then((defs: CustomField[]) => {
+          this.customFieldsDefs = defs;
           return this.db.getById(this.itemId);
         })
         .then((m?: Material) => {
@@ -145,6 +151,11 @@ struct ItemDetail {
               if (this.m.barcode && this.m.barcode.trim().length > 0) {
                 this.infoRow('条形码', this.m.barcode)
               }
+              ForEach(this.customFieldsDefs, (def: CustomField) => {
+                if (this.hasCustomFieldValue(def.id)) {
+                  this.infoRow(def.name, this.getCustomFieldValue(def.id))
+                }
+              }, (def: CustomField) => def.id)
               if (this.m.note !== '') {
                 this.infoRow('备注', this.m.note)
               }
@@ -199,6 +210,21 @@ struct ItemDetail {
     .width('100%')
     .height('100%')
     .backgroundColor(CLR_BG)
+  }
+
+  private hasCustomFieldValue(fieldId: string): boolean {
+    if (!this.m || !this.m.customFields) {
+      return false;
+    }
+    const val = this.m.customFields[fieldId];
+    return val !== undefined && val.trim().length > 0;
+  }
+
+  private getCustomFieldValue(fieldId: string): string {
+    if (!this.m || !this.m.customFields) {
+      return '';
+    }
+    return this.m.customFields[fieldId] || '';
   }
 
   @Builder

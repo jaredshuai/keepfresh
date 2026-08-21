@@ -2,6 +2,8 @@
   "src": [
     "pages/Index",
     "pages/AddItem",
-    "pages/ItemDetail"
+    "pages/ItemDetail",
+    "pages/Settings",
+    "pages/CustomFieldManager"
   ]
 }

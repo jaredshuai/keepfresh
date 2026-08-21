@@ -21,7 +21,20 @@ export async function resolve(specifier, context, nextResolve) {
 export async function load(url, context, nextLoad) {
   if (url.endsWith('.ets')) {
     const filePath = fileURLToPath(url);
-    const content = await readFile(filePath, 'utf8');
+    let content = await readFile(filePath, 'utf8');
+    // Transform enum declarations for Node typescript strip-only compatibility
+    content = content.replace(/export\s+enum\s+(\w+)\s*\{([^}]+)\}/g, (match, enumName, enumBody) => {
+      const lines = enumBody
+        .split('\n')
+        .map(l => l.replace(/\/\*.*?\*\/|\/\/.*$/g, '').trim())
+        .filter(Boolean)
+        .map(l => {
+          const line = l.replace(/\s*=\s*/, ': ');
+          return line.endsWith(',') ? line : line + ',';
+        })
+        .join('\n');
+      return `export const ${enumName} = Object.freeze({\n${lines}\n});\nexport type ${enumName} = number;`;
+    });
     return {
       format: 'module-typescript',
       shortCircuit: true,

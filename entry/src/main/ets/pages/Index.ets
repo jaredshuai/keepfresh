@@ -9,6 +9,7 @@ import { MaterialDb } from '../db/MaterialDb';
 import { ExpiryStats, levelOf, levelColor, levelText, remainingDays, statsOf } from '../service/ExpiryService';
 import { ensureNotificationEnabled, publishExpiryAlert, requestNotificationEnable } from '../service/NotificationService';
 import { ReminderService, ReminderSettings } from '../service/ReminderService';
+import { SettingsService } from '../service/SettingsService';
 
 /* ───── 鸿蒙官方色值体系 ───── */
 const CLR_BRAND = '#2FA84F';
@@ -57,7 +58,10 @@ struct Index {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     this.loadReminderSettings(ctx);
 
-    this.db.init(ctx)
+    SettingsService.getInstance().init(ctx)
+      .then(() => {
+        return this.db.init(ctx);
+      })
       .then(() => {
         return this.refresh();
       })
@@ -174,17 +178,31 @@ struct Index {
 
           Blank()
 
-          Button({ type: ButtonType.Circle, stateEffect: true }) {
-            SymbolGlyph($r('sys.symbol.bell'))
-              .fontSize(20)
-              .fontColor([this.reminderEnabled ? CLR_BRAND : CLR_TEXT_SUB])
+          Row({ space: 8 }) {
+            Button({ type: ButtonType.Circle, stateEffect: true }) {
+              SymbolGlyph($r('sys.symbol.bell'))
+                .fontSize(20)
+                .fontColor([this.reminderEnabled ? CLR_BRAND : CLR_TEXT_SUB])
+            }
+            .backgroundColor(CLR_CARD)
+            .width(40)
+            .height(40)
+            .onClick(() => {
+              this.openReminderSettingsDialog();
+            })
+
+            Button({ type: ButtonType.Circle, stateEffect: true }) {
+              SymbolGlyph($r('sys.symbol.gearshape'))
+                .fontSize(20)
+                .fontColor([CLR_TEXT])
+            }
+            .backgroundColor(CLR_CARD)
+            .width(40)
+            .height(40)
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/Settings' });
+            })
           }
-          .backgroundColor(CLR_CARD)
-          .width(40)
-          .height(40)
-          .onClick(() => {
-            this.openReminderSettingsDialog();
-          })
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 16, bottom: 12 })

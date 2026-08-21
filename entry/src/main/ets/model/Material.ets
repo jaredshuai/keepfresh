@@ -15,6 +15,7 @@ export interface Material {
   createdAt: string;
   updatedAt: string;
   barcode?: string;
+  customFields?: Record<string, string>;
 }
 
 export enum ExpiryLevel {

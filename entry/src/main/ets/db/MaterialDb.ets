@@ -4,9 +4,11 @@
 import { relationalStore } from '@kit.ArkData';
 import { Context } from '@kit.AbilityKit';
 import { Material } from '../model/Material';
+import { CustomField, CustomFieldType } from '../model/CustomField';
 
 const DB_NAME: string = 'keepfresh.db';
 const TABLE: string = 'materials';
+const CUSTOM_FIELDS_TABLE: string = 'custom_field_defs';
 
 const CREATE_TABLE_SQL: string = `
 CREATE TABLE IF NOT EXISTS ${TABLE} (
@@ -21,7 +23,19 @@ CREATE TABLE IF NOT EXISTS ${TABLE} (
   note TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  barcode TEXT
+  barcode TEXT,
+  custom_fields TEXT
+)
+`;
+
+const CREATE_CUSTOM_FIELD_DEFS_TABLE_SQL: string = `
+CREATE TABLE IF NOT EXISTS ${CUSTOM_FIELDS_TABLE} (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  options TEXT,
+  sort_order INTEGER NOT NULL,
+  created_at TEXT NOT NULL
 )
 `;
 
@@ -49,8 +63,14 @@ export class MaterialDb {
     };
     this.store = await relationalStore.getRdbStore(context, config);
     await this.store.executeSql(CREATE_TABLE_SQL);
+    await this.store.executeSql(CREATE_CUSTOM_FIELD_DEFS_TABLE_SQL);
     try {
       await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN barcode TEXT;`);
+    } catch (e) {
+      // Column might already exist, ignore error
+    }
+    try {
+      await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN custom_fields TEXT;`);
     } catch (e) {
       // Column might already exist, ignore error
     }
@@ -72,6 +92,18 @@ export class MaterialDb {
         barcode = val;
       }
     }
+    const customFieldsIndex: number = rs.getColumnIndex('custom_fields');
+    let customFields: Record<string, string> | undefined = undefined;
+    if (customFieldsIndex >= 0 && !rs.isColumnNull(customFieldsIndex)) {
+      const val: string = rs.getString(customFieldsIndex);
+      if (val && val.length > 0) {
+        try {
+          customFields = JSON.parse(val) as Record<string, string>;
+        } catch (e) {
+          customFields = {};
+        }
+      }
+    }
     const m: Material = {
       id: rs.getLong(rs.getColumnIndex('id')),
       name: rs.getString(rs.getColumnIndex('name')),
@@ -84,7 +116,8 @@ export class MaterialDb {
       note: rs.getString(rs.getColumnIndex('note')),
       createdAt: rs.getString(rs.getColumnIndex('created_at')),
       updatedAt: rs.getString(rs.getColumnIndex('updated_at')),
-      barcode: barcode
+      barcode: barcode,
+      customFields: customFields
     };
     return m;
   }
@@ -101,7 +134,8 @@ export class MaterialDb {
       'note': m.note,
       'created_at': m.createdAt,
       'updated_at': m.updatedAt,
-      'barcode': m.barcode ?? ''
+      'barcode': m.barcode ?? '',
+      'custom_fields': m.customFields ? JSON.stringify(m.customFields) : '{}'
     };
     return row;
   }
@@ -131,23 +165,26 @@ export class MaterialDb {
     return m;
   }
 
-  async getByBarcode(barcode: string): Promise<Material | undefined> {
-    if (!barcode) {
-      return undefined;
+  /** 按条形码查历史入库记录，按最近入库倒序（created_at，同日再按 id 倒序） */
+  async findByBarcode(barcode: string): Promise<Material[]> {
+    const list: Material[] = [];
+    const code: string = barcode.trim();
+    if (code.length === 0) {
+      return list;
     }
     const predicates = new relationalStore.RdbPredicates(TABLE);
-    predicates.equalTo('barcode', barcode.trim());
+    predicates.equalTo('barcode', code);
+    predicates.orderByDesc('created_at');
     predicates.orderByDesc('id');
     const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
-    let m: Material | undefined = undefined;
     try {
-      if (rs.goToNextRow()) {
-        m = this.rowToMaterial(rs);
+      while (rs.goToNextRow()) {
+        list.push(this.rowToMaterial(rs));
       }
     } finally {
       rs.close();
     }
-    return m;
+    return list;
   }
 
   /** 插入，返回新记录 rowId */
@@ -167,5 +204,114 @@ export class MaterialDb {
     const predicates = new relationalStore.RdbPredicates(TABLE);
     predicates.equalTo('id', id);
     return await this.getStore().delete(predicates);
+  }
+
+  private rowToCustomField(rs: relationalStore.ResultSet): CustomField {
+    const idIndex: number = rs.getColumnIndex('id');
+    const nameIndex: number = rs.getColumnIndex('name');
+    const typeIndex: number = rs.getColumnIndex('type');
+    const optionsIndex: number = rs.getColumnIndex('options');
+    const orderIndex: number = rs.getColumnIndex('sort_order');
+    const createdAtIndex: number = rs.getColumnIndex('created_at');
+
+    let options: string[] | undefined = undefined;
+    if (optionsIndex >= 0 && !rs.isColumnNull(optionsIndex)) {
+      const rawOptions = rs.getString(optionsIndex);
+      if (rawOptions && rawOptions.length > 0) {
+        try {
+          options = JSON.parse(rawOptions) as string[];
+        } catch (e) {
+          options = [];
+        }
+      }
+    }
+
+    const f: CustomField = {
+      id: rs.getString(idIndex),
+      name: rs.getString(nameIndex),
+      type: rs.getString(typeIndex) as CustomFieldType,
+      options: options,
+      order: rs.getLong(orderIndex),
+      createdAt: rs.getString(createdAtIndex)
+    };
+    return f;
+  }
+
+  private customFieldToRow(field: CustomField): relationalStore.ValuesBucket {
+    const row: relationalStore.ValuesBucket = {
+      'id': field.id,
+      'name': field.name,
+      'type': field.type,
+      'options': field.options ? JSON.stringify(field.options) : '',
+      'sort_order': field.order,
+      'created_at': field.createdAt
+    };
+    return row;
+  }
+
+  /** 查询全部自定义字段定义，按 sort_order 升序，同序按创建时间升序 */
+  async listCustomFields(): Promise<CustomField[]> {
+    const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+    predicates.orderByAsc('sort_order');
+    predicates.orderByAsc('created_at');
+    const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+    const list: CustomField[] = [];
+    try {
+      while (rs.goToNextRow()) {
+        list.push(this.rowToCustomField(rs));
+      }
+    } finally {
+      rs.close();
+    }
+    return list;
+  }
+
+  /** 按 ID 获取单个自定义字段 */
+  async getCustomFieldById(id: string): Promise<CustomField | undefined> {
+    const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+    predicates.equalTo('id', id);
+    const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+    let field: CustomField | undefined = undefined;
+    try {
+      if (rs.goToNextRow()) {
+        field = this.rowToCustomField(rs);
+      }
+    } finally {
+      rs.close();
+    }
+    return field;
+  }
+
+  /** 插入自定义字段定义 */
+  async insertCustomField(field: CustomField): Promise<number> {
+    return await this.getStore().insert(CUSTOM_FIELDS_TABLE, this.customFieldToRow(field));
+  }
+
+  /** 更新自定义字段定义（修改名称、选项、排序） */
+  async updateCustomField(field: CustomField): Promise<number> {
+    const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+    predicates.equalTo('id', field.id);
+    return await this.getStore().update(this.customFieldToRow(field), predicates);
+  }
+
+  /** 删除自定义字段定义（已有物资里的字段值保留在 custom_fields JSON 中） */
+  async removeCustomField(id: string): Promise<number> {
+    const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+    predicates.equalTo('id', id);
+    return await this.getStore().delete(predicates);
+  }
+
+  /** 批量更新字段排序序号 */
+  async updateCustomFieldsOrder(fields: CustomField[]): Promise<void> {
+    for (let i = 0; i < fields.length; i++) {
+      const f = fields[i];
+      f.order = i;
+      const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+      predicates.equalTo('id', f.id);
+      const row: relationalStore.ValuesBucket = {
+        'sort_order': i
+      };
+      await this.getStore().update(row, predicates);
+    }
   }
 }

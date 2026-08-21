@@ -5,12 +5,11 @@ import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, DEFAULT_CATEGORIES, DEFAULT_UNITS, SHELF_PRESET_DAYS } from '../model/Material';
+import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
-import { scanAndMatchProduct, ScanMatchedResult } from '../service/ScanService';
-import { pickAndRecognizeDate } from '../service/OcrService';
-import { ParsedDateResult } from '../service/DateTextParser';
+import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
 import { ReminderService } from '../service/ReminderService';
 
 interface RouteParams {
@@ -27,6 +26,16 @@ const CLR_INPUT_BG = '#F1F3F5';
 const CLR_DANGER = '#FA2A2D';
 const CLR_PREVIEW_BG = '#E8F5EF';
 
+/** ArkTS 禁用对象展开（arkts-no-spread）：逐键拷贝 Record */
+function copyStringRecord(src: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  const keys: string[] = Object.keys(src);
+  for (let i = 0; i < keys.length; i++) {
+    out[keys[i]] = src[keys[i]];
+  }
+  return out;
+}
+
 @Entry
 @Component
 struct AddItem {
@@ -39,9 +48,12 @@ struct AddItem {
   @State shelfLifeStr: string = '30';
   @State note: string = '';
   @State barcode: string = '';
+  @State showScanSheet: boolean = false;
+  @State scanSuggestions: Material[] = [];
   @State saving: boolean = false;
-  @State isRecognizing: boolean = false;
   @State errorMsg: string = '';
+  @State customFieldsDefs: CustomField[] = [];
+  @State customFieldValues: Record<string, string> = {};
   private db: MaterialDb = MaterialDb.getInstance();
   private editId: number = -1;
   private loadedCreatedAt: string = '';
@@ -51,28 +63,39 @@ struct AddItem {
     if (params && params.id !== undefined) {
       this.editId = params.id;
       this.isEdit = true;
-      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      this.db.init(ctx)
-        .then(() => {
-          return this.db.getById(this.editId);
-        })
-        .then((m?: Material) => {
-          if (m) {
-            this.name = m.name;
-            this.category = m.category;
-            this.quantityStr = m.quantity.toString();
-            this.unit = m.unit;
-            this.productionDate = m.productionDate;
-            this.shelfLifeStr = m.shelfLifeDays.toString();
-            this.note = m.note;
-            this.loadedCreatedAt = m.createdAt;
-            this.barcode = m.barcode || '';
-          }
-        })
-        .catch((e: BusinessError) => {
-          console.error(`load material failed: ${e.message}`);
-        });
     }
+
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    this.db.init(ctx)
+      .then(() => {
+        return this.db.listCustomFields();
+      })
+      .then((defs: CustomField[]) => {
+        this.customFieldsDefs = defs;
+        if (this.editId >= 0) {
+          return this.db.getById(this.editId);
+        }
+        return undefined;
+      })
+      .then((m?: Material) => {
+        if (m) {
+          this.name = m.name;
+          this.category = m.category;
+          this.quantityStr = m.quantity.toString();
+          this.unit = m.unit;
+          this.productionDate = m.productionDate;
+          this.shelfLifeStr = m.shelfLifeDays.toString();
+          this.note = m.note;
+          this.loadedCreatedAt = m.createdAt;
+          this.barcode = m.barcode || '';
+          if (m.customFields) {
+            this.customFieldValues = copyStringRecord(m.customFields);
+          }
+        }
+      })
+      .catch((e: BusinessError) => {
+        console.error(`load material or custom fields failed: ${e.message}`);
+      });
   }
 
   private pickProductionDate(): void {
@@ -98,94 +121,76 @@ struct AddItem {
     return SHELF_PRESET_DAYS.map((d: number): string => `${d}天`);
   }
 
-  private async handleScanBarcode(): Promise<void> {
-    try {
-      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      await this.db.init(ctx);
-      const result: ScanMatchedResult | undefined = await scanAndMatchProduct(ctx, this.db);
-      if (!result) {
-        return;
+  private pickCustomFieldDate(fieldId: string): void {
+    const currentVal = this.customFieldValues[fieldId];
+    const selectedDate = currentVal ? parseDate(currentVal) : new Date();
+    this.getUIContext().showDatePickerDialog({
+      start: new Date('2020-01-01'),
+      end: new Date('2035-12-31'),
+      selected: selectedDate,
+      onDateAccept: (value: Date) => {
+        const copy: Record<string, string> = copyStringRecord(this.customFieldValues);
+        copy[fieldId] = toDateStr(value);
+        this.customFieldValues = copy;
       }
-      this.barcode = result.barcode;
-      if (result.name) {
-        this.name = result.name;
-      }
-      if (result.category) {
-        this.category = result.category;
-      }
-      if (result.unit) {
-        this.unit = result.unit;
-      }
-      if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
-        this.shelfLifeStr = result.shelfLifeDays.toString();
-      }
-
-      if (result.source === 'history') {
-        promptAction.showToast({ message: `已匹配历史记录：${result.name}` });
-      } else if (result.source === 'preset') {
-        promptAction.showToast({ message: `已匹配商品预设：${result.name}` });
-      } else {
-        promptAction.showToast({ message: `已扫描条码：${result.barcode}，请补充名称` });
-      }
-    } catch (e) {
-      const err = e as BusinessError;
-      console.error(`handleScanBarcode error: ${err.message || JSON.stringify(err)}`);
-      promptAction.showToast({ message: err.message || '扫码未完成' });
-    }
+    });
   }
 
-  private async handleOcrDate(): Promise<void> {
-    if (this.isRecognizing) {
+  private selectCustomEnumOption(fieldId: string, opt: string): void {
+    const copy: Record<string, string> = copyStringRecord(this.customFieldValues);
+    if (copy[fieldId] === opt) {
+      copy[fieldId] = '';
+    } else {
+      copy[fieldId] = opt;
+    }
+    this.customFieldValues = copy;
+  }
+
+  private updateCustomFieldValue(fieldId: string, value: string): void {
+    const copy: Record<string, string> = copyStringRecord(this.customFieldValues);
+    copy[fieldId] = value;
+    this.customFieldValues = copy;
+  }
+
+  private async handleScanBarcode(): Promise<void> {
+    if (this.saving) {
       return;
     }
-    this.isRecognizing = true;
-    try {
-      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      const result: ParsedDateResult | undefined = await pickAndRecognizeDate(ctx);
-      if (!result) {
-        return;
-      }
-      if (result.productionDate) {
-        this.productionDate = result.productionDate;
-      }
-      if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
-        this.shelfLifeStr = result.shelfLifeDays.toString();
-      } else if (!result.productionDate && result.expiryDate) {
-        this.productionDate = result.expiryDate;
-      }
-
-      if (result.productionDate && result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
-        promptAction.showToast({
-          message: `已识别生产日期: ${result.productionDate}, 保质期: ${result.shelfLifeDays}天`
-        });
-      } else if (result.expiryDate) {
-        promptAction.showToast({
-          message: `已识别到期日: ${result.expiryDate}`
-        });
-      } else if (result.productionDate) {
-        promptAction.showToast({
-          message: `已识别生产日期: ${result.productionDate}`
-        });
-      } else if (result.shelfLifeDays !== undefined && result.shelfLifeDays > 0) {
-        promptAction.showToast({
-          message: `已识别保质期: ${result.shelfLifeDays}天`
-        });
-      } else if (result.rawMatchedText && result.rawMatchedText.length > 0) {
-        promptAction.showToast({
-          message: '未提取到标准日期格式，请手动核对'
-        });
-      } else {
-        promptAction.showToast({
-          message: '未在图片中识别到有效日期'
-        });
-      }
-    } catch (e) {
-      const err = e as BusinessError;
-      console.error(`handleOcrDate error: ${err.message || JSON.stringify(err)}`);
-      promptAction.showToast({ message: err.message || '识别失败' });
-    } finally {
-      this.isRecognizing = false;
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    await this.db.init(ctx);
+    const result: ScanFillResult | undefined = await scanForSuggestions(ctx, this.db);
+    if (!result) {
+      return; // 用户取消扫码
     }
+    if (!result.ok) {
+      promptAction.showToast({ message: '扫码失败或设备不支持，请手动填写' });
+      return;
+    }
+    this.barcode = result.barcode;
+    if (result.suggestions.length === 0) {
+      // 陌生条码：不预填，条码随本条物资记录一并保存
+      this.scanSuggestions = [];
+      promptAction.showToast({ message: '该条码无历史记录，请手动填写' });
+      return;
+    }
+    this.scanSuggestions = result.suggestions;
+    this.showScanSheet = true;
+  }
+
+  /** 点选搜索建议：预填名称/分类/单位/保质期天数，生产日期和数量留给用户 */
+  private applyScanSuggestion(m: Material): void {
+    this.name = m.name;
+    this.category = m.category;
+    this.unit = m.unit;
+    this.shelfLifeStr = m.shelfLifeDays.toString();
+    this.showScanSheet = false;
+    promptAction.showToast({ message: '已预填，请补充生产日期和数量' });
+  }
+
+  /** 「都不对，手动填写」：丢弃预填，仅保留条码 */
+  private discardScanSuggestions(): void {
+    this.showScanSheet = false;
+    promptAction.showToast({ message: '请手动填写物资信息' });
   }
 
   async save(): Promise<void> {
@@ -206,6 +211,14 @@ struct AddItem {
       this.errorMsg = '保质期需至少 1 天';
       return;
     }
+    for (const def of this.customFieldsDefs) {
+      const val = this.customFieldValues[def.id] || '';
+      const err = validateCustomFieldValue(def, val);
+      if (err) {
+        this.errorMsg = err;
+        return;
+      }
+    }
     this.errorMsg = '';
     this.saving = true;
     const now = todayStr();
@@ -221,7 +234,8 @@ struct AddItem {
       note: this.note.trim(),
       createdAt: this.isEdit ? this.loadedCreatedAt : now,
       updatedAt: now,
-      barcode: this.barcode.trim().length > 0 ? this.barcode.trim() : undefined
+      barcode: this.barcode.trim().length > 0 ? this.barcode.trim() : undefined,
+      customFields: this.customFieldValues
     };
     try {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
@@ -286,52 +300,24 @@ struct AddItem {
               .width('100%')
           }
 
-          Row({ space: 12 }) {
-            Button() {
-              Row({ space: 6 }) {
-                SymbolGlyph($r('sys.symbol.camera'))
-                  .fontSize(16)
-                  .fontColor([Color.White])
-                Text('扫条码录入')
-                  .fontSize(14)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor(Color.White)
-              }
+          Button() {
+            Row({ space: 6 }) {
+              SymbolGlyph($r('sys.symbol.camera'))
+                .fontSize(16)
+                .fontColor([Color.White])
+              Text('扫码快填')
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(Color.White)
             }
-            .layoutWeight(1)
-            .height(44)
-            .borderRadius(22)
-            .backgroundColor(CLR_BRAND)
-            .onClick(() => {
-              this.handleScanBarcode();
-            })
-
-            Button() {
-              Row({ space: 6 }) {
-                if (this.isRecognizing) {
-                  LoadingProgress().width(16).height(16).color(CLR_BRAND)
-                } else {
-                  SymbolGlyph($r('sys.symbol.magnifyingglass'))
-                    .fontSize(16)
-                    .fontColor([CLR_BRAND])
-                }
-                Text(this.isRecognizing ? '识别中...' : '拍日期 OCR')
-                  .fontSize(14)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor(CLR_BRAND)
-              }
-            }
-            .layoutWeight(1)
-            .height(44)
-            .borderRadius(22)
-            .backgroundColor(CLR_CARD)
-            .border({ width: 1.5, color: CLR_BRAND })
-            .enabled(!this.isRecognizing)
-            .onClick(() => {
-              this.handleOcrDate();
-            })
           }
           .width('100%')
+          .height(44)
+          .borderRadius(22)
+          .backgroundColor(CLR_BRAND)
+          .onClick(() => {
+            this.handleScanBarcode();
+          })
 
           Column() {
             this.fieldLabel('物资名称 *')
@@ -429,6 +415,12 @@ struct AddItem {
             .backgroundColor(CLR_PREVIEW_BG)
             .margin({ top: 4 })
 
+            if (this.customFieldsDefs.length > 0) {
+              ForEach(this.customFieldsDefs, (def: CustomField) => {
+                this.renderCustomFieldInput(def)
+              }, (def: CustomField) => def.id)
+            }
+
             this.fieldLabel('备注')
             TextArea({ text: this.note, placeholder: '选填' })
               .fontSize(16)
@@ -454,6 +446,95 @@ struct AddItem {
     .width('100%')
     .height('100%')
     .backgroundColor(CLR_BG)
+    .bindSheet($$this.showScanSheet, this.scanSuggestionsSheet(), {
+      height: SheetSize.FIT_CONTENT,
+      dragBar: true,
+      backgroundColor: CLR_CARD,
+      onDisappear: () => {
+        this.showScanSheet = false;
+      }
+    })
+  }
+
+  /** 扫码快填搜索建议半模态：历史入库记录列表 + 手动填写入口 */
+  @Builder
+  scanSuggestionsSheet() {
+    Column() {
+      Text('扫码快填')
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(CLR_TEXT)
+        .margin({ top: 8, bottom: 4 })
+      Text(`条码 ${this.barcode} 匹配到历史入库记录，选择一条预填表单`)
+        .fontSize(13)
+        .fontColor(CLR_TEXT_SUB)
+        .margin({ bottom: 12 })
+
+      List({ space: 8 }) {
+        ForEach(this.scanSuggestions, (m: Material) => {
+          ListItem() {
+            this.suggestionRow(m)
+          }
+        }, (m: Material) => m.id.toString())
+      }
+      .width('100%')
+      .constraintSize({ maxHeight: 320 })
+      .scrollBar(BarState.Off)
+
+      Button('都不对，手动填写')
+        .width('100%')
+        .height(44)
+        .borderRadius(12)
+        .backgroundColor(Color.Transparent)
+        .border({ width: 1, color: CLR_BRAND })
+        .fontSize(15)
+        .fontColor(CLR_BRAND)
+        .margin({ top: 16, bottom: 16 })
+        .onClick(() => {
+          this.discardScanSuggestions();
+        })
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 12 })
+  }
+
+  /** 单条搜索建议：名称 + 数量单位/保质期 + 最近入库时间 */
+  @Builder
+  suggestionRow(m: Material) {
+    Row() {
+      Column() {
+        Text(m.name)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(CLR_TEXT)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Text(`${m.category} · ${m.quantity}${m.unit} · 保质期${m.shelfLifeDays}天`)
+          .fontSize(12)
+          .fontColor(CLR_TEXT_SUB)
+          .margin({ top: 4 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Column() {
+        Text('最近入库')
+          .fontSize(11)
+          .fontColor(CLR_TEXT_TIP)
+        Text(m.createdAt)
+          .fontSize(13)
+          .fontColor(CLR_TEXT_SUB)
+          .margin({ top: 2 })
+      }
+      .alignItems(HorizontalAlign.End)
+    }
+    .width('100%')
+    .padding(14)
+    .borderRadius(12)
+    .backgroundColor(CLR_INPUT_BG)
+    .onClick(() => {
+      this.applyScanSuggestion(m);
+    })
   }
 
   @Builder
@@ -477,6 +558,79 @@ struct AddItem {
           .margin({ right: 8, bottom: 8 })
           .onClick(() => {
             onSelect(opt);
+          })
+      }, (opt: string) => opt)
+    }
+    .width('100%')
+  }
+
+  @Builder
+  renderCustomFieldInput(def: CustomField) {
+    if (def.type === 'text') {
+      this.fieldLabel(def.name)
+      TextInput({ text: this.customFieldValues[def.id] || '', placeholder: '选填' })
+        .fontSize(16)
+        .backgroundColor(CLR_INPUT_BG)
+        .borderRadius(12)
+        .onChange((v: string) => {
+          this.updateCustomFieldValue(def.id, v);
+        })
+    } else if (def.type === 'number') {
+      this.fieldLabel(def.name)
+      TextInput({ text: this.customFieldValues[def.id] || '', placeholder: '选填（数字）' })
+        .type(InputType.Number)
+        .fontSize(16)
+        .backgroundColor(CLR_INPUT_BG)
+        .borderRadius(12)
+        .onChange((v: string) => {
+          this.updateCustomFieldValue(def.id, v);
+        })
+    } else if (def.type === 'date') {
+      this.fieldLabel(def.name)
+      Row() {
+        Text(this.customFieldValues[def.id] ? this.customFieldValues[def.id] : `选择${def.name}`)
+          .fontSize(16)
+          .fontColor(this.customFieldValues[def.id] ? CLR_TEXT : CLR_TEXT_TIP)
+          .layoutWeight(1)
+        if (this.customFieldValues[def.id] && this.customFieldValues[def.id].length > 0) {
+          Text('清除')
+            .fontSize(13)
+            .fontColor(CLR_DANGER)
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            .onClick(() => {
+              this.updateCustomFieldValue(def.id, '');
+            })
+        }
+        SymbolGlyph($r('sys.symbol.calendar'))
+          .fontSize(20)
+          .fontColor([CLR_BRAND])
+      }
+      .width('100%')
+      .padding(14)
+      .borderRadius(12)
+      .backgroundColor(CLR_INPUT_BG)
+      .onClick(() => {
+        this.pickCustomFieldDate(def.id);
+      })
+    } else if (def.type === 'enum') {
+      this.fieldLabel(def.name)
+      this.customEnumChipGroup(def.id, def.options || [])
+    }
+  }
+
+  @Builder
+  customEnumChipGroup(fieldId: string, options: string[]) {
+    Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
+      ForEach(options, (opt: string) => {
+        Text(opt)
+          .fontSize(13)
+          .fontColor(this.customFieldValues[fieldId] === opt ? Color.White : CLR_TEXT)
+          .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+          .borderRadius(20)
+          .backgroundColor(this.customFieldValues[fieldId] === opt ? CLR_BRAND : CLR_INPUT_BG)
+          .margin({ right: 8, bottom: 8 })
+          .onClick(() => {
+            this.selectCustomEnumOption(fieldId, opt);
           })
       }, (opt: string) => opt)
     }
