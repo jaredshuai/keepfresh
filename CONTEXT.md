@@ -1,50 +1,48 @@
-# KeepFresh 领域模型与架构上下文 (CONTEXT.md)
+# KeepFresh
 
-KeepFresh 是一款基于 HarmonyOS 原生开发（ArkTS + ArkUI）的物资保质期管理应用，目标是帮助用户高效录入保质期、实现离线/后台智能提醒并减少物品过期浪费。
+个人物资保质期管理（HarmonyOS App）：只管入库与到期提醒，不追踪消耗/出入库流水。
 
----
+## Language
 
-## 1. 核心领域术语 (Domain Glossary)
+**物资（Material）**:
+一件具体的实物，一条记录对应一件实物；同名物品多次购入即多条记录，不做批次归组。
+_Avoid_: 库存项、商品、批次
 
-| 术语 | 英文 / 代码标识 | 含义与业务规则 |
-| :--- | :--- | :--- |
-| **物资 / 物品** | `Material` | 用户录入的单项资产，包含品名、分类、数量/单位、生产日期、保质期天数、到期日及可选条码。 |
-| **生产日期** | `productionDate` | 物资出厂或制造日期（格式：`YYYY-MM-DD`）。 |
-| **保质期天数** | `shelfLifeDays` | 物资从生产日期起算的安全有效期天数（大于等于 1 天）。 |
-| **到期日** | `expiryDate` | 物资的最后有效日期，计算公式：`expiryDate = productionDate + shelfLifeDays`。 |
-| **距到期天数** | `remainingDays` | 从当前系统日期（`todayStr()`）到 `expiryDate` 的天数差（正数为剩余天数，负数为已过期天数）。 |
-| **临期状态等级** | `ExpiryLevel` | 物资按紧迫程度划分的三个业务等级：<br>• `EXPIRED`（已过期）：`remainingDays < 0`<br>• `NEAR`（临期）：`0 <= remainingDays <= threshold`（默认 `<= 3` 天）<br>• `SAFE`（安全）：`remainingDays > threshold` |
-| **商品条码** | `barcode` | 商品包装上的 69 码/EAN 标准条形码，用于快速匹配内置字典或历史录入数据。 |
-| **后台代理提醒** | `ReminderAgent` | 基于系统级 `reminderAgentManager` 的离线定时调度服务，在应用退出后依然能够按时唤醒通知。 |
+**入库**:
+新增一条物资记录的动作。App 只管入库，不做出库/消耗/丢弃记录。
+_Avoid_: 出入库、库存变动
 
----
+**条形码**:
+物资上的一维码。用于重复入库：扫历史中已出现过的条形码可快速再入库一件，避免重复填写表单。
 
-## 2. 核心架构与服务分层
+**临期**:
+距到期日剩余天数不大于临期阈值（默认 7 天，用户可配置）的状态。
+_Avoid_: 快过期、预警
 
-```
-entry/src/main/ets/
-├── common/
-│   └── DateUtils.ets              # 日期字符串格式化与计算纯函数 (todayStr, addDays, diffDays)
-├── model/
-│   ├── Material.ets               # 物资实体模型定义与分类/单位常量预设
-│   └── BarcodeProduct.ets         # 69码条码映射模型与内置常用商品字典
-├── db/
-│   └── MaterialDb.ets             # RelationalStore (SQLite) 数据持久化与按条码/状态 CRUD
-├── service/
-│   ├── ExpiryService.ets          # 保质期计算、等级评估与统计分析
-│   ├── DateTextParser.ets         # OCR 文本智能抽取与双向日期推导引擎
-│   ├── ScanService.ets            # ScanKit 统一扫码封装与多级条码匹配
-│   ├── OcrService.ets             # CoreVisionKit OCR 识别与照片选择
-│   ├── ReminderService.ets        # reminderAgentManager 后台定时代理提醒与首选项调度
-│   └── NotificationService.ets    # NotificationKit 前台即时通知发布
-└── pages/
-    ├── Index.ets                  # 物资主列表、分类/状态筛选、搜索与统计仪表盘
-    ├── AddItem.ets                # 物资快捷录入（扫码/OCR/手动）与编辑
-    └── ItemDetail.ets             # 物资详情、状态卡片与删除
-```
+**已过期**:
+到期日早于今天的状态。
 
----
+**安全**:
+既未临期也未过期的状态。
 
-## 3. 架构决策记录 (ADR Index)
+**到期日**:
+生产日期 + 保质期天数计算出的日期，是所有分级判断的基准。
 
-- [ADR 0001: 采用后台代理提醒（reminderAgentManager）实现每日离线临期汇总通知](docs/adr/0001-daily-summary-offline-reminder.md)
+**自定义字段**:
+用户可为物资自行添加的扩展字段（名称 + 类型），随物资记录保存。用于应对随时新增的属性需求。
+_Avoid_: 扩展属性、标签（与分类混淆）
+
+**后台代理提醒**:
+由系统（而非 App 进程）在设定时间发出的提醒；App 未打开也能触达。区别于仅在 App 启动时发布的应用内通知。
+
+**扫码快填**:
+AddItem 表单页的扫码入口：ScanKit 扫码后按条形码匹配历史，点选建议即预填表单。
+
+**搜索建议**:
+扫码后按条形码匹配出的历史入库记录列表（名称 + 最近入库时间），点选其一预填表单；不自动填充。
+
+**拍照入库**:
+首页独立入口：拍照后由端侧识别生成表单预填，用户确认后才入库。识别结果一律进表单待确认，绝不自动入库。
+
+**端侧**:
+识别能力全部在本机执行的属性。KeepFresh 的所有 AI/识别功能必须端侧，禁止任何云端调用。
