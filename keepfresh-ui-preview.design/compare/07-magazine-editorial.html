@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — Magazine Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,900&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #fdfdfb; --ink: #1a1a1a; --red: #c8102e; --muted: #6b6b6b;
+    --amber: #c77b00; --line: #d8d8d3;
+  }
+  html, body { background: #e9e8e4; }
+  body {
+    font-family: 'Source Sans 3', sans-serif; color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 420px; margin: 0 auto; background: var(--bg);
+    min-height: 100vh; display: flex; flex-direction: column;
+    box-shadow: 0 0 60px rgba(0,0,0,.08);
+  }
+
+  /* ── Masthead ─────────────────────── */
+  header { padding: 36px 24px 0; }
+  .kicker {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: .22em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--ink); padding-bottom: 12px;
+  }
+  h1 {
+    font-family: 'Playfair Display', serif; font-style: italic;
+    font-weight: 900; font-size: 52px; line-height: 1;
+    letter-spacing: -.01em; padding: 24px 0 12px;
+  }
+  h1 em { color: var(--red); font-style: italic; }
+  .standfirst {
+    font-size: 14px; color: var(--muted); line-height: 1.55;
+    padding-bottom: 24px; border-bottom: 1px solid var(--ink);
+  }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  /* ── Status band ──────────────────── */
+  .status-band {
+    display: flex; border-bottom: 1px solid var(--ink);
+  }
+  .status-band div {
+    flex: 1; padding: 12px 24px; border-right: 1px solid var(--line);
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: .12em; text-transform: uppercase;
+  }
+  .status-band div:last-child { border-right: 0; }
+  .status-band .num {
+    display: block; font-size: 22px; font-weight: 500;
+    letter-spacing: 0; margin-bottom: 2px;
+  }
+  .status-band .n-red { color: var(--red); }
+  .status-band .n-amber { color: var(--amber); }
+
+  /* ── List ─────────────────────────── */
+  main { flex: 1; padding: 12px 0 24px; }
+  .section-label {
+    padding: 12px 24px; font-size: 10px; font-weight: 600;
+    letter-spacing: .28em; text-transform: uppercase; color: var(--muted);
+  }
+  article.item {
+    display: grid; grid-template-columns: 28px 1fr auto;
+    gap: 12px; align-items: baseline;
+    padding: 12px 24px; border-top: 1px solid var(--line);
+  }
+  article.item:last-of-type { border-bottom: 1px solid var(--ink); }
+  .idx {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    color: var(--muted); letter-spacing: .1em;
+  }
+  .name { font-size: 17px; font-weight: 600; line-height: 1.3; }
+  .item.expired .name { text-decoration: line-through; text-decoration-color: var(--red); }
+  .meta {
+    font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4;
+  }
+  .right { text-align: right; }
+  .days {
+    font-family: 'IBM Plex Mono', monospace; font-size: 15px;
+    font-weight: 500; display: block;
+  }
+  .days .unit { font-size: 10px; color: var(--muted); letter-spacing: .1em; }
+  .tag {
+    display: inline-block; margin-top: 6px;
+    font-size: 9px; font-weight: 600; letter-spacing: .2em;
+    text-transform: uppercase; padding: 3px 8px;
+  }
+  .tag.expired { background: var(--red); color: #fff; }
+  .tag.soon    { color: var(--amber); border: 1px solid var(--amber); }
+  .tag.fresh   { color: var(--muted); border: 1px solid var(--line); }
+  .item.expired .days { color: var(--red); }
+  .item.soon .days { color: var(--amber); }
+
+  /* ── Footer note ──────────────────── */
+  .colophon {
+    padding: 24px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--muted); border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between;
+  }
+
+  /* ── Tab bar ──────────────────────── */
+  nav {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--ink); background: var(--bg);
+    position: sticky; bottom: 0;
+  }
+  nav a {
+    text-decoration: none; color: var(--muted); text-align: center;
+    padding: 12px 0 14px; font-size: 10px; font-weight: 600;
+    letter-spacing: .22em; text-transform: uppercase;
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  nav a:last-child { border-right: 0; }
+  nav a .glyph { width: 14px; height: 14px; }
+  nav a.active { color: var(--ink); }
+  nav a.active .glyph rect, nav a.active .glyph circle { fill: var(--ink); }
+  nav a.add {
+    background: var(--red); color: #fff;
+  }
+  nav a.add .glyph rect { fill: #fff; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="kicker">
+      <span>Issue Nº 07</span>
+      <span>保质期管理 · 每日版</span>
+    </div>
+    <h1>Keep<em>Fresh</em></h1>
+    <p class="standfirst">
+      今日盘点：<strong>3 项临期，1 项已过期</strong>。酸奶已超出保质期两日，
+      建议即刻处理；布洛芬与鲜牛奶将在未来 72 小时内到期。
+    </p>
+  </header>
+
+  <div class="status-band">
+    <div><span class="num n-amber">3</span>临期</div>
+    <div><span class="num n-red">1</span>已过期</div>
+    <div><span class="num">12</span>总库存</div>
+  </div>
+
+  <main>
+    <div class="section-label">按到期日排序 — 近 → 远</div>
+
+    <article class="item expired">
+      <span class="idx">01</span>
+      <div>
+        <div class="name">酸奶</div>
+        <div class="meta">食品 · 200g×6</div>
+      </div>
+      <div class="right">
+        <span class="days">−2 <span class="unit">DAYS</span></span>
+        <span class="tag expired">已过期</span>
+      </div>
+    </article>
+
+    <article class="item soon">
+      <span class="idx">02</span>
+      <div>
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta">药品 · 24 粒</div>
+      </div>
+      <div class="right">
+        <span class="days">2 <span class="unit">DAYS</span></span>
+        <span class="tag soon">临期</span>
+      </div>
+    </article>
+
+    <article class="item soon">
+      <span class="idx">03</span>
+      <div>
+        <div class="name">鲜牛奶</div>
+        <div class="meta">食品 · 950ml</div>
+      </div>
+      <div class="right">
+        <span class="days">3 <span class="unit">DAYS</span></span>
+        <span class="tag soon">临期</span>
+      </div>
+    </article>
+
+    <article class="item soon">
+      <span class="idx">04</span>
+      <div>
+        <div class="name">鸡蛋</div>
+        <div class="meta">食品 · 10 枚</div>
+      </div>
+      <div class="right">
+        <span class="days">5 <span class="unit">DAYS</span></span>
+        <span class="tag soon">临期</span>
+      </div>
+    </article>
+
+    <article class="item">
+      <span class="idx">05</span>
+      <div>
+        <div class="name">纯牛奶</div>
+        <div class="meta">食品 · 1L</div>
+      </div>
+      <div class="right">
+        <span class="days">12 <span class="unit">DAYS</span></span>
+        <span class="tag fresh">新鲜</span>
+      </div>
+    </article>
+
+    <article class="item">
+      <span class="idx">06</span>
+      <div>
+        <div class="name">洗发水</div>
+        <div class="meta">美妆 · 500ml</div>
+      </div>
+      <div class="right">
+        <span class="days">180 <span class="unit">DAYS</span></span>
+        <span class="tag fresh">新鲜</span>
+      </div>
+    </article>
+  </main>
+
+  <div class="colophon">
+    <span>KeepFresh Press</span>
+    <span>Vol. 12 — Aug 2026</span>
+  </div>
+
+  <nav>
+    <a href="#" class="active">
+      <svg class="glyph" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      首页
+    </a>
+    <a href="#" class="add">
+      <svg class="glyph" viewBox="0 0 14 14"><rect x="6" y="1" width="2" height="12" fill="#fff"/><rect x="1" y="6" width="12" height="2" fill="#fff"/></svg>
+      添加
+    </a>
+    <a href="#">
+      <svg class="glyph" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      提醒
+    </a>
+    <a href="#">
+      <svg class="glyph" viewBox="0 0 14 14"><circle cx="7" cy="4.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 13 Q7 7.5 12.5 13" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      我的
+    </a>
+  </nav>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 余白 Japanese Zen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f5f3ef; --ink: #2a2a28; --shu: #b34a3a;
+    --mute: #8a8a85; --hair: #c9c6be; --faint: #b5b2ab;
+  }
+  html, body { background: #dddbd4; }
+  body {
+    font-family: 'Noto Sans JP', sans-serif; font-weight: 300;
+    color: var(--ink); line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 420px; margin: 0 auto; background: var(--bg);
+    min-height: 100vh; display: flex; flex-direction: column;
+    box-shadow: 0 0 80px rgba(42,42,40,.1);
+  }
+
+  /* ── Header ───────────────────────── */
+  header {
+    padding: 64px 32px 0; position: relative;
+  }
+  .season {
+    writing-mode: vertical-rl; position: absolute;
+    top: 64px; right: 32px;
+    font-family: 'Noto Serif JP', serif; font-weight: 500;
+    font-size: 12px; letter-spacing: .5em; color: var(--mute);
+  }
+  h1 {
+    font-family: 'Noto Serif JP', serif; font-weight: 500;
+    font-size: 26px; letter-spacing: .18em; line-height: 1.4;
+  }
+  .sub {
+    margin-top: 8px; font-size: 11px; letter-spacing: .3em;
+    color: var(--mute); text-transform: uppercase;
+  }
+  .summary {
+    margin-top: 40px; display: flex; align-items: center; gap: 20px;
+    font-family: 'Noto Serif JP', serif; font-size: 14px;
+    letter-spacing: .12em;
+  }
+  .summary .seal-count {
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .summary .dot {
+    width: 8px; height: 8px; background: var(--shu);
+  }
+  .summary .hairline {
+    flex: 1; height: .5px; background: var(--hair);
+  }
+
+  /* ── List ─────────────────────────── */
+  main { flex: 1; padding: 48px 32px 64px; }
+  .item {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 28px 0; border-bottom: .5px solid var(--hair);
+  }
+  .item:first-child { border-top: .5px solid var(--hair); }
+
+  /* 朱红印章 */
+  .hanko {
+    width: 30px; height: 30px; flex-shrink: 0; margin-top: 4px;
+    background: var(--shu); color: #fdfcf9;
+    font-family: 'Noto Serif JP', serif; font-weight: 600;
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    letter-spacing: 0;
+    box-shadow: 0 0 0 1px rgba(179,74,58,.25);
+    transform: rotate(-3deg);
+  }
+  .hanko.blank {
+    background: transparent; border: .5px solid var(--hair);
+    box-shadow: none; transform: none;
+  }
+  .hanko.blank::after {
+    content: ""; width: 6px; height: 6px; background: var(--hair);
+  }
+
+  .body { flex: 1; min-width: 0; }
+  .name {
+    font-family: 'Noto Serif JP', serif; font-weight: 500;
+    font-size: 16px; letter-spacing: .08em; line-height: 1.8;
+  }
+  .meta {
+    font-size: 11px; color: var(--mute); letter-spacing: .2em;
+    margin-top: 4px;
+  }
+  .state {
+    margin-top: 10px; font-size: 11px; letter-spacing: .3em;
+    color: var(--shu);
+  }
+  .state.ok { color: var(--mute); }
+
+  /* 已过期：淡墨 + 删除线 */
+  .item.expired .name {
+    color: var(--faint);
+    text-decoration: line-through; text-decoration-thickness: .5px;
+    text-decoration-color: var(--faint);
+  }
+  .item.expired .meta { color: var(--faint); }
+
+  /* 剩余天数：大留白竖排 */
+  .days-wrap {
+    writing-mode: vertical-rl; flex-shrink: 0;
+    display: flex; align-items: center; gap: 6px;
+    height: 96px; margin-top: 2px;
+  }
+  .days-num {
+    font-family: 'Noto Serif JP', serif; font-weight: 500;
+    font-size: 26px; letter-spacing: .1em; line-height: 1;
+  }
+  .days-unit {
+    font-size: 10px; color: var(--mute); letter-spacing: .4em;
+  }
+  .item.attention .days-num { color: var(--shu); }
+  .item.expired .days-num { color: var(--faint); }
+
+  /* ── Closing line ─────────────────── */
+  .close-note {
+    padding: 0 32px 56px; text-align: center;
+    font-family: 'Noto Serif JP', serif; font-size: 12px;
+    letter-spacing: .35em; color: var(--mute);
+  }
+
+  /* ── Tab bar ──────────────────────── */
+  nav {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-top: .5px solid var(--hair); background: var(--bg);
+    position: sticky; bottom: 0;
+  }
+  nav a {
+    text-decoration: none; color: var(--mute); text-align: center;
+    padding: 18px 0 22px; font-size: 10px; letter-spacing: .35em;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  nav a .mark {
+    width: 5px; height: 5px; background: var(--hair);
+    border-radius: 50%;
+  }
+  nav a.active { color: var(--ink); }
+  nav a.active .mark { background: var(--ink); }
+  nav a.add { color: var(--shu); }
+  nav a.add .mark {
+    width: 8px; height: 8px; border-radius: 0;
+    background: var(--shu); transform: rotate(-3deg);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="season">晩 夏 の 棚 卸</div>
+    <h1>余白と鮮度</h1>
+    <div class="sub">KeepFresh — 保质期管理</div>
+    <div class="summary">
+      <span class="seal-count"><span class="dot"></span>三項 臨期</span>
+      <span class="hairline"></span>
+      <span class="seal-count">一項 已過期</span>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="item expired">
+      <div class="hanko">過</div>
+      <div class="body">
+        <div class="name">酸奶</div>
+        <div class="meta">食品 · 200g×6</div>
+        <div class="state">已过期 二日</div>
+      </div>
+      <div class="days-wrap">
+        <span class="days-num">−二</span>
+        <span class="days-unit">日</span>
+      </div>
+    </div>
+
+    <div class="item attention">
+      <div class="hanko">臨</div>
+      <div class="body">
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta">药品 · 24 粒</div>
+        <div class="state">临期 · 请尽快服用</div>
+      </div>
+      <div class="days-wrap">
+        <span class="days-num">二</span>
+        <span class="days-unit">日 余</span>
+      </div>
+    </div>
+
+    <div class="item attention">
+      <div class="hanko">臨</div>
+      <div class="body">
+        <div class="name">鲜牛奶</div>
+        <div class="meta">食品 · 950ml</div>
+        <div class="state">临期 · 建议今日饮用</div>
+      </div>
+      <div class="days-wrap">
+        <span class="days-num">三</span>
+        <span class="days-unit">日 余</span>
+      </div>
+    </div>
+
+    <div class="item attention">
+      <div class="hanko">臨</div>
+      <div class="body">
+        <div class="name">鸡蛋</div>
+        <div class="meta">食品 · 10 枚</div>
+        <div class="state">临期 · 本周内食用</div>
+      </div>
+      <div class="days-wrap">
+        <span class="days-num">五</span>
+        <span class="days-unit">日 余</span>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="hanko blank"></div>
+      <div class="body">
+        <div class="name">纯牛奶</div>
+        <div class="meta">食品 · 1L</div>
+        <div class="state ok">新鲜 · 无需担心</div>
+      </div>
+      <div class="days-wrap">
+        <span class="days-num">十二</span>
+        <span class="days-unit">日 余</span>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="hanko blank"></div>
+      <div class="body">
+        <div class="name">洗发水</div>
+        <div class="meta">美妆 · 500ml</div>
+        <div class="state ok">新鲜 · 从容使用</div>
+      </div>
+      <div class="days-wrap">
+        <span class="days-num">百八十</span>
+        <span class="days-unit">日 余</span>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="close-note">物 に 旬 あ り</div>
+
+  <nav>
+    <a href="#" class="active"><span class="mark"></span>首页</a>
+    <a href="#" class="add"><span class="mark"></span>添加</a>
+    <a href="#"><span class="mark"></span>提醒</a>
+    <a href="#"><span class="mark"></span>我的</a>
+  </nav>
+
+</div>
+</body>
+</html>

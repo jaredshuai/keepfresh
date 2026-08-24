@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh - 首页</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a1a;
+  }
+  /* Focus ring — 可访问性 */
+  *:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 2px;
+  }
+  /* 动效偏好降级 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; border-radius: 0 !important; }
+  body {
+    background: #f2f0ea;
+    color: #1a1a1a;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+  .app {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #f2f0ea;
+    border-left: 2px solid #1a1a1a;
+    border-right: 2px solid #1a1a1a;
+  }
+  /* ── 顶部品牌 ── */
+  .brand-bar {
+    padding: 24px 24px 16px;
+    border-bottom: 2px solid #1a1a1a;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .brand {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 32px;
+    letter-spacing: -0.5px;
+    text-transform: uppercase;
+  }
+  .brand-dot { color: #e63946; }
+  .summary {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  /* ── 主体 ── */
+  .main {
+    flex: 1;
+    padding: 24px;
+    padding-bottom: 96px;
+  }
+  /* ── 分组标题 ── */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .shape-circle { width: 16px; height: 16px; border-radius: 50% !important; background: #e63946; flex-shrink: 0; }
+  .shape-tri {
+    width: 0; height: 0; flex-shrink: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 16px solid #f4a261;
+  }
+  .shape-square { width: 16px; height: 16px; background: #2a9d8f; flex-shrink: 0; }
+  .section { margin-bottom: 32px; }
+  /* ── 过期卡片 ── */
+  .card-expired {
+    background: #e63946;
+    color: #ffffff;
+    border: 2px solid #1a1a1a;
+    box-shadow: 4px 4px 0 #1a1a1a;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card-expired .row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .card-name { font-weight: 600; font-size: 16px; }
+  .card-meta { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+  .days-badge {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .days-badge small { font-size: 12px; font-family: 'Archivo', sans-serif; font-weight: 600; display: block; letter-spacing: 1px; }
+  /* ── 临期卡片 ── */
+  .card-warn {
+    background: #ffffff;
+    border: 2px solid #1a1a1a;
+    box-shadow: 4px 4px 0 #1a1a1a;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .card-warn .info { flex: 1; min-width: 0; }
+  .card-warn .days {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .card-warn .days small {
+    display: block;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-align: right;
+  }
+  /* ── 安全折叠区 ── */
+  .safe-toggle {
+    width: 100%;
+    background: #ffffff;
+    border: 2px solid #b8b4a8;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    color: #1a1a1a;
+  }
+  .safe-toggle .left { display: flex; align-items: center; gap: 8px; }
+  .safe-toggle .arrow { font-family: 'Archivo', sans-serif; font-weight: 600; font-size: 14px; }
+  /* ── 底部 Tab ── */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: #f2f0ea;
+    border-top: 2px solid #1a1a1a;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .tab {
+    padding: 14px 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    color: #1a1a1a;
+    border-right: 2px solid #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab:last-child { border-right: none; }
+  .tab.active { background: #1a1a1a; color: #ffffff; }
+  .tab-add { background: #ffb703; }
+  .tab-add .plus-box {
+    width: 20px; height: 20px;
+    background: #ffb703;
+    border: 2px solid #1a1a1a;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .tab-icon { width: 18px; height: 18px; border: 2px solid currentColor; display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="brand-bar">
+    <div class="brand">KeepFresh<span class="brand-dot">.</span></div>
+    <div class="summary">6 项 · 1 过期 · 3 临期</div>
+  </header>
+
+  <main class="main">
+
+    <!-- 已过期 -->
+    <section class="section">
+      <div class="section-head">
+        <span class="shape-circle"></span>
+        <h2 class="section-title">已过期</h2>
+      </div>
+      <div class="card-expired">
+        <div class="row">
+          <div>
+            <div class="card-name">酸奶</div>
+            <div class="card-meta">食品 · 200g×6</div>
+          </div>
+          <div class="days-badge">-2<small>天</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 临期 -->
+    <section class="section">
+      <div class="section-head">
+        <span class="shape-tri"></span>
+        <h2 class="section-title">临期</h2>
+      </div>
+      <div class="card-warn">
+        <span class="shape-tri"></span>
+        <div class="info">
+          <div class="card-name">布洛芬缓释胶囊</div>
+          <div class="card-meta" style="color:#555;">药品 · 24 粒</div>
+        </div>
+        <div class="days">2<small>天</small></div>
+      </div>
+      <div class="card-warn">
+        <span class="shape-tri"></span>
+        <div class="info">
+          <div class="card-name">鲜牛奶</div>
+          <div class="card-meta" style="color:#555;">食品 · 950ml</div>
+        </div>
+        <div class="days">3<small>天</small></div>
+      </div>
+      <div class="card-warn">
+        <span class="shape-tri"></span>
+        <div class="info">
+          <div class="card-name">鸡蛋</div>
+          <div class="card-meta" style="color:#555;">食品 · 10 枚</div>
+        </div>
+        <div class="days">5<small>天</small></div>
+      </div>
+    </section>
+
+    <!-- 安全（折叠） -->
+    <section class="section">
+      <button class="safe-toggle" type="button" aria-expanded="false" aria-controls="safe-list">
+        <span class="left">
+          <span class="shape-square"></span>
+          <span>安全 · 9 项</span>
+        </span>
+        <span class="arrow">展开 +</span>
+      </button>
+      <div id="safe-list" hidden>
+        <!-- 安全物资列表 -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 底部导航 -->
+  <nav class="tabbar">
+    <a class="tab active" href="15-index.html">
+      <span class="tab-icon"></span>
+      首页
+    </a>
+    <a class="tab tab-add" href="15-add.html">
+      <span class="plus-box">+</span>
+      添加
+    </a>
+    <a class="tab" href="#" aria-label="提醒">
+      <span class="tab-icon"></span>
+      提醒
+    </a>
+    <a class="tab" href="15-settings.html">
+      <span class="tab-icon"></span>
+      我的
+    </a>
+  </nav>
+
+</div>
+</body>
+</html>

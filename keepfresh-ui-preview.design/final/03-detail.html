@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鲜牛奶 - KeepFresh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf8f2;
+    --text: #2d2a26;
+    --accent: #9d5f4d;
+    --aux: #537d96;
+    --warn: #c2703e;
+    --danger: #8b3a2a;
+    --safe: #6b7f5e;
+    --hairline: #e8e2d5;
+    --muted: #a8a29a;
+  }
+
+  body {
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    color: var(--text);
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0 20px 120px;
+    background: var(--bg);
+  }
+
+  /* ---------- 顶部 ---------- */
+  header.topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 32px 0 16px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .topbar h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 22px;
+  }
+
+  .topbar .back {
+    font-size: 13.5px;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .topbar .back:hover { color: var(--accent); }
+
+  /* ---------- 天数主视觉 ---------- */
+  .hero {
+    text-align: center;
+    padding: 36px 0 28px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .hero .days-big {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--warn);
+  }
+
+  .hero .days-big .unit {
+    font-size: 26px;
+    margin-left: 4px;
+  }
+
+  .hero .status-tag {
+    display: inline-block;
+    margin-top: 14px;
+    font-family: 'Caveat', cursive;
+    font-weight: 500;
+    font-size: 19px;
+    color: var(--warn);
+  }
+
+  .hero .sub {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  /* ---------- 信息网格 ---------- */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 4px;
+  }
+
+  .info-cell {
+    padding: 15px 4px 15px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .info-cell:nth-child(odd) { padding-right: 12px; }
+  .info-cell:nth-child(even) { padding-left: 12px; }
+
+  .info-cell .k {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+
+  .info-cell .v {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .info-cell .v.warn { color: var(--warn); }
+
+  /* ---------- 备注 ---------- */
+  .memo {
+    margin-top: 24px;
+    padding: 14px 16px 16px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+  }
+
+  .memo .memo-label {
+    font-family: 'Caveat', cursive;
+    font-size: 17px;
+    color: var(--aux);
+    margin-bottom: 6px;
+  }
+
+  .memo p {
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  /* ---------- 底部操作 ---------- */
+  .footer-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    gap: 12px;
+    padding: 14px 20px 22px;
+    background: var(--bg);
+    border-top: 1px solid var(--hairline);
+  }
+
+  .btn {
+    flex: 1;
+    padding: 13px 0;
+    border-radius: 4px;
+    font-family: 'Source Serif 4', serif;
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: 2px;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    border: none;
+    background: var(--accent);
+    color: #fdfcf9;
+  }
+
+  .btn-primary:active { opacity: 0.88; }
+
+  .btn-ghost {
+    border: 1px solid var(--hairline);
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <h1>鲜牛奶</h1>
+    <a class="back" href="03-index.html">← 返回</a>
+  </header>
+
+  <section class="hero">
+    <div class="days-big">3<span class="unit">天</span></div>
+    <div class="status-tag">临期，尽快喝掉</div>
+    <div class="sub">将于 2026-08-27 到期</div>
+  </section>
+
+  <section class="info-grid">
+    <div class="info-cell">
+      <div class="k">分类</div>
+      <div class="v">食品</div>
+    </div>
+    <div class="info-cell">
+      <div class="k">规格</div>
+      <div class="v">950ml</div>
+    </div>
+    <div class="info-cell">
+      <div class="k">数量</div>
+      <div class="v">1 瓶</div>
+    </div>
+    <div class="info-cell">
+      <div class="k">生产日期</div>
+      <div class="v">2026-08-20</div>
+    </div>
+    <div class="info-cell">
+      <div class="k">保质期</div>
+      <div class="v">7 天</div>
+    </div>
+    <div class="info-cell">
+      <div class="k">到期日</div>
+      <div class="v warn">2026-08-27</div>
+    </div>
+  </section>
+
+  <section class="memo">
+    <div class="memo-label">备注</div>
+    <p>冰箱冷藏室中层，已开封，开封后需 24 小时内饮用完毕。本周早餐优先安排。</p>
+  </section>
+
+</div>
+
+<div class="footer-bar">
+  <button class="btn btn-ghost" id="btnDelete">删 除</button>
+  <button class="btn btn-primary" id="btnEdit">编 辑</button>
+</div>
+
+<script>
+  document.getElementById('btnEdit').addEventListener('click', function () {
+    window.location.href = '03-add.html';
+  });
+  document.getElementById('btnDelete').addEventListener('click', function () {
+    if (window.confirm('确定删除「鲜牛奶」吗？')) {
+      window.location.href = '03-index.html';
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · 北欧晨光</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f6f7f7;
+    --ink: #1f2933;
+    --copper: #c2703e;
+    --mist: #7d8a94;
+    --sage: #8ba888;
+    --card: #ffffff;
+    --line: #eceeed;
+    --danger: #4a5560;
+  }
+
+  body {
+    background: #e8ebeb;
+    font-family: 'Sofia Sans', 'Outfit', sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    padding: 56px 24px 20px;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  h1 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 30px;
+    letter-spacing: -0.02em;
+  }
+
+  .header-sub {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--mist);
+    letter-spacing: 0.02em;
+  }
+
+  .summary-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--card);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--copper);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    white-space: nowrap;
+  }
+
+  .summary-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--copper); }
+  .summary-pill .sep { color: var(--line); }
+  .summary-pill .expired { color: var(--danger); }
+
+  /* ---------- Stats strip ---------- */
+  .stats {
+    margin: 4px 24px 18px;
+    background: var(--card);
+    border-radius: 8px;
+    padding: 16px 18px;
+    display: flex;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .stat { flex: 1; }
+  .stat + .stat { border-left: 1px solid var(--line); padding-left: 18px; }
+
+  .stat .num {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+  }
+  .stat .num.copper { color: var(--copper); }
+  .stat .num.danger { color: var(--danger); }
+  .stat .lbl { font-size: 11px; color: var(--mist); margin-top: 2px; letter-spacing: 0.04em; }
+
+  /* ---------- List ---------- */
+  .section-title {
+    padding: 0 24px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--mist);
+    text-transform: uppercase;
+  }
+
+  .list {
+    padding: 0 24px 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .item {
+    background: var(--card);
+    border-radius: 8px;
+    padding: 15px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .item-info { flex: 1; min-width: 0; }
+
+  .item-name {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 3px;
+  }
+
+  .item-meta {
+    font-size: 12px;
+    color: var(--mist);
+  }
+
+  .item-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    margin-top: 6px;
+  }
+
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot-copper { background: var(--copper); }
+  .dot-danger { background: var(--danger); }
+  .dot-sage { background: var(--sage); }
+
+  .st-copper { color: var(--copper); font-weight: 500; }
+  .st-danger { color: var(--danger); font-weight: 500; }
+  .st-sage { color: var(--sage); font-weight: 500; }
+
+  .days {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .days .n {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    line-height: 1;
+  }
+
+  .days .u {
+    font-size: 11px;
+    color: var(--mist);
+    margin-top: 4px;
+  }
+
+  .days.neg .n { color: var(--danger); }
+  .days.warn .n { color: var(--copper); }
+
+  /* ---------- Tab bar ---------- */
+  nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    display: flex;
+    padding: 10px 8px 22px;
+  }
+
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--mist);
+    text-decoration: none;
+  }
+
+  .tab svg { width: 22px; height: 22px; stroke: var(--mist); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .tab.active { color: var(--ink); font-weight: 600; }
+  .tab.active svg { stroke: var(--ink); }
+
+  .tab.add .add-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--copper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -22px;
+    box-shadow: 0 4px 12px rgba(194, 112, 62, 0.35);
+  }
+
+  .tab.add .add-circle svg { stroke: #fff; width: 20px; height: 20px; }
+  .tab.add { color: var(--copper); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="header-row">
+      <div>
+        <h1>KeepFresh</h1>
+        <div class="header-sub">物资保质期管理</div>
+      </div>
+      <div class="summary-pill">
+        <span class="dot"></span>3 临期
+        <span class="sep">|</span>
+        <span class="expired">1 过期</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="num">12</div><div class="lbl">全部物资</div></div>
+    <div class="stat"><div class="num copper">3</div><div class="lbl">临期</div></div>
+    <div class="stat"><div class="num danger">1</div><div class="lbl">已过期</div></div>
+  </div>
+
+  <div class="section-title">按到期日排序</div>
+
+  <div class="list">
+
+    <div class="item">
+      <div class="item-info">
+        <div class="item-name">酸奶</div>
+        <div class="item-meta">食品 · 200g×6</div>
+        <div class="item-status"><span class="status-dot dot-danger"></span><span class="st-danger">已过期</span></div>
+      </div>
+      <div class="days neg"><div class="n">-2</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="item-info">
+        <div class="item-name">布洛芬缓释胶囊</div>
+        <div class="item-meta">药品 · 24 粒</div>
+        <div class="item-status"><span class="status-dot dot-copper"></span><span class="st-copper">临期</span></div>
+      </div>
+      <div class="days warn"><div class="n">2</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="item-info">
+        <div class="item-name">鲜牛奶</div>
+        <div class="item-meta">食品 · 950ml</div>
+        <div class="item-status"><span class="status-dot dot-copper"></span><span class="st-copper">临期</span></div>
+      </div>
+      <div class="days warn"><div class="n">3</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="item-info">
+        <div class="item-name">鸡蛋</div>
+        <div class="item-meta">食品 · 10 枚</div>
+        <div class="item-status"><span class="status-dot dot-copper"></span><span class="st-copper">临期</span></div>
+      </div>
+      <div class="days warn"><div class="n">5</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="item-info">
+        <div class="item-name">纯牛奶</div>
+        <div class="item-meta">食品 · 1L</div>
+        <div class="item-status"><span class="status-dot dot-sage"></span><span class="st-sage">安全</span></div>
+      </div>
+      <div class="days"><div class="n">12</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="item-info">
+        <div class="item-name">洗发水</div>
+        <div class="item-meta">美妆 · 500ml</div>
+        <div class="item-status"><span class="status-dot dot-sage"></span><span class="st-sage">安全</span></div>
+      </div>
+      <div class="days"><div class="n">180</div><div class="u">天</div></div>
+    </div>
+
+  </div>
+
+  <nav>
+    <a class="tab active" href="#">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+      首页
+    </a>
+    <a class="tab add" href="#">
+      <span class="add-circle"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+      添加
+    </a>
+    <a class="tab" href="#">
+      <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      提醒
+    </a>
+    <a class="tab" href="#">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+      我的
+    </a>
+  </nav>
+
+</div>
+</body>
+</html>

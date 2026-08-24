@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 设置</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #ffffff;
+    --text: #111111;
+    --accent: #e2001a;
+    --muted: #8a8a8a;
+    --hairline: #e5e5e5;
+  }
+  html { background: #f4f4f4; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--hairline);
+    left: calc(50% - 210px + 20px);
+    z-index: 0;
+  }
+  .page { position: relative; z-index: 1; padding: 0 24px 96px 48px; }
+
+  /* 顶部 */
+  .topbar {
+    padding: 32px 0 16px;
+    border-bottom: 1px solid var(--text);
+  }
+  .title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .subtitle { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* 分组标题 */
+  .group-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 32px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--text);
+  }
+  .group-title .no { color: var(--accent); margin-right: 8px; }
+
+  /* 设置行 */
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--hairline);
+    gap: 16px;
+  }
+  .row .idx {
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    width: 24px;
+    flex-shrink: 0;
+  }
+  .row .main { flex: 1; }
+  .row .name { font-size: 15px; font-weight: 600; }
+  .row .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .row .value {
+    font-size: 13px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .row .value.red { color: var(--accent); font-weight: 600; }
+  .row .chev { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+
+  /* 阈值选择 */
+  .threshold {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--hairline);
+    margin-top: 12px;
+  }
+  .threshold input { display: none; }
+  .threshold label {
+    padding: 12px 0;
+    text-align: center;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    border-right: 1px solid var(--hairline);
+    cursor: pointer;
+  }
+  .threshold label:last-child { border-right: none; }
+  .threshold label small { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .threshold input:checked + label {
+    background: var(--accent);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  /* 开关 */
+  .switch {
+    position: relative;
+    width: 48px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .switch input { display: none; }
+  .switch .track {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--text);
+    background: var(--bg);
+    transition: background 0.15s;
+  }
+  .switch .knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: var(--text);
+    transition: left 0.15s, background 0.15s;
+  }
+  .switch input:checked ~ .track { background: var(--accent); border-color: var(--accent); }
+  .switch input:checked ~ .knob { left: 23px; background: #ffffff; }
+
+  /* 分类管理 */
+  .cat-list {
+    margin-top: 12px;
+    border-top: 1px solid var(--hairline);
+  }
+  .cat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 14px;
+  }
+  .cat-item .n { font-weight: 600; }
+  .cat-item .c { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* 底部 tab */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg);
+    border-top: 1px solid var(--text);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    z-index: 10;
+  }
+  .tab {
+    padding: 12px 0 14px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    position: relative;
+  }
+  .tab.active { color: var(--text); font-weight: 700; }
+  .tab.active::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .tab.add {
+    background: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+    margin: 8px;
+    padding: 8px 0;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <div class="title">设置</div>
+    <div class="subtitle">提醒规则与数据管理</div>
+  </header>
+
+  <!-- 01 提醒 -->
+  <div class="group-title"><span class="no">01</span> — 提醒</div>
+
+  <div class="row" style="display:block;">
+    <div style="display:flex; align-items:baseline;">
+      <span class="idx">01</span>
+      <div class="main">
+        <div class="name">临期阈值</div>
+        <div class="desc">剩余天数 ≤ 阈值时进入临期分组并推送提醒</div>
+      </div>
+      <span class="value red">3 天</span>
+    </div>
+    <div class="threshold">
+      <input type="radio" name="th" id="th3" checked><label for="th3">3<small>天</small></label>
+      <input type="radio" name="th" id="th5"><label for="th5">5<small>天</small></label>
+      <input type="radio" name="th" id="th7"><label for="th7">7<small>天</small></label>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="idx">02</span>
+    <div class="main">
+      <div class="name">到期通知</div>
+      <div class="desc">每天 09:00 汇总推送临期与过期物资</div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" checked>
+      <span class="track"></span>
+      <span class="knob"></span>
+    </label>
+  </div>
+
+  <div class="row">
+    <span class="idx">03</span>
+    <div class="main">
+      <div class="name">过期提醒</div>
+      <div class="desc">物资过期当天额外提醒一次</div>
+    </div>
+    <label class="switch">
+      <input type="checkbox">
+      <span class="track"></span>
+      <span class="knob"></span>
+    </label>
+  </div>
+
+  <!-- 02 分类管理 -->
+  <div class="group-title"><span class="no">02</span> — 分类管理</div>
+  <div class="row" style="display:block; border-bottom:none; padding-bottom:0;">
+    <div class="cat-list">
+      <div class="cat-item"><span class="n">食品</span><span class="c">8 项</span></div>
+      <div class="cat-item"><span class="n">药品</span><span class="c">2 项</span></div>
+      <div class="cat-item"><span class="n">美妆</span><span class="c">1 项</span></div>
+      <div class="cat-item"><span class="n">日化</span><span class="c">1 项</span></div>
+    </div>
+  </div>
+
+  <!-- 03 数据 -->
+  <div class="group-title"><span class="no">03</span> — 数据</div>
+
+  <div class="row">
+    <span class="idx">04</span>
+    <div class="main">
+      <div class="name">数据导出</div>
+      <div class="desc">导出全部物资为 CSV 文件</div>
+    </div>
+    <span class="chev">→</span>
+  </div>
+
+  <div class="row">
+    <span class="idx">05</span>
+    <div class="main">
+      <div class="name">清空已过期</div>
+      <div class="desc">移除所有已过期的物资记录</div>
+    </div>
+    <span class="value">1 项</span>
+  </div>
+
+  <div class="row">
+    <span class="idx">06</span>
+    <div class="main">
+      <div class="name">关于 KeepFresh</div>
+      <div class="desc">版本 1.0.0 · 本地存储，数据不上传</div>
+    </div>
+    <span class="chev">→</span>
+  </div>
+
+</div>
+
+<nav class="tabbar">
+  <a class="tab" href="11-index.html">列表</a>
+  <a class="tab" href="11-detail.html">详情</a>
+  <a class="tab active" href="11-settings.html">设置</a>
+  <a class="tab add" href="11-add.html">+ 添加</a>
+</nav>
+
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 数据终端</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #0e0e0e;
+    font-family: 'Space Grotesk', sans-serif;
+    display: flex;
+    justify-content: center;
+    color: #e0e0e0;
+  }
+  .phone {
+    width: 100%;
+    max-width: 420px;
+    min-height: 100vh;
+    background: #181818;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border-left: 1px solid #2a2a2a;
+    border-right: 1px solid #2a2a2a;
+  }
+  /* ---------- header ---------- */
+  header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .brand-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: #faff69;
+  }
+  .sys {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #666;
+    letter-spacing: 1px;
+  }
+  .summary {
+    margin-top: 12px;
+    display: flex;
+    gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .summary span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.warn { background: #faff69; }
+  .dot.exp  { background: #ff6b9d; }
+  .dot.ok   { background: #00e5a0; }
+  .summary .num { font-weight: 700; font-size: 14px; }
+  /* ---------- list ---------- */
+  .list { flex: 1; padding: 8px 20px 96px; }
+  .row {
+    display: grid;
+    grid-template-columns: 8px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid #242424;
+  }
+  .row:last-child { border-bottom: none; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .info .name {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .info .meta {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+    letter-spacing: 0.3px;
+  }
+  .meta .cat { color: #00e5a0; }
+  .days {
+    text-align: right;
+    min-width: 96px;
+  }
+  .days .big {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .days .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: #777;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  .expired .big   { color: #ff6b9d; }
+  .warning .big   { color: #faff69; }
+  .safe .big      { color: #00e5a0; }
+  .expired .status-dot   { background: #ff6b9d; box-shadow: 0 0 6px #ff6b9d66; }
+  .warning .status-dot   { background: #faff69; box-shadow: 0 0 6px #faff6966; }
+  .safe .status-dot      { background: #00e5a0; }
+  /* micro progress bar: proportion of remaining life (visual scale) */
+  .bar {
+    grid-column: 2 / 4;
+    height: 2px;
+    background: #2a2a2a;
+    border-radius: 2px;
+    margin-top: -6px;
+    overflow: hidden;
+  }
+  .bar i { display: block; height: 100%; border-radius: 2px; }
+  .expired .bar i { background: #ff6b9d; }
+  .warning .bar i { background: #faff69; }
+  .safe .bar i    { background: #00e5a0; }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    border: 1px solid currentColor;
+    display: inline-block;
+    margin-top: 4px;
+  }
+  .expired .tag { color: #ff6b9d; }
+  .warning .tag { color: #faff69; }
+  .safe .tag    { color: #555; border-color: #3a3a3a; }
+  /* ---------- tabbar ---------- */
+  nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: #181818;
+    border-top: 1px solid #2a2a2a;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 10px 0 18px;
+  }
+  .tab {
+    text-align: center;
+    font-size: 11px;
+    color: #777;
+    letter-spacing: 1px;
+  }
+  .tab .glyph {
+    width: 18px; height: 18px;
+    margin: 0 auto 5px;
+    display: block;
+  }
+  .tab.active { color: #e0e0e0; }
+  .tab.add {
+    color: #181818;
+  }
+  .tab.add .pill {
+    background: #faff69;
+    color: #181818;
+    font-weight: 600;
+    border-radius: 2px;
+    padding: 4px 0 3px;
+    margin: -6px 12px 0;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .tab.active .glyph rect, .tab.active .glyph path { stroke: #faff69; }
+  .glyph rect, .glyph path, .glyph circle { stroke: #777; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <header>
+    <div class="brand-row">
+      <h1>KeepFresh</h1>
+      <span class="sys">INV // 12 ITEMS</span>
+    </div>
+    <div class="summary">
+      <span><i class="dot warn"></i><b class="num">3</b>&nbsp;临期</span>
+      <span><i class="dot exp"></i><b class="num">1</b>&nbsp;过期</span>
+      <span><i class="dot ok"></i><b class="num">8</b>&nbsp;安全</span>
+    </div>
+  </header>
+
+  <div class="list">
+    <div class="row expired">
+      <span class="status-dot"></span>
+      <div class="info">
+        <div class="name">酸奶</div>
+        <div class="meta"><span class="cat">食品</span> / 200g×6</div>
+        <span class="tag">EXPIRED</span>
+      </div>
+      <div class="days">
+        <div class="big">-2</div>
+        <div class="label">days</div>
+      </div>
+      <div class="bar"><i style="width:100%"></i></div>
+    </div>
+
+    <div class="row warning">
+      <span class="status-dot"></span>
+      <div class="info">
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta"><span class="cat">药品</span> / 24 粒</div>
+        <span class="tag">EXPIRING</span>
+      </div>
+      <div class="days">
+        <div class="big">02</div>
+        <div class="label">days left</div>
+      </div>
+      <div class="bar"><i style="width:6%"></i></div>
+    </div>
+
+    <div class="row warning">
+      <span class="status-dot"></span>
+      <div class="info">
+        <div class="name">鲜牛奶</div>
+        <div class="meta"><span class="cat">食品</span> / 950ml</div>
+        <span class="tag">EXPIRING</span>
+      </div>
+      <div class="days">
+        <div class="big">03</div>
+        <div class="label">days left</div>
+      </div>
+      <div class="bar"><i style="width:9%"></i></div>
+    </div>
+
+    <div class="row warning">
+      <span class="status-dot"></span>
+      <div class="info">
+        <div class="name">鸡蛋</div>
+        <div class="meta"><span class="cat">食品</span> / 10 枚</div>
+        <span class="tag">EXPIRING</span>
+      </div>
+      <div class="days">
+        <div class="big">05</div>
+        <div class="label">days left</div>
+      </div>
+      <div class="bar"><i style="width:14%"></i></div>
+    </div>
+
+    <div class="row safe">
+      <span class="status-dot"></span>
+      <div class="info">
+        <div class="name">纯牛奶</div>
+        <div class="meta"><span class="cat">食品</span> / 1L</div>
+        <span class="tag">SAFE</span>
+      </div>
+      <div class="days">
+        <div class="big">12</div>
+        <div class="label">days left</div>
+      </div>
+      <div class="bar"><i style="width:32%"></i></div>
+    </div>
+
+    <div class="row safe">
+      <span class="status-dot"></span>
+      <div class="info">
+        <div class="name">洗发水</div>
+        <div class="meta"><span class="cat">美妆</span> / 500ml</div>
+        <span class="tag">SAFE</span>
+      </div>
+      <div class="days">
+        <div class="big">180</div>
+        <div class="label">days left</div>
+      </div>
+      <div class="bar"><i style="width:96%"></i></div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="tab active">
+      <svg class="glyph" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/><path d="M4 10h16"/></svg>
+      首页
+    </div>
+    <div class="tab add">
+      <div class="pill">＋ 添加</div>
+    </div>
+    <div class="tab">
+      <svg class="glyph" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+      提醒
+    </div>
+    <div class="tab">
+      <svg class="glyph" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5"/></svg>
+      我的
+    </div>
+  </nav>
+</div>
+</body>
+</html>

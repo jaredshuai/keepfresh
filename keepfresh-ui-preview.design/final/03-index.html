@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh - 物资保质期管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf8f2;
+    --text: #2d2a26;
+    --accent: #9d5f4d;
+    --aux: #537d96;
+    --warn: #c2703e;
+    --danger: #8b3a2a;
+    --safe: #6b7f5e;
+    --hairline: #e8e2d5;
+    --muted: #a8a29a;
+  }
+
+  body {
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    color: var(--text);
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0 20px 96px;
+    position: relative;
+    background: var(--bg);
+  }
+
+  /* ---------- 顶部品牌区 ---------- */
+  header.brand {
+    padding: 34px 0 6px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .brand h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: 0.2px;
+  }
+
+  .brand h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .brand .summary {
+    margin-top: 8px;
+    padding-bottom: 16px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .brand .summary .dot { margin: 0 6px; color: var(--hairline); }
+  .brand .summary b { font-weight: 500; color: var(--text); }
+  .brand .summary .s-danger { color: var(--danger); }
+  .brand .summary .s-warn { color: var(--warn); }
+  .brand .summary .s-safe { color: var(--safe); }
+
+  /* ---------- 分组标题 ---------- */
+  .group {
+    margin-top: 26px;
+  }
+
+  .group-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .group-head h2 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 18px;
+  }
+
+  .group-head .note {
+    font-family: 'Caveat', cursive;
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--muted);
+  }
+
+  .group-head .note.warn-note { color: var(--warn); }
+  .group-head .note.danger-note { color: var(--danger); }
+
+  /* ---------- 卡片通用 ---------- */
+  .card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 14px 14px 16px;
+    margin-bottom: 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    background: var(--bg);
+  }
+
+  .card .info { flex: 1; min-width: 0; }
+
+  .card .name {
+    font-weight: 500;
+    font-size: 15.5px;
+  }
+
+  .card .meta {
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  .card .meta .sep { margin: 0 5px; color: var(--hairline); }
+
+  .card .days {
+    text-align: right;
+    margin-left: 12px;
+    flex-shrink: 0;
+  }
+
+  .card .days .num {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 28px;
+    line-height: 1.1;
+  }
+
+  .card .days .label {
+    font-family: 'Caveat', cursive;
+    font-size: 15px;
+    color: var(--muted);
+  }
+
+  /* ---------- 过期区 ---------- */
+  .card.expired {
+    border: 1px solid var(--danger);
+    border-left: 4px solid var(--danger);
+  }
+
+  .card.expired .name {
+    text-decoration: line-through;
+    text-decoration-color: var(--danger);
+    text-decoration-thickness: 1px;
+    color: var(--muted);
+  }
+
+  .card.expired .days .num { color: var(--danger); }
+
+  .card.expired .days .label { color: var(--danger); }
+
+  /* ---------- 临期区 ---------- */
+  .card.warning .days .num { color: var(--warn); }
+
+  /* ---------- 安全区（折叠） ---------- */
+  .safe-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    background: transparent;
+    font-family: 'Source Serif 4', serif;
+    font-size: 14.5px;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .safe-toggle .count { color: var(--safe); font-weight: 500; }
+  .safe-toggle .arrow { color: var(--muted); font-size: 13px; }
+
+  .safe-list { display: none; margin-top: 10px; }
+  .safe-list.open { display: block; }
+
+  .card.safe .days .num { color: var(--safe); font-size: 22px; }
+
+  /* ---------- 底部 tab ---------- */
+  nav.tabs {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    border-top: 1px solid var(--hairline);
+    background: var(--bg);
+  }
+
+  nav.tabs a {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0 16px;
+    font-size: 13.5px;
+    color: var(--muted);
+    text-decoration: none;
+    position: relative;
+  }
+
+  nav.tabs a.active {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  nav.tabs a.active::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 8px;
+    width: 18px;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  nav.tabs a.add-tab {
+    color: var(--accent);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="brand">
+    <h1>Keep<em>Fresh</em></h1>
+    <div class="summary">
+      共 <b>15</b> 项物资<span class="dot">·</span><span class="s-danger">过期 1</span><span class="dot">·</span><span class="s-warn">临期 3</span><span class="dot">·</span><span class="s-safe">安全 11</span>
+    </div>
+  </header>
+
+  <!-- 已过期区 -->
+  <section class="group">
+    <div class="group-head">
+      <h2>已过期</h2>
+      <span class="note danger-note">要处理掉了</span>
+    </div>
+    <div class="card expired">
+      <div class="info">
+        <div class="name">酸奶</div>
+        <div class="meta">食品<span class="sep">·</span>200g × 6<span class="sep">·</span>到期 08-22</div>
+      </div>
+      <div class="days">
+        <div class="num">-2</div>
+        <div class="label">已过期 2 天</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 临期区 -->
+  <section class="group">
+    <div class="group-head">
+      <h2>临期</h2>
+      <span class="note warn-note">尽快吃掉</span>
+    </div>
+
+    <div class="card warning">
+      <div class="info">
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta">药品<span class="sep">·</span>24 粒<span class="sep">·</span>到期 08-26</div>
+      </div>
+      <div class="days">
+        <div class="num">2</div>
+        <div class="label">剩 2 天</div>
+      </div>
+    </div>
+
+    <div class="card warning">
+      <div class="info">
+        <div class="name">鲜牛奶</div>
+        <div class="meta">食品<span class="sep">·</span>950ml<span class="sep">·</span>到期 08-27</div>
+      </div>
+      <div class="days">
+        <div class="num">3</div>
+        <div class="label">剩 3 天</div>
+      </div>
+    </div>
+
+    <div class="card warning">
+      <div class="info">
+        <div class="name">鸡蛋</div>
+        <div class="meta">食品<span class="sep">·</span>10 枚<span class="sep">·</span>到期 08-29</div>
+      </div>
+      <div class="days">
+        <div class="num">5</div>
+        <div class="label">剩 5 天</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 安全区（折叠） -->
+  <section class="group">
+    <div class="group-head">
+      <h2>安全</h2>
+      <span class="note">别急，还新鲜</span>
+    </div>
+
+    <button class="safe-toggle" id="safeToggle">
+      <span><span class="count">安全 9 项</span></span>
+      <span class="arrow" id="safeArrow">展开 ↓</span>
+    </button>
+
+    <div class="safe-list" id="safeList">
+      <div class="card safe">
+        <div class="info">
+          <div class="name">纯牛奶</div>
+          <div class="meta">食品<span class="sep">·</span>1L<span class="sep">·</span>到期 09-05</div>
+        </div>
+        <div class="days">
+          <div class="num">12</div>
+          <div class="label">天</div>
+        </div>
+      </div>
+      <div class="card safe">
+        <div class="info">
+          <div class="name">洗发水</div>
+          <div class="meta">美妆<span class="sep">·</span>500ml<span class="sep">·</span>到期 2027-02-20</div>
+        </div>
+        <div class="days">
+          <div class="num">180</div>
+          <div class="label">天</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<nav class="tabs">
+  <a href="03-index.html" class="active">首页</a>
+  <a href="03-add.html" class="add-tab">+ 添加</a>
+  <a href="03-detail.html">提醒</a>
+  <a href="03-settings.html">我的</a>
+</nav>
+
+<script>
+  document.getElementById('safeToggle').addEventListener('click', function () {
+    var list = document.getElementById('safeList');
+    var arrow = document.getElementById('safeArrow');
+    var open = list.classList.toggle('open');
+    arrow.textContent = open ? '收起 ↑' : '展开 ↓';
+  });
+</script>
+</body>
+</html>

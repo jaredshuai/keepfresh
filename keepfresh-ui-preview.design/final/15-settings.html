@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh - 设置</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; border-radius: 0; }
+  :root {
+    --paper: #f2f0ea;
+    --ink: #1a1a1a;
+    --red: #e63946;
+    --orange: #f4a261;
+    --teal: #2a9d8f;
+    --yellow: #ffb703;
+    --yellow-dark: #d69a00;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Archivo', sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0 16px 96px;
+  }
+
+  /* ===== 几何形状 ===== */
+  .shape-circle {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+  }
+  .shape-triangle {
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 14px solid var(--orange);
+    flex-shrink: 0;
+  }
+  .shape-square {
+    width: 14px; height: 14px;
+    background: var(--teal);
+    flex-shrink: 0;
+  }
+  .shape-diamond {
+    width: 14px; height: 14px;
+    background: var(--yellow);
+    border: 2px solid var(--ink);
+    flex-shrink: 0;
+  }
+
+  /* ===== 顶部 ===== */
+  .top-bar {
+    padding: 32px 0 20px;
+    border-bottom: 2px solid var(--ink);
+  }
+  /* Focus ring — 可访问性 */
+  *:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 2px;
+  }
+  /* 动效偏好降级 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+
+  .page-title {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 36px;
+    letter-spacing: -1px;
+    margin: 0;
+  }
+  .page-sub {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #5a5a5a;
+    margin-top: 6px;
+  }
+
+  /* ===== 分组标题 ===== */
+  .group-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 32px 0 12px;
+  }
+  .group-title .group-shape {
+    width: 10px; height: 10px;
+    background: var(--ink);
+    flex-shrink: 0;
+  }
+
+  /* ===== 设置卡片 ===== */
+  .setting-card {
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .setting-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-info { flex: 1; min-width: 0; }
+  .setting-name {
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .setting-desc {
+    font-size: 12px;
+    color: #5a5a5a;
+    margin-top: 3px;
+  }
+  .setting-value {
+    font-weight: 600;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .row-arrow {
+    width: 0; height: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-left: 10px solid var(--ink);
+    flex-shrink: 0;
+  }
+
+  /* ===== 阈值选择 ===== */
+  .threshold-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border: 2px solid var(--ink);
+    background: #ffffff;
+    flex-shrink: 0;
+  }
+  .threshold-option {
+    padding: 8px 0;
+    text-align: center;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    user-select: none;
+    border-right: 2px solid var(--ink);
+    background: #ffffff;
+    color: var(--ink);
+    transition: background 0.1s;
+  }
+  .threshold-option:last-child { border-right: none; }
+  .threshold-option.selected {
+    background: var(--orange);
+  }
+  .threshold-unit {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 10px;
+    display: block;
+    letter-spacing: 1px;
+  }
+
+  /* ===== 开关 ===== */
+  .toggle {
+    width: 56px; height: 28px;
+    border: 2px solid var(--ink);
+    background: #ffffff;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.12s;
+  }
+  .toggle .knob {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 20px; height: 20px;
+    background: var(--ink);
+    transition: left 0.12s;
+  }
+  .toggle.on { background: var(--teal); }
+  .toggle.on .knob { left: 30px; background: #ffffff; }
+
+  /* ===== 分类管理 chips ===== */
+  .cat-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 0 4px;
+  }
+  .cat-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .cat-chip .chip-count {
+    font-size: 11px;
+    color: #5a5a5a;
+  }
+
+  /* ===== 关于块 ===== */
+  .about-block {
+    background: var(--ink);
+    color: #ffffff;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 rgba(26,26,26,0.25);
+    padding: 20px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .about-logo {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 20px;
+    line-height: 1.1;
+  }
+  .about-logo .logo-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    background: var(--yellow);
+    margin-left: 4px;
+  }
+  .about-meta {
+    margin-left: auto;
+    text-align: right;
+    font-size: 11px;
+    letter-spacing: 1px;
+    line-height: 1.6;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  /* ===== 底部 Tab ===== */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    border-top: 2px solid var(--ink);
+    display: flex;
+    z-index: 10;
+  }
+  .tab-item {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0 16px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--ink);
+    border-right: 2px solid var(--ink);
+  }
+  .tab-item:last-child { border-right: none; }
+  .tab-item.active { background: var(--ink); color: #ffffff; }
+  .tab-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tab-add .add-box {
+    width: 28px; height: 28px;
+    background: var(--yellow-dark);
+    border: 2px solid var(--ink);
+    color: #ffffff;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 18px;
+    line-height: 24px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 顶部 -->
+  <header class="top-bar">
+    <h1 class="page-title">设置</h1>
+    <div class="page-sub">Preferences · KeepFresh</div>
+  </header>
+
+  <!-- 提醒 -->
+  <section>
+    <div class="group-title"><span class="group-shape"></span>提醒</div>
+    <div class="setting-card">
+      <div class="setting-row">
+        <span class="shape-triangle"></span>
+        <div class="setting-info">
+          <div class="setting-name">临期阈值</div>
+          <div class="setting-desc">剩余天数小于该值时标记为临期</div>
+        </div>
+        <div class="threshold-group" id="thresholdGroup" role="radiogroup" aria-label="临期阈值">
+          <button type="button" class="threshold-option selected" role="radio" aria-checked="true" data-days="3">3<span class="threshold-unit">天</span></button>
+          <button type="button" class="threshold-option" role="radio" aria-checked="false" data-days="5">5<span class="threshold-unit">天</span></button>
+          <button type="button" class="threshold-option" role="radio" aria-checked="false" data-days="7">7<span class="threshold-unit">天</span></button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="shape-circle"></span>
+        <div class="setting-info">
+          <div class="setting-name">到期通知</div>
+          <div class="setting-desc">每天 09:00 推送临期与过期提醒</div>
+        </div>
+        <div class="toggle on" id="notifyToggle" role="switch" aria-checked="true"><span class="knob"></span></div>
+      </div>
+      <div class="setting-row">
+        <span class="shape-square"></span>
+        <div class="setting-info">
+          <div class="setting-name">过期置顶</div>
+          <div class="setting-desc">已过期物资始终显示在清单顶部</div>
+        </div>
+        <div class="toggle on" role="switch" aria-checked="true"><span class="knob"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 分类管理 -->
+  <section>
+    <div class="group-title"><span class="group-shape"></span>分类管理</div>
+    <div class="cat-chips">
+      <div class="cat-chip"><span class="shape-circle"></span>食品 <span class="chip-count">5</span></div>
+      <div class="cat-chip"><span class="shape-triangle"></span>药品 <span class="chip-count">2</span></div>
+      <div class="cat-chip"><span class="shape-square"></span>美妆 <span class="chip-count">3</span></div>
+      <div class="cat-chip"><span class="shape-diamond"></span>日化 <span class="chip-count">3</span></div>
+      <div class="cat-chip" style="border-style: dashed; color: #5a5a5a;">+ 新建分类</div>
+    </div>
+  </section>
+
+  <!-- 数据 -->
+  <section>
+    <div class="group-title"><span class="group-shape"></span>数据</div>
+    <div class="setting-card">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-name">数据导出</div>
+          <div class="setting-desc">导出全部物资为 CSV 文件</div>
+        </div>
+        <span class="setting-value">CSV</span>
+        <span class="row-arrow"></span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-name">本地备份</div>
+          <div class="setting-desc">上次备份 2026-08-20 21:14</div>
+        </div>
+        <span class="row-arrow"></span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-name">清空已消耗</div>
+          <div class="setting-desc">移除所有已标记消耗的物资记录</div>
+        </div>
+        <span class="setting-value" style="color: var(--red);">谨慎</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 关于 -->
+  <section>
+    <div class="group-title"><span class="group-shape"></span>关于</div>
+    <div class="about-block">
+      <div class="about-logo">KeepFresh<span class="logo-dot"></span></div>
+      <div class="about-meta">
+        Version 1.5.0<br>
+        Bauhaus Edition<br>
+        13 项物资在管
+      </div>
+    </div>
+  </section>
+
+  <!-- 底部 Tab -->
+  <nav class="tab-bar">
+    <a class="tab-item" href="15-index.html">清单</a>
+    <a class="tab-item tab-add" href="15-add.html"><span class="add-box">+</span></a>
+    <a class="tab-item" href="15-detail.html">详情</a>
+    <a class="tab-item active" href="15-settings.html">设置</a>
+  </nav>
+
+</div>
+
+<script>
+  // 阈值单选
+  document.getElementById('thresholdGroup').addEventListener('click', function (e) {
+    var opt = e.target.closest('.threshold-option');
+    if (!opt) return;
+    this.querySelectorAll('.threshold-option').forEach(function (el) {
+      el.classList.remove('selected');
+      el.setAttribute('aria-checked', 'false');
+    });
+    opt.classList.add('selected');
+    opt.setAttribute('aria-checked', 'true');
+  });
+
+  // 开关
+  document.querySelectorAll('.toggle').forEach(function (el) {
+    el.addEventListener('click', function () {
+      this.classList.toggle('on');
+      this.setAttribute('aria-checked', this.classList.contains('on'));
+    });
+  });
+</script>
+</body>
+</html>

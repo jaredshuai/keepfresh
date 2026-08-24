@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 物资清单</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,900;1,900&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --paper: #fdfdfb;
+    --ink: #1a1a1a;
+    --accent: #c8102e;
+    --muted: #6b6b6b;
+    --hairline: #d8d8d4;
+  }
+  html { font-size: 16px; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 84px;
+    position: relative;
+  }
+  /* 刊头线 */
+  .masthead-rule {
+    height: 3px;
+    background: var(--ink);
+  }
+  /* 顶部品牌区 */
+  .brand {
+    padding: 36px 24px 12px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .brand h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 44px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .brand .issue {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .summary {
+    padding: 12px 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+  }
+  .summary b { font-weight: 400; color: var(--ink); }
+  .summary .warn { color: var(--accent); }
+  /* 分组标题 */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 24px 24px 12px;
+  }
+  .section-head h2 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .section-head .en {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  /* 过期区 */
+  .expired-block {
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .item {
+    display: flex;
+    align-items: baseline;
+    padding: 12px 24px;
+    position: relative;
+  }
+  .item + .item { border-top: 1px solid var(--hairline); }
+  .item .no {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    width: 24px;
+    flex-shrink: 0;
+  }
+  .item .body { flex: 1; min-width: 0; }
+  .item .name {
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+  .item .meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .item .days {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 24px;
+    line-height: 1;
+    text-align: right;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+  .item .days small {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  /* 过期项 */
+  .expired-block .name { text-decoration: line-through; }
+  .expired-block .days { color: var(--ink); }
+  /* 临期区 */
+  .expiring-block .item {
+    border-left: 3px solid var(--accent);
+    padding-left: 21px;
+  }
+  .expiring-block .days { color: var(--accent); }
+  /* 安全区（折叠） */
+  .safe-block { border-top: 1px solid var(--hairline); }
+  .safe-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    font: inherit;
+    color: var(--muted);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 12px 24px 24px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .safe-toggle .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .safe-toggle .chev {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+  }
+  .safe-list { display: none; }
+  .safe-block.open .safe-list { display: block; }
+  .safe-block.open .chev { transform: rotate(180deg); }
+  .safe-block .item { border-left: none; color: var(--muted); }
+  .safe-block .name { color: var(--muted); font-weight: 400; }
+  .safe-block .days { font-size: 14px; color: var(--muted); }
+  /* 底部 tab */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--paper);
+    border-top: 1px solid var(--ink);
+    display: flex;
+    z-index: 10;
+  }
+  .tabbar a {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0 16px;
+    text-decoration: none;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border-left: 1px solid var(--hairline);
+  }
+  .tabbar a:first-child { border-left: none; }
+  .tabbar a.active {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 15px;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink);
+    padding-top: 12px;
+  }
+  .tabbar a.add { color: var(--accent); font-weight: 400; }
+  /* 页脚注记 */
+  .colophon {
+    padding: 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="masthead-rule"></div>
+
+  <header class="brand">
+    <h1>KeepFresh</h1>
+    <div class="issue">
+      <span>Inventory Gazette</span>
+      <span>2026-08-24</span>
+    </div>
+  </header>
+
+  <div class="summary">
+    <span>共 <b>15</b> 项物资</span>
+    <span><b>1</b> 已过期 · <b class="warn">3</b> 临期 · <b>11</b> 安全</span>
+  </div>
+
+  <!-- 已过期区 -->
+  <div class="section-head">
+    <h2>已过期</h2>
+    <span class="en">Expired</span>
+  </div>
+  <section class="expired-block">
+    <article class="item">
+      <span class="no">01</span>
+      <div class="body">
+        <div class="name">酸奶</div>
+        <div class="meta">食品 · 200g×6 · 数量 1</div>
+      </div>
+      <div class="days">-2<small>Days</small></div>
+    </article>
+  </section>
+
+  <!-- 临期区 -->
+  <div class="section-head">
+    <h2>临期</h2>
+    <span class="en">Expiring</span>
+  </div>
+  <section class="expiring-block">
+    <article class="item">
+      <span class="no">02</span>
+      <div class="body">
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta">药品 · 24 粒 · 数量 1</div>
+      </div>
+      <div class="days">2<small>Days</small></div>
+    </article>
+    <article class="item">
+      <span class="no">03</span>
+      <div class="body">
+        <div class="name">鲜牛奶</div>
+        <div class="meta">食品 · 950ml · 数量 1</div>
+      </div>
+      <div class="days">3<small>Days</small></div>
+    </article>
+    <article class="item">
+      <span class="no">04</span>
+      <div class="body">
+        <div class="name">鸡蛋</div>
+        <div class="meta">食品 · 10 枚 · 数量 1</div>
+      </div>
+      <div class="days">5<small>Days</small></div>
+    </article>
+  </section>
+
+  <!-- 安全区（折叠） -->
+  <div class="section-head">
+    <h2 style="color:var(--muted)">安全</h2>
+    <span class="en">Safe</span>
+  </div>
+  <section class="safe-block" id="safeBlock">
+    <button class="safe-toggle" onclick="document.getElementById('safeBlock').classList.toggle('open')">
+      <span class="label">SAFE — 9 项</span>
+      <span class="chev">▼</span>
+    </button>
+    <div class="safe-list">
+      <article class="item">
+        <span class="no">05</span>
+        <div class="body">
+          <div class="name">纯牛奶</div>
+          <div class="meta">食品 · 1L · 数量 2</div>
+        </div>
+        <div class="days">12<small>Days</small></div>
+      </article>
+      <article class="item">
+        <span class="no">06</span>
+        <div class="body">
+          <div class="name">洗发水</div>
+          <div class="meta">美妆 · 500ml · 数量 1</div>
+        </div>
+        <div class="days">180<small>Days</small></div>
+      </article>
+      <article class="item">
+        <span class="no">07</span>
+        <div class="body">
+          <div class="name">吐司面包</div>
+          <div class="meta">食品 · 400g · 数量 1</div>
+        </div>
+        <div class="days">6<small>Days</small></div>
+      </article>
+      <article class="item">
+        <span class="no">08</span>
+        <div class="body">
+          <div class="name">维生素 C 片</div>
+          <div class="meta">药品 · 60 片 · 数量 1</div>
+        </div>
+        <div class="days">240<small>Days</small></div>
+      </article>
+      <article class="item">
+        <span class="no">09</span>
+        <div class="body">
+          <div class="name">牙膏</div>
+          <div class="meta">日化 · 120g · 数量 2</div>
+        </div>
+        <div class="days">300<small>Days</small></div>
+      </article>
+      <article class="item">
+        <span class="no">10</span>
+        <div class="body">
+          <div class="name">燕麦片</div>
+          <div class="meta">食品 · 1kg · 数量 1</div>
+        </div>
+        <div class="days">210<small>Days</small></div>
+      </article>
+      <article class="item">
+        <span class="no">11</span>
+        <div class="body">
+          <div class="name">护手霜</div>
+          <div class="meta">美妆 · 75ml · 数量 1</div>
+        </div>
+        <div class="days">365<small>Days</small></div>
+      </article>
+      <article class="item">
+        <span class="no">12</span>
+        <div class="body">
+          <div class="name">洗衣液</div>
+          <div class="meta">日化 · 2kg · 数量 1</div>
+        </div>
+        <div class="days">540<small>Days</small></div>
+      </article>
+      <article class="item">
+        <span class="no">13</span>
+        <div class="body">
+          <div class="name">大米</div>
+          <div class="meta">食品 · 5kg · 数量 1</div>
+        </div>
+        <div class="days">280<small>Days</small></div>
+      </article>
+    </div>
+  </section>
+
+  <div class="colophon">KeepFresh · Printed Daily · No Waste</div>
+
+  <nav class="tabbar">
+    <a href="07-index.html" class="active">清单</a>
+    <a href="07-add.html" class="add">+ Add</a>
+    <a href="07-detail.html">详情</a>
+    <a href="07-settings.html">设置</a>
+  </nav>
+</div>
+</body>
+</html>

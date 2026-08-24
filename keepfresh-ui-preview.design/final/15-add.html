@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh - 添加物资</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; border-radius: 0; }
+  :root {
+    --paper: #f2f0ea;
+    --ink: #1a1a1a;
+    --red: #e63946;
+    --orange: #f4a261;
+    --teal: #2a9d8f;
+    --yellow: #ffb703;
+    --yellow-dark: #d69a00;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Archivo', sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0 16px 48px;
+  }
+
+  /* ===== 顶部 ===== */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 0 20px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .back-btn {
+    width: 40px; height: 40px;
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: box-shadow 0.08s, transform 0.08s;
+  }
+  .back-btn:active {
+    box-shadow: 1px 1px 0 var(--ink);
+    transform: translate(3px, 3px);
+  }
+  .back-arrow {
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 12px solid var(--ink);
+  }
+  .page-title {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 28px;
+    letter-spacing: -0.5px;
+  }
+
+  /* ===== 表单 ===== */
+  .form-section { margin-top: 24px; }
+  .form-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .required-mark {
+    width: 8px; height: 8px;
+    background: var(--red);
+    flex-shrink: 0;
+  }
+  .form-input,
+  .form-select,
+  .form-textarea {
+    width: 100%;
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    padding: 12px 14px;
+    font-family: 'Archivo', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: box-shadow 0.12s;
+  }
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus {
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .form-input::placeholder,
+  .form-textarea::placeholder { color: #a8a498; }
+  .form-textarea {
+    min-height: 88px;
+    resize: vertical;
+  }
+
+  /* 分类选择 */
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: "";
+    position: absolute;
+    right: 14px; top: 50%;
+    transform: translateY(-70%);
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 10px solid var(--ink);
+    pointer-events: none;
+  }
+
+  /* 分类快捷方块 */
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  /* Focus ring — 可访问性 */
+  *:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 2px;
+  }
+  /* 动效偏好降级 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+
+  .cat-option {
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    padding: 12px 4px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: box-shadow 0.08s, transform 0.08s;
+  }
+  .cat-option:active {
+    transform: translate(2px, 2px);
+  }
+  .cat-option.selected {
+    background: var(--yellow-dark);
+    color: #ffffff;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .cat-option .cat-shape {
+    margin: 0 auto 6px;
+  }
+  .shape-circle {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+  .shape-triangle {
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 12px solid var(--orange);
+  }
+  .shape-square {
+    width: 12px; height: 12px;
+    background: var(--teal);
+  }
+  .shape-diamond {
+    width: 12px; height: 12px;
+    background: var(--yellow);
+    border: 2px solid var(--ink);
+  }
+
+  /* 两列行 */
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* 保质期提示 */
+  .hint-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 2px dashed var(--ink);
+    padding: 12px 14px;
+    margin-top: 24px;
+    font-size: 13px;
+    background: #ffffff;
+  }
+  .hint-box .hint-shape {
+    width: 12px; height: 12px;
+    background: var(--yellow);
+    border: 2px solid var(--ink);
+    flex-shrink: 0;
+  }
+  .hint-box strong { font-weight: 600; }
+
+  /* ===== 保存按钮 ===== */
+  .save-bar { margin-top: 32px; }
+  .btn-save {
+    width: 100%;
+    background: var(--yellow-dark);
+    color: #ffffff;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    padding: 16px 0;
+    cursor: pointer;
+    transition: box-shadow 0.08s, transform 0.08s;
+  }
+  .btn-save:active {
+    box-shadow: 1px 1px 0 var(--ink);
+    transform: translate(3px, 3px);
+  }
+  .btn-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: 2px 2px 0 var(--ink);
+    transform: none;
+  }
+  .btn-cancel {
+    display: block;
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--ink);
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 顶部 -->
+  <header class="top-bar">
+    <a class="back-btn" href="15-index.html" aria-label="返回"><span class="back-arrow"></span></a>
+    <h1 class="page-title">添加物资</h1>
+  </header>
+
+  <form onsubmit="return false;">
+
+    <!-- 名称 -->
+    <div class="form-section">
+      <label class="form-label" for="f-name"><span class="required-mark"></span>名称</label>
+      <input class="form-input" id="f-name" type="text" placeholder="例如：鲜牛奶" autocomplete="off" required>
+    </div>
+
+    <!-- 分类 -->
+    <div class="form-section">
+      <label class="form-label"><span class="required-mark"></span>分类</label>
+      <div class="cat-grid" id="catGrid" role="radiogroup" aria-label="物资分类">
+        <button type="button" class="cat-option selected" role="radio" aria-checked="true" data-cat="食品">
+          <div class="cat-shape shape-circle"></div>食品
+        </button>
+        <button type="button" class="cat-option" role="radio" aria-checked="false" data-cat="药品">
+          <div class="cat-shape shape-triangle"></div>药品
+        </button>
+        <button type="button" class="cat-option" role="radio" aria-checked="false" data-cat="美妆">
+          <div class="cat-shape shape-square"></div>美妆
+        </button>
+        <button type="button" class="cat-option" role="radio" aria-checked="false" data-cat="日化">
+          <div class="cat-shape shape-diamond"></div>日化
+        </button>
+      </div>
+    </div>
+
+    <!-- 规格 / 数量 -->
+    <div class="form-section form-row">
+      <div>
+        <label class="form-label" for="f-spec">规格</label>
+        <input class="form-input" id="f-spec" type="text" placeholder="950ml" autocomplete="off">
+      </div>
+      <div>
+        <label class="form-label" for="f-qty">数量</label>
+        <input class="form-input" id="f-qty" type="number" min="1" placeholder="1">
+      </div>
+    </div>
+
+    <!-- 生产日期 / 保质期天数 -->
+    <div class="form-section form-row">
+      <div>
+        <label class="form-label" for="f-date"><span class="required-mark"></span>生产日期</label>
+        <input class="form-input" id="f-date" type="date" value="2026-08-20" required>
+      </div>
+      <div>
+        <label class="form-label" for="f-days"><span class="required-mark"></span>保质期（天）</label>
+        <input class="form-input" id="f-days" type="number" min="1" placeholder="7" required>
+      </div>
+    </div>
+
+    <!-- 备注 -->
+    <div class="form-section">
+      <label class="form-label" for="f-note">备注</label>
+      <textarea class="form-textarea" id="f-note" placeholder="存放位置、开封时间等"></textarea>
+    </div>
+
+    <!-- 提示 -->
+    <div class="hint-box">
+      <span class="hint-shape"></span>
+      <span>到期日 = 生产日期 + 保质期天数，<strong>保存后自动计算</strong>并按状态分组。</span>
+    </div>
+
+    <!-- 保存 -->
+    <div class="save-bar">
+      <button class="btn-save" type="submit">保存</button>
+      <a class="btn-cancel" href="15-index.html">取消并返回</a>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  // 分类单选
+  document.getElementById('catGrid').addEventListener('click', function (e) {
+    var opt = e.target.closest('.cat-option');
+    if (!opt) return;
+    this.querySelectorAll('.cat-option').forEach(function (el) {
+      el.classList.remove('selected');
+      el.setAttribute('aria-checked', 'false');
+    });
+    opt.classList.add('selected');
+    opt.setAttribute('aria-checked', 'true');
+  });
+</script>
+</body>
+</html>

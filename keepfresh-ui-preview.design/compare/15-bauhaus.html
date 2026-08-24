@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · 包豪斯</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f2f0ea;
+    --ink: #1a1a1a;
+    --red: #e63946;
+    --orange: #f4a261;
+    --teal: #2a9d8f;
+    --yellow: #ffb703;
+    --card: #fbfaf6;
+  }
+
+  body {
+    background: #dcd9d0;
+    font-family: 'Archivo', sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    padding: 52px 24px 28px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  h1 {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 40px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 18px;
+  }
+
+  .header-sub {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .geo-row { display: flex; gap: 8px; align-items: center; }
+
+  /* Geometric status marks */
+  .geo-circle {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--red); border: 2px solid var(--ink);
+  }
+  .geo-triangle {
+    width: 0; height: 0;
+    border-left: 11px solid transparent;
+    border-right: 11px solid transparent;
+    border-bottom: 19px solid var(--orange);
+    position: relative;
+  }
+  .geo-square {
+    width: 17px; height: 17px;
+    background: var(--teal); border: 2px solid var(--ink);
+  }
+
+  /* ---------- Summary band ---------- */
+  .band {
+    margin: 24px;
+    border: 2px solid var(--ink);
+    background: var(--yellow);
+    box-shadow: 4px 4px 0 var(--ink);
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .band .big {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 34px;
+    line-height: 1;
+  }
+
+  .band .desc {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+  }
+
+  .band .counts { text-align: right; font-size: 13px; font-weight: 500; line-height: 1.7; }
+  .band .counts b { font-family: 'Archivo Black', sans-serif; font-size: 15px; }
+
+  /* ---------- List ---------- */
+  .section-title {
+    padding: 4px 24px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .list {
+    padding: 0 24px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .item {
+    background: var(--card);
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    padding: 18px 18px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .shape-col {
+    width: 26px;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .item-info { flex: 1; min-width: 0; }
+
+  .item-name {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .item-meta {
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+  }
+
+  .item-status {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 2px solid var(--ink);
+  }
+
+  .tag-red { background: var(--red); color: #fff; }
+  .tag-orange { background: var(--orange); color: var(--ink); }
+  .tag-teal { background: var(--teal); color: #fff; }
+
+  .days {
+    text-align: right;
+    flex-shrink: 0;
+    border-left: 2px solid var(--ink);
+    padding-left: 16px;
+  }
+
+  .days .n {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 36px;
+    line-height: 1;
+  }
+
+  .days .u {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 5px;
+  }
+
+  .days.neg .n { color: var(--red); }
+  .days.warn .n { color: var(--orange); }
+  .days.ok .n { color: var(--teal); }
+
+  /* ---------- Tab bar ---------- */
+  nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--card);
+    border-top: 2px solid var(--ink);
+    display: flex;
+    padding: 12px 8px 20px;
+  }
+
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .tab svg { width: 22px; height: 22px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: square; }
+  .tab.active .underline { width: 20px; height: 4px; background: var(--red); }
+
+  .tab.add .add-box {
+    width: 46px;
+    height: 46px;
+    background: var(--red);
+    border: 2px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -26px;
+  }
+
+  .tab.add .add-box svg { stroke: #fff; width: 22px; height: 22px; stroke-width: 2.5; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>KeepFresh</h1>
+    <div class="header-row">
+      <div class="header-sub">物资保质期管理</div>
+      <div class="geo-row">
+        <span class="geo-circle"></span>
+        <span class="geo-triangle"></span>
+        <span class="geo-square"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="band">
+    <div>
+      <div class="big">12 项</div>
+      <div class="desc">库存物资总数</div>
+    </div>
+    <div class="counts">
+      <div><b>3</b> 项临期</div>
+      <div><b>1</b> 项已过期</div>
+    </div>
+  </div>
+
+  <div class="section-title">按到期日排序 / Sorted by expiry</div>
+
+  <div class="list">
+
+    <div class="item">
+      <div class="shape-col"><span class="geo-circle"></span></div>
+      <div class="item-info">
+        <div class="item-name">酸奶</div>
+        <div class="item-meta">食品 · 200g×6</div>
+        <span class="item-status tag-red">已过期</span>
+      </div>
+      <div class="days neg"><div class="n">-2</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="shape-col"><span class="geo-triangle"></span></div>
+      <div class="item-info">
+        <div class="item-name">布洛芬缓释胶囊</div>
+        <div class="item-meta">药品 · 24 粒</div>
+        <span class="item-status tag-orange">临期</span>
+      </div>
+      <div class="days warn"><div class="n">2</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="shape-col"><span class="geo-triangle"></span></div>
+      <div class="item-info">
+        <div class="item-name">鲜牛奶</div>
+        <div class="item-meta">食品 · 950ml</div>
+        <span class="item-status tag-orange">临期</span>
+      </div>
+      <div class="days warn"><div class="n">3</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="shape-col"><span class="geo-triangle"></span></div>
+      <div class="item-info">
+        <div class="item-name">鸡蛋</div>
+        <div class="item-meta">食品 · 10 枚</div>
+        <span class="item-status tag-orange">临期</span>
+      </div>
+      <div class="days warn"><div class="n">5</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="shape-col"><span class="geo-square"></span></div>
+      <div class="item-info">
+        <div class="item-name">纯牛奶</div>
+        <div class="item-meta">食品 · 1L</div>
+        <span class="item-status tag-teal">安全</span>
+      </div>
+      <div class="days ok"><div class="n">12</div><div class="u">天</div></div>
+    </div>
+
+    <div class="item">
+      <div class="shape-col"><span class="geo-square"></span></div>
+      <div class="item-info">
+        <div class="item-name">洗发水</div>
+        <div class="item-meta">美妆 · 500ml</div>
+        <span class="item-status tag-teal">安全</span>
+      </div>
+      <div class="days ok"><div class="n">180</div><div class="u">天</div></div>
+    </div>
+
+  </div>
+
+  <nav>
+    <a class="tab active" href="#">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+      首页<span class="underline"></span>
+    </a>
+    <a class="tab add" href="#">
+      <span class="add-box"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+      添加
+    </a>
+    <a class="tab" href="#">
+      <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      提醒
+    </a>
+    <a class="tab" href="#">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+      我的
+    </a>
+  </nav>
+
+</div>
+</body>
+</html>

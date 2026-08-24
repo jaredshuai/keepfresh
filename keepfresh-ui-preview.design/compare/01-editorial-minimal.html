@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · Editorial Minimal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Inter+Tight:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0f0f14;
+    --fg: #ffffff;
+    --accent: #5e6ad2;
+    --muted: #7c7c8a;
+    --line: rgba(255,255,255,.12);
+    --danger: #e5484d;
+    --warn: #f0a04b;
+    --ok: #4ec98e;
+  }
+  html { background: #050508; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.65;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+  .frame {
+    width: 100%;
+    max-width: 420px;
+    min-height: 100vh;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+  }
+  .display { font-family: 'Inter Tight', 'Inter', sans-serif; }
+
+  header { padding: 40px 24px 0; }
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  h1 { font-family: 'Inter Tight', sans-serif; font-weight: 600; font-size: 28px; letter-spacing: -.02em; }
+  .date { font-size: 11px; color: var(--muted); }
+
+  .summary {
+    margin-top: 24px;
+    padding: 16px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 32px;
+  }
+  .metric .num { font-family: 'Inter Tight', sans-serif; font-weight: 600; font-size: 26px; letter-spacing: -.01em; }
+  .metric .lbl { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .metric.danger .num { color: var(--danger); }
+  .metric.warn .num { color: var(--warn); }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 24px 24px 12px;
+  }
+  .section-head h2 {
+    font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500;
+  }
+  .section-head .count { font-size: 11px; color: var(--muted); }
+
+  ul.list { list-style: none; flex: 1; }
+  li.item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--line);
+  }
+  li.item:first-child { border-top: none; }
+  .info { flex: 1; min-width: 0; }
+  .name { font-weight: 500; font-size: 15px; letter-spacing: -.005em; }
+  .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .days { text-align: right; min-width: 64px; }
+  .days .n {
+    font-family: 'Inter Tight', sans-serif; font-weight: 600;
+    font-size: 24px; letter-spacing: -.02em; line-height: 1;
+  }
+  .days .u { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  .tag {
+    font-size: 9px; letter-spacing: .16em; text-transform: uppercase; font-weight: 500;
+    padding: 3px 8px; border-radius: 2px; border: 1px solid;
+    margin-top: 6px; display: inline-block;
+  }
+  .tag.expired { color: var(--danger); border-color: rgba(229,72,77,.4); }
+  .tag.soon    { color: var(--warn);   border-color: rgba(240,160,75,.4); }
+  .tag.ok      { color: var(--ok);     border-color: rgba(78,201,142,.35); }
+  .item.overdue .days .n { color: var(--danger); }
+  .item.soon .days .n { color: var(--warn); }
+
+  nav.tabs {
+    display: flex;
+    border-top: 1px solid var(--line);
+    position: sticky; bottom: 0;
+    background: var(--bg);
+  }
+  nav.tabs a {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0 16px;
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  nav.tabs a .icon {
+    display: block;
+    margin: 0 auto 6px;
+    width: 18px; height: 18px;
+    stroke: var(--muted); fill: none; stroke-width: 1.5;
+  }
+  nav.tabs a.active { color: var(--fg); }
+  nav.tabs a.active .icon { stroke: var(--fg); }
+  nav.tabs a.add { color: var(--accent); }
+  nav.tabs a.add .icon { stroke: var(--accent); }
+  nav.tabs a.add span.label {
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    padding: 2px 10px;
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header>
+    <div class="eyebrow">Inventory · Aug 24, 2026</div>
+    <div class="title-row">
+      <h1 class="display">KeepFresh</h1>
+      <span class="date">12 ITEMS</span>
+    </div>
+    <div class="summary">
+      <div class="metric warn">
+        <div class="num display">3</div>
+        <div class="lbl">Expiring Soon</div>
+      </div>
+      <div class="metric danger">
+        <div class="num display">1</div>
+        <div class="lbl">Expired</div>
+      </div>
+      <div class="metric">
+        <div class="num display">12</div>
+        <div class="lbl">Total</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="section-head">
+    <h2>By Expiry Date</h2>
+    <span class="count">6 shown</span>
+  </div>
+
+  <ul class="list">
+    <li class="item overdue">
+      <div class="info">
+        <div class="name">酸奶</div>
+        <div class="meta">食品 · 200g×6</div>
+        <span class="tag expired">Expired</span>
+      </div>
+      <div class="days">
+        <div class="n display">-2</div>
+        <div class="u">Days</div>
+      </div>
+    </li>
+    <li class="item soon">
+      <div class="info">
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta">药品 · 24 粒</div>
+        <span class="tag soon">Expiring Soon</span>
+      </div>
+      <div class="days">
+        <div class="n display">2</div>
+        <div class="u">Days</div>
+      </div>
+    </li>
+    <li class="item soon">
+      <div class="info">
+        <div class="name">鲜牛奶</div>
+        <div class="meta">食品 · 950ml</div>
+        <span class="tag soon">Expiring Soon</span>
+      </div>
+      <div class="days">
+        <div class="n display">3</div>
+        <div class="u">Days</div>
+      </div>
+    </li>
+    <li class="item soon">
+      <div class="info">
+        <div class="name">鸡蛋</div>
+        <div class="meta">食品 · 10 枚</div>
+        <span class="tag soon">Expiring Soon</span>
+      </div>
+      <div class="days">
+        <div class="n display">5</div>
+        <div class="u">Days</div>
+      </div>
+    </li>
+    <li class="item">
+      <div class="info">
+        <div class="name">纯牛奶</div>
+        <div class="meta">食品 · 1L</div>
+        <span class="tag ok">Fresh</span>
+      </div>
+      <div class="days">
+        <div class="n display">12</div>
+        <div class="u">Days</div>
+      </div>
+    </li>
+    <li class="item">
+      <div class="info">
+        <div class="name">洗发水</div>
+        <div class="meta">美妆 · 500ml</div>
+        <span class="tag ok">Fresh</span>
+      </div>
+      <div class="days">
+        <div class="n display">180</div>
+        <div class="u">Days</div>
+      </div>
+    </li>
+  </ul>
+
+  <nav class="tabs">
+    <a href="#" class="active">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>
+      <span class="label">首页</span>
+    </a>
+    <a href="#" class="add">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="label">添加</span>
+    </a>
+    <a href="#">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10 20a2 2 0 0 0 4 0"/></svg>
+      <span class="label">提醒</span>
+    </a>
+    <a href="#">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span class="label">我的</span>
+    </a>
+  </nav>
+</div>
+</body>
+</html>

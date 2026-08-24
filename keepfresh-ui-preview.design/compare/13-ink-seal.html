@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · 宣纸墨迹</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f0e6; --ink:#2b2b28; --seal:#a63f2e; --faint:#9a9484; --hair:#d8d2c0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:#e9e4d6;
+    font-family:'Noto Serif SC',serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .phone{
+    max-width:420px;margin:0 auto;background:var(--paper);
+    min-height:100vh;padding:0 30px 110px;
+    position:relative;
+  }
+
+  header{padding:56px 0 30px;}
+  .brand-row{display:flex;align-items:flex-start;justify-content:space-between;}
+  .brand{
+    font-size:42px;font-weight:500;letter-spacing:6px;line-height:1.15;
+  }
+  .brand small{
+    display:block;font-size:13px;font-weight:400;letter-spacing:4px;
+    color:var(--faint);margin-top:10px;
+  }
+  .seal{
+    flex:none;width:52px;height:52px;background:var(--seal);color:#fdfbf5;
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:600;letter-spacing:2px;line-height:1.2;
+    transform:rotate(-3deg);
+    box-shadow:0 1px 3px rgba(90,40,25,.35);
+    margin-top:6px;text-align:center;
+    border-radius:2px;
+  }
+  .summary{
+    margin-top:26px;padding-top:18px;border-top:0.5px solid var(--hair);
+    font-size:14px;letter-spacing:2px;color:var(--ink);
+  }
+  .summary em{font-style:normal;color:var(--seal);font-weight:500;}
+  .summary span{color:var(--faint);margin-left:10px;font-size:12px;}
+
+  .list{padding-top:8px;}
+  .item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:26px 0;border-bottom:0.5px solid var(--hair);
+    line-height:1.7;
+  }
+  .item:last-child{border-bottom:none;}
+  .info{flex:1;min-width:0;padding-right:18px;}
+  .name{font-size:19px;font-weight:500;letter-spacing:1.5px;}
+  .sub{font-size:12px;color:var(--faint);margin-top:4px;letter-spacing:1px;}
+  .right{display:flex;align-items:center;gap:14px;flex:none;}
+  .days{
+    font-size:34px;font-weight:500;line-height:1;letter-spacing:0;
+    text-align:right;
+  }
+  .days small{
+    display:block;font-size:11px;font-weight:400;color:var(--faint);
+    letter-spacing:2px;margin-top:6px;
+  }
+  .stamp{
+    flex:none;width:34px;height:34px;background:var(--seal);color:#fdfbf5;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:600;letter-spacing:0;
+    transform:rotate(-3deg);border-radius:2px;
+    box-shadow:0 1px 2px rgba(90,40,25,.3);
+    writing-mode:vertical-rl;
+  }
+  .stamp.s2{width:auto;height:auto;min-width:34px;padding:4px 2px;font-size:11px;}
+
+  .item.expiring .days{color:var(--seal);}
+  .item.expired .name{
+    text-decoration:line-through;text-decoration-color:var(--faint);
+    text-decoration-thickness:1px;color:var(--faint);
+  }
+  .item.expired .sub{color:var(--faint);}
+  .item.expired .days{color:var(--faint);}
+  .item.safe .days{color:var(--ink);}
+
+  .foot-note{
+    margin-top:28px;text-align:center;font-size:11px;letter-spacing:3px;color:var(--faint);
+  }
+
+  nav{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:420px;background:var(--paper);
+    border-top:0.5px solid var(--hair);
+    display:grid;grid-template-columns:repeat(4,1fr);
+  }
+  nav a{
+    text-decoration:none;color:var(--faint);text-align:center;
+    padding:16px 0 14px;font-size:13px;letter-spacing:3px;font-weight:400;
+  }
+  nav a.active{color:var(--ink);font-weight:500;}
+  nav a.add{
+    color:#fdfbf5;background:var(--seal);font-weight:500;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <header>
+    <div class="brand-row">
+      <div class="brand">KeepFresh<small>物 资 保 鲜 录</small></div>
+      <div class="seal">保鲜</div>
+    </div>
+    <div class="summary"><em>三 临期 · 一 过期</em><span>共十二项</span></div>
+  </header>
+
+  <section class="list">
+    <div class="item expired">
+      <div class="info">
+        <div class="name">酸奶</div>
+        <div class="sub">食品 · 200g×6</div>
+      </div>
+      <div class="right">
+        <div class="days">-2<small>天</small></div>
+        <div class="stamp">过期</div>
+      </div>
+    </div>
+    <div class="item expiring">
+      <div class="info">
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="sub">药品 · 24 粒</div>
+      </div>
+      <div class="right">
+        <div class="days">2<small>天</small></div>
+        <div class="stamp">临期</div>
+      </div>
+    </div>
+    <div class="item expiring">
+      <div class="info">
+        <div class="name">鲜牛奶</div>
+        <div class="sub">食品 · 950ml</div>
+      </div>
+      <div class="right">
+        <div class="days">3<small>天</small></div>
+        <div class="stamp">临期</div>
+      </div>
+    </div>
+    <div class="item expiring">
+      <div class="info">
+        <div class="name">鸡蛋</div>
+        <div class="sub">食品 · 10 枚</div>
+      </div>
+      <div class="right">
+        <div class="days">5<small>天</small></div>
+        <div class="stamp">临期</div>
+      </div>
+    </div>
+    <div class="item safe">
+      <div class="info">
+        <div class="name">纯牛奶</div>
+        <div class="sub">食品 · 1L</div>
+      </div>
+      <div class="right">
+        <div class="days">12<small>天</small></div>
+      </div>
+    </div>
+    <div class="item safe">
+      <div class="info">
+        <div class="name">洗发水</div>
+        <div class="sub">美妆 · 500ml</div>
+      </div>
+      <div class="right">
+        <div class="days">180<small>天</small></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot-note">物 有 其 时 · 鲜 有 其 期</div>
+
+  <nav>
+    <a href="#" class="active">首页</a>
+    <a href="#" class="add">添加</a>
+    <a href="#">提醒</a>
+    <a href="#">我的</a>
+  </nav>
+</div>
+</body>
+</html>

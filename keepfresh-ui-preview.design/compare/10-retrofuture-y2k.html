@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · 复古未来 Y2K</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0d0221;
+    color: #00ffff;
+    font-family: 'Space Mono', monospace;
+    font-weight: 400;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* CRT scanlines overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, transparent 1px, transparent 2px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* CRT vignette */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+    pointer-events: none;
+    z-index: 998;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px 16px 88px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---------- header ---------- */
+  header {
+    text-align: center;
+    padding: 24px 0 20px;
+  }
+
+  .logo {
+    font-family: 'VT323', monospace;
+    font-size: 52px;
+    line-height: 1;
+    letter-spacing: 2px;
+    color: #00ffff;
+    text-shadow:
+      0 0 6px #00ffff,
+      0 0 18px #00ffff,
+      0 0 42px #00ffff;
+  }
+  .logo .accent {
+    color: #ff00ff;
+    text-shadow:
+      0 0 6px #ff00ff,
+      0 0 18px #ff00ff,
+      0 0 42px #ff00ff;
+  }
+
+  .tagline {
+    margin-top: 6px;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: #4a0e7a;
+    color: #8a5cb8;
+    text-transform: uppercase;
+  }
+
+  /* ---------- status bar ---------- */
+  .status {
+    margin: 16px 0 20px;
+    padding: 12px;
+    text-align: center;
+    background: #0d0221;
+    border: 2px solid #ff00ff;
+    /* 8-bit pixel border */
+    box-shadow:
+      -4px 0 0 0 #ff00ff,
+      4px 0 0 0 #ff00ff,
+      0 -4px 0 0 #ff00ff,
+      0 4px 0 0 #ff00ff,
+      0 0 16px rgba(255,0,255,0.6);
+  }
+  .status .nums {
+    font-family: 'VT323', monospace;
+    font-size: 26px;
+    color: #ff00ff;
+    text-shadow: 0 0 8px #ff00ff, 0 0 20px #ff00ff;
+  }
+  .status .nums .warn { color: #39ff14; text-shadow: 0 0 8px #39ff14, 0 0 20px #39ff14; }
+  .status .nums .bad  { color: #ff3860; text-shadow: 0 0 8px #ff3860, 0 0 20px #ff3860; }
+  .status .sub {
+    margin-top: 4px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #00ffff;
+    opacity: 0.75;
+  }
+
+  /* ---------- section title ---------- */
+  .section-title {
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    color: #00ffff;
+    text-shadow: 0 0 6px #00ffff;
+    margin: 20px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::before,
+  .section-title::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, #4a0e7a 0 4px, transparent 4px 8px);
+  }
+
+  /* ---------- list ---------- */
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .item {
+    position: relative;
+    padding: 12px 12px 12px 16px;
+    background: #0d0221;
+    border: 2px solid #00ffff;
+    /* pixel border */
+    box-shadow:
+      -4px 0 0 0 #00ffff,
+      4px 0 0 0 #00ffff,
+      0 -4px 0 0 #00ffff,
+      0 4px 0 0 #00ffff;
+  }
+  .item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #00ffff;
+    box-shadow: 0 0 8px #00ffff;
+  }
+
+  .item.expired {
+    border-color: #ff3860;
+    box-shadow:
+      -4px 0 0 0 #ff3860,
+      4px 0 0 0 #ff3860,
+      0 -4px 0 0 #ff3860,
+      0 4px 0 0 #ff3860,
+      0 0 12px rgba(255,56,96,0.5);
+  }
+  .item.expired::before { background: #ff3860; box-shadow: 0 0 8px #ff3860; }
+
+  .item.urgent {
+    border-color: #ff00ff;
+    box-shadow:
+      -4px 0 0 0 #ff00ff,
+      4px 0 0 0 #ff00ff,
+      0 -4px 0 0 #ff00ff,
+      0 4px 0 0 #ff00ff,
+      0 0 12px rgba(255,0,255,0.5);
+  }
+  .item.urgent::before { background: #ff00ff; box-shadow: 0 0 8px #ff00ff; }
+
+  .item.ok {
+    border-color: #39ff14;
+    box-shadow:
+      -4px 0 0 0 #39ff14,
+      4px 0 0 0 #39ff14,
+      0 -4px 0 0 #39ff14,
+      0 4px 0 0 #39ff14;
+  }
+  .item.ok::before { background: #39ff14; box-shadow: 0 0 8px #39ff14; }
+
+  .item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .item-name {
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    color: #ffffff;
+    text-shadow: 0 0 4px rgba(0,255,255,0.6);
+    letter-spacing: 1px;
+  }
+  .item-days {
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    white-space: nowrap;
+  }
+  .item.expired .item-days { color: #ff3860; text-shadow: 0 0 8px #ff3860; }
+  .item.urgent  .item-days { color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }
+  .item.ok      .item-days { color: #39ff14; text-shadow: 0 0 8px #39ff14; }
+
+  .item-meta {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #8a5cb8;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid currentColor;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .item.expired .badge { color: #ff3860; }
+  .item.urgent  .badge { color: #ff00ff; }
+  .item.ok      .badge { color: #39ff14; }
+  .badge.none { color: #00ffff; }
+
+  /* ---------- progress bar ---------- */
+  .bar {
+    margin-top: 8px;
+    height: 8px;
+    border: 1px solid #4a0e7a;
+    background: #0d0221;
+    position: relative;
+  }
+  .bar i {
+    position: absolute;
+    inset: 1px auto 1px 1px;
+    background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 6px);
+  }
+  .item.expired .bar i { color: #ff3860; width: 100%; }
+  .item.urgent  .bar i { color: #ff00ff; }
+  .item.ok      .bar i { color: #39ff14; }
+  .bar.none i { color: #00ffff; }
+
+  /* ---------- bottom tab bar ---------- */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: #0d0221;
+    border-top: 2px solid #00ffff;
+    box-shadow: 0 -4px 0 0 #00ffff, 0 -8px 16px rgba(0,255,255,0.35);
+    z-index: 1000;
+  }
+  .tab {
+    padding: 12px 0 10px;
+    text-align: center;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: #4a0e7a;
+    color: #8a5cb8;
+    text-decoration: none;
+    border-right: 1px solid #4a0e7a;
+  }
+  .tab:last-child { border-right: none; }
+  .tab .glyph {
+    display: block;
+    font-size: 20px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .tab.active {
+    color: #00ffff;
+    text-shadow: 0 0 8px #00ffff;
+    background: rgba(0,255,255,0.06);
+  }
+  .tab.add {
+    color: #ff00ff;
+    text-shadow: 0 0 8px #ff00ff;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header>
+    <div class="logo">KEEP<span class="accent">FRESH</span></div>
+    <div class="tagline">EXPIRY · TRACKER · v2.0.26</div>
+  </header>
+
+  <div class="status">
+    <div class="nums"><span class="warn">3</span> 临期 · <span class="bad">1</span> 过期 · 共 12 项</div>
+    <div class="sub">SYSTEM CHECK // 请在保质期内使用</div>
+  </div>
+
+  <div class="section-title">物资清单</div>
+
+  <div class="list">
+
+    <!-- 1 酸奶 已过期 -->
+    <div class="item expired">
+      <div class="item-top">
+        <span class="item-name">酸奶</span>
+        <span class="item-days">已过期 2 天</span>
+      </div>
+      <div class="item-meta">
+        <span>食品 · 200g×6</span>
+        <span class="badge">EXPIRED</span>
+      </div>
+      <div class="bar"><i></i></div>
+    </div>
+
+    <!-- 2 布洛芬 剩2天 -->
+    <div class="item urgent">
+      <div class="item-top">
+        <span class="item-name">布洛芬缓释胶囊</span>
+        <span class="item-days">剩 2 天</span>
+      </div>
+      <div class="item-meta">
+        <span>药品 · 24 粒</span>
+        <span class="badge">CRITICAL</span>
+      </div>
+      <div class="bar"><i style="width:12%"></i></div>
+    </div>
+
+    <!-- 3 鲜牛奶 剩3天 -->
+    <div class="item urgent">
+      <div class="item-top">
+        <span class="item-name">鲜牛奶</span>
+        <span class="item-days">剩 3 天</span>
+      </div>
+      <div class="item-meta">
+        <span>食品 · 950ml</span>
+        <span class="badge">CRITICAL</span>
+      </div>
+      <div class="bar"><i style="width:16%"></i></div>
+    </div>
+
+    <!-- 4 鸡蛋 剩5天 -->
+    <div class="item urgent">
+      <div class="item-top">
+        <span class="item-name">鸡蛋</span>
+        <span class="item-days">剩 5 天</span>
+      </div>
+      <div class="item-meta">
+        <span>食品 · 10 枚</span>
+        <span class="badge">WARNING</span>
+      </div>
+      <div class="bar"><i style="width:24%"></i></div>
+    </div>
+
+    <!-- 5 纯牛奶 剩12天 -->
+    <div class="item">
+      <div class="item-top">
+        <span class="item-name">纯牛奶</span>
+        <span class="item-days">剩 12 天</span>
+      </div>
+      <div class="item-meta">
+        <span>食品 · 1L</span>
+        <span class="badge none">NORMAL</span>
+      </div>
+      <div class="bar none"><i style="width:44%"></i></div>
+    </div>
+
+    <!-- 6 洗发水 剩180天 -->
+    <div class="item ok">
+      <div class="item-top">
+        <span class="item-name">洗发水</span>
+        <span class="item-days">剩 180 天</span>
+      </div>
+      <div class="item-meta">
+        <span>美妆 · 500ml</span>
+        <span class="badge">SAFE</span>
+      </div>
+      <div class="bar"><i style="width:96%"></i></div>
+    </div>
+
+  </div>
+</div>
+
+<nav class="tabbar">
+  <a class="tab active" href="#"><span class="glyph">[=]</span>首页</a>
+  <a class="tab add" href="#"><span class="glyph">[+]</span>添加</a>
+  <a class="tab" href="#"><span class="glyph">[!]</span>提醒</a>
+  <a class="tab" href="#"><span class="glyph">[#]</span>我的</a>
+</nav>
+
+</body>
+</html>

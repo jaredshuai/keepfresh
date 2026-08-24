@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置 - KeepFresh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf8f2;
+    --text: #2d2a26;
+    --accent: #9d5f4d;
+    --aux: #537d96;
+    --warn: #c2703e;
+    --danger: #8b3a2a;
+    --safe: #6b7f5e;
+    --hairline: #e8e2d5;
+    --muted: #a8a29a;
+  }
+
+  body {
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    color: var(--text);
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0 20px 96px;
+    background: var(--bg);
+  }
+
+  /* ---------- 顶部 ---------- */
+  header.topbar {
+    padding: 32px 0 16px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .topbar h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 22px;
+  }
+
+  .handnote {
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  /* ---------- 分组 ---------- */
+  .group { margin-top: 24px; }
+
+  .group-title {
+    font-size: 12.5px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .group-body {
+    border-top: 1px solid var(--hairline);
+  }
+
+  /* ---------- 设置项 ---------- */
+  .item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 2px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .item .item-name {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .item .item-desc {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .item .item-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .item .arrow { color: var(--hairline); font-size: 14px; }
+
+  /* ---------- 阈值选择 ---------- */
+  .threshold-row {
+    display: flex;
+    gap: 18px;
+    padding: 2px 0;
+  }
+
+  .threshold-row .t {
+    font-family: 'Playfair Display', serif;
+    font-weight: 500;
+    font-size: 16px;
+    color: var(--muted);
+    cursor: pointer;
+    padding-bottom: 3px;
+    border-bottom: 2px solid transparent;
+    user-select: none;
+  }
+
+  .threshold-row .t small {
+    font-family: 'Source Serif 4', serif;
+    font-size: 11px;
+    margin-left: 1px;
+  }
+
+  .threshold-row .t.selected {
+    color: var(--accent);
+    font-weight: 600;
+    border-bottom-color: var(--accent);
+  }
+
+  /* ---------- 开关 ---------- */
+  .switch {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: border-color 0.15s ease;
+  }
+
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: left 0.15s ease, background 0.15s ease;
+  }
+
+  .switch.on {
+    border-color: var(--accent);
+  }
+
+  .switch.on::after {
+    left: 21px;
+    background: var(--accent);
+  }
+
+  .switch:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ---------- 关于区 ---------- */
+  .about {
+    margin-top: 30px;
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .about .logo {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 18px;
+  }
+
+  .about .logo em { font-style: normal; color: var(--accent); }
+
+  .about .ver {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .about .slogan {
+    margin-top: 8px;
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+    color: var(--aux);
+  }
+
+  /* ---------- 底部 tab ---------- */
+  nav.tabs {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    border-top: 1px solid var(--hairline);
+    background: var(--bg);
+  }
+
+  nav.tabs a {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0 16px;
+    font-size: 13.5px;
+    color: var(--muted);
+    text-decoration: none;
+    position: relative;
+  }
+
+  nav.tabs a.active {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  nav.tabs a.active::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 8px;
+    width: 18px;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  nav.tabs a.add-tab {
+    color: var(--accent);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <h1>设置</h1>
+  </header>
+
+  <div class="handnote">按你的习惯来调整</div>
+
+  <!-- 提醒设置 -->
+  <section class="group">
+    <div class="group-title">提醒</div>
+    <div class="group-body">
+
+      <div class="item">
+        <div>
+          <div class="item-name">临期阈值</div>
+          <div class="item-desc">剩余天数少于该值时标记为临期</div>
+        </div>
+        <div class="threshold-row" id="thresholdRow">
+          <span class="t selected" data-value="3">3<small>天</small></span>
+          <span class="t" data-value="5">5<small>天</small></span>
+          <span class="t" data-value="7">7<small>天</small></span>
+        </div>
+      </div>
+
+      <div class="item">
+        <div>
+          <div class="item-name">到期通知</div>
+          <div class="item-desc">到期前 1 天推送提醒</div>
+        </div>
+        <button class="switch on" id="notifySwitch" role="switch" aria-checked="true" aria-label="到期通知开关"></button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 管理 -->
+  <section class="group">
+    <div class="group-title">管理</div>
+    <div class="group-body">
+
+      <div class="item">
+        <div>
+          <div class="item-name">分类管理</div>
+          <div class="item-desc">食品、药品、美妆、日化，可自定义</div>
+        </div>
+        <div class="item-right">4 个分类<span class="arrow">›</span></div>
+      </div>
+
+      <div class="item">
+        <div>
+          <div class="item-name">数据导出</div>
+          <div class="item-desc">导出为 CSV 文件，本地留存</div>
+        </div>
+        <div class="item-right"><span class="arrow">›</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 关于 -->
+  <section class="about">
+    <div class="logo">Keep<em>Fresh</em></div>
+    <div class="ver">版本 1.0.0 · 暖纸手作</div>
+    <div class="slogan">不让任何一样好东西悄悄过期</div>
+  </section>
+
+</div>
+
+<nav class="tabs">
+  <a href="03-index.html">首页</a>
+  <a href="03-add.html" class="add-tab">+ 添加</a>
+  <a href="03-detail.html">提醒</a>
+  <a href="03-settings.html" class="active">我的</a>
+</nav>
+
+<script>
+  // 阈值单选
+  document.getElementById('thresholdRow').addEventListener('click', function (e) {
+    var t = e.target.closest('.t');
+    if (!t) return;
+    this.querySelectorAll('.t').forEach(function (el) { el.classList.remove('selected'); });
+    t.classList.add('selected');
+  });
+
+  // 通知开关
+  var sw = document.getElementById('notifySwitch');
+  sw.addEventListener('click', function () {
+    var on = this.classList.toggle('on');
+    this.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+</script>
+</body>
+</html>

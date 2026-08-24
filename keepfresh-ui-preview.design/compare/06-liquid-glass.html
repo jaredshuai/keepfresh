@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · 液态玻璃</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f5f5f7;
+    --ink: #1d1d1f;
+    --ink-2: rgba(29,29,31,0.6);
+    --accent: #007aff;
+    --aux: #bf5af2;
+    --warn: #ff9500;
+    --danger: #ff3b30;
+    --safe: #34c759;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .aurora {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 0%, rgba(0,122,255,0.25), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 90% 20%, rgba(191,90,242,0.22), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 50% 100%, rgba(255,149,0,0.15), transparent 60%);
+  }
+  .phone {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+    padding-bottom: 100px;
+  }
+  header {
+    padding: 60px 24px 20px;
+  }
+  .brand {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .status {
+    margin-top: 6px;
+    font-size: 15px;
+    color: var(--ink-2);
+  }
+  .status strong { color: var(--warn); font-weight: 600; }
+  .status em { color: var(--danger); font-style: normal; font-weight: 600; }
+  .list {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card {
+    background: rgba(255,255,255,0.6);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+  }
+  .name {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .meta {
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+  .days {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .days small {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-2);
+    margin-left: 2px;
+  }
+  .pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    color: #fff;
+  }
+  .pill.expired { background: var(--danger); }
+  .pill.warn { background: var(--warn); }
+  .pill.safe { background: var(--safe); }
+  .pill.neutral { background: rgba(0,0,0,0.3); }
+  .card.expired .days { color: var(--danger); }
+  .card.warn .days { color: var(--warn); }
+  .card.safe .days { color: var(--ink); }
+
+  .tabbar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 40px);
+    max-width: 380px;
+    background: rgba(255,255,255,0.7);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    padding: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  }
+  .tab {
+    padding: 10px 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    border-radius: 16px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .tab.add {
+    color: var(--accent);
+    font-size: 20px;
+    font-weight: 300;
+  }
+</style>
+</head>
+<body>
+<div class="aurora"></div>
+<div class="phone">
+  <header>
+    <div class="brand">KeepFresh</div>
+    <div class="status"><strong>3 项临期</strong> · <em>1 项已过期</em> · 共 12 项</div>
+  </header>
+
+  <main class="list">
+    <article class="card expired">
+      <div>
+        <div class="name">酸奶</div>
+        <div class="meta">食品 · 200g×6</div>
+      </div>
+      <div class="right">
+        <div class="days">-2<small>天</small></div>
+        <span class="pill expired">已过期</span>
+      </div>
+    </article>
+
+    <article class="card warn">
+      <div>
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta">药品 · 24 粒</div>
+      </div>
+      <div class="right">
+        <div class="days">2<small>天</small></div>
+        <span class="pill warn">临期</span>
+      </div>
+    </article>
+
+    <article class="card warn">
+      <div>
+        <div class="name">鲜牛奶</div>
+        <div class="meta">食品 · 950ml</div>
+      </div>
+      <div class="right">
+        <div class="days">3<small>天</small></div>
+        <span class="pill warn">临期</span>
+      </div>
+    </article>
+
+    <article class="card warn">
+      <div>
+        <div class="name">鸡蛋</div>
+        <div class="meta">食品 · 10 枚</div>
+      </div>
+      <div class="right">
+        <div class="days">5<small>天</small></div>
+        <span class="pill warn">临期</span>
+      </div>
+    </article>
+
+    <article class="card safe">
+      <div>
+        <div class="name">纯牛奶</div>
+        <div class="meta">食品 · 1L</div>
+      </div>
+      <div class="right">
+        <div class="days">12<small>天</small></div>
+        <span class="pill safe">安全</span>
+      </div>
+    </article>
+
+    <article class="card safe">
+      <div>
+        <div class="name">洗发水</div>
+        <div class="meta">美妆 · 500ml</div>
+      </div>
+      <div class="right">
+        <div class="days">180<small>天</small></div>
+        <span class="pill neutral">长期</span>
+      </div>
+    </article>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active">首页</button>
+    <button class="tab add">＋</button>
+    <button class="tab">提醒</button>
+    <button class="tab">我的</button>
+  </nav>
+</div>
+</body>
+</html>

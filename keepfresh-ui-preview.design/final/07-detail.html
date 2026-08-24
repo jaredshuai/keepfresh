@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 鲜牛奶</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,900;1,900&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --paper: #fdfdfb;
+    --ink: #1a1a1a;
+    --accent: #c8102e;
+    --muted: #6b6b6b;
+    --hairline: #d8d8d4;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 96px;
+  }
+  .masthead-rule { height: 3px; background: var(--ink); }
+  /* 顶部 */
+  .topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 24px 24px 12px;
+  }
+  .back {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .back:hover { color: var(--ink); }
+  .topbar .ref {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  /* 标题区 */
+  .hero {
+    padding: 12px 24px 24px;
+    border-bottom: 1px solid var(--ink);
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 38px;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+  .hero .sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  /* 大天数 */
+  .countdown {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 24px;
+    border-bottom: 1px solid var(--hairline);
+    border-left: 3px solid var(--accent);
+    margin-left: 0;
+  }
+  .countdown .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 96px;
+    line-height: 0.9;
+    color: var(--accent);
+  }
+  .countdown .unit {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 10px;
+  }
+  .countdown .right { text-align: right; }
+  /* 状态标签 */
+  .status-tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 5px 10px 4px;
+    margin-bottom: 8px;
+  }
+  .due {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  /* 信息网格 */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 24px 24px 12px;
+  }
+  .section-head h2 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .section-head .en {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .grid {
+    border-top: 1px solid var(--hairline);
+    margin: 0 24px;
+  }
+  .grid .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .grid .k {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .grid .v {
+    font-size: 15px;
+    font-weight: 600;
+    text-align: right;
+  }
+  .grid .v.mono { font-family: 'IBM Plex Mono', monospace; font-weight: 400; }
+  .grid .v.warn { color: var(--accent); }
+  /* 备注 */
+  .note-box {
+    margin: 0 24px;
+    padding: 12px 0 24px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .note-box .k {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .note-box p { font-size: 14px; line-height: 1.7; }
+  /* 底部操作 */
+  .actions {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    background: var(--paper);
+    border-top: 1px solid var(--ink);
+    z-index: 10;
+  }
+  .actions button {
+    flex: 1;
+    padding: 16px 0;
+    border: none;
+    border-radius: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: none;
+  }
+  .actions .edit {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .actions .edit:active { background: var(--accent); }
+  .actions .delete {
+    background: var(--paper);
+    color: var(--accent);
+    border-left: 1px solid var(--hairline);
+  }
+  .actions .delete:active { background: var(--accent); color: var(--paper); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="masthead-rule"></div>
+
+  <header class="topbar">
+    <a class="back" href="07-index.html">← 清单</a>
+    <span class="ref">Item No. 03</span>
+  </header>
+
+  <div class="hero">
+    <h1>鲜牛奶</h1>
+    <div class="sub">食品 · 950ml · 冷藏</div>
+  </div>
+
+  <!-- 倒计时 -->
+  <section class="countdown">
+    <div>
+      <span class="num">3</span>
+      <span class="unit">Days Left</span>
+    </div>
+    <div class="right">
+      <span class="status-tag">临期 Expiring</span>
+      <div class="due">到期日 2026-08-27</div>
+    </div>
+  </section>
+
+  <!-- 信息网格 -->
+  <div class="section-head">
+    <h2>档案</h2>
+    <span class="en">Record</span>
+  </div>
+  <div class="grid">
+    <div class="row">
+      <span class="k">分类 Category</span>
+      <span class="v">食品</span>
+    </div>
+    <div class="row">
+      <span class="k">规格 Spec</span>
+      <span class="v">950ml</span>
+    </div>
+    <div class="row">
+      <span class="k">数量 Qty</span>
+      <span class="v mono">1</span>
+    </div>
+    <div class="row">
+      <span class="k">生产日期 MFG</span>
+      <span class="v mono">2026-08-20</span>
+    </div>
+    <div class="row">
+      <span class="k">保质期 Shelf</span>
+      <span class="v mono">7 天</span>
+    </div>
+    <div class="row">
+      <span class="k">到期日 EXP</span>
+      <span class="v mono warn">2026-08-27</span>
+    </div>
+  </div>
+
+  <!-- 备注 -->
+  <div class="section-head">
+    <h2>备注</h2>
+    <span class="en">Notes</span>
+  </div>
+  <div class="note-box">
+    <div class="k">Memo</div>
+    <p>8 月 22 日已开封，置于冰箱冷藏室中层。开封后建议 48 小时内饮用完毕，实际可饮用期限可能早于标示到期日。</p>
+  </div>
+
+  <div class="actions">
+    <button class="edit" type="button">编辑 Edit</button>
+    <button class="delete" type="button">删除 Delete</button>
+  </div>
+</div>
+</body>
+</html>

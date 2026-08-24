@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · 粗野撞色</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #ffffff;
+    --ink: #000000;
+    --accent: #ff6600;
+    --aux: #00ff00;
+    --danger: #000000;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Space Grotesk', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .phone {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--bg);
+    border-left: 3px solid var(--ink);
+    border-right: 3px solid var(--ink);
+    padding-bottom: 88px;
+  }
+  /* Header */
+  header {
+    padding: 24px 20px 16px;
+    border-bottom: 3px solid var(--ink);
+  }
+  .brand {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .brand span { color: var(--accent); }
+  .status-line {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .status-pill {
+    padding: 4px 10px;
+    border: 2px solid var(--ink);
+    background: var(--bg);
+  }
+  .status-pill.warn { background: var(--accent); color: var(--ink); }
+  .status-pill.exp { background: var(--ink); color: var(--bg); }
+  /* Marquee */
+  .marquee {
+    background: var(--aux);
+    color: var(--ink);
+    border-bottom: 3px solid var(--ink);
+    padding: 6px 20px;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  /* List */
+  .list { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .item {
+    border: 3px solid var(--ink);
+    background: var(--bg);
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .item:active { transform: translate(2px, 2px); }
+  .item .name {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+  .item .meta {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .item .days {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 900;
+    font-size: 32px;
+    line-height: 1;
+    text-align: right;
+  }
+  .item .days small {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+  .item.expired {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  .item.expired .days { color: var(--bg); }
+  .item.warning {
+    background: var(--accent);
+    color: var(--ink);
+  }
+  .item.soon {
+    background: var(--aux);
+    color: var(--ink);
+  }
+  .item.safe { background: var(--bg); color: var(--ink); }
+  /* Tab bar */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg);
+    border-top: 3px solid var(--ink);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+  .tab {
+    padding: 14px 0;
+    text-align: center;
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-right: 3px solid var(--ink);
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  .tab:last-child { border-right: none; }
+  .tab.active { background: var(--ink); color: var(--bg); }
+  .tab.add { background: var(--accent); color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <header>
+    <div class="brand">KEEP<span>FRESH</span></div>
+    <div class="status-line">
+      <span class="status-pill">12 TOTAL</span>
+      <span class="status-pill warn">3 EXPIRING</span>
+      <span class="status-pill exp">1 EXPIRED</span>
+    </div>
+  </header>
+
+  <div class="marquee">EAT IT BEFORE IT DIES · 吃完再买 · WASTE NOTHING</div>
+
+  <main class="list">
+    <article class="item expired">
+      <div>
+        <div class="name">酸奶</div>
+        <div class="meta">食品 / 200g×6</div>
+      </div>
+      <div class="days">-2<small>天</small></div>
+    </article>
+
+    <article class="item warning">
+      <div>
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta">药品 / 24 粒</div>
+      </div>
+      <div class="days">2<small>天</small></div>
+    </article>
+
+    <article class="item warning">
+      <div>
+        <div class="name">鲜牛奶</div>
+        <div class="meta">食品 / 950ml</div>
+      </div>
+      <div class="days">3<small>天</small></div>
+    </article>
+
+    <article class="item soon">
+      <div>
+        <div class="name">鸡蛋</div>
+        <div class="meta">食品 / 10 枚</div>
+      </div>
+      <div class="days">5<small>天</small></div>
+    </article>
+
+    <article class="item safe">
+      <div>
+        <div class="name">纯牛奶</div>
+        <div class="meta">食品 / 1L</div>
+      </div>
+      <div class="days">12<small>天</small></div>
+    </article>
+
+    <article class="item safe">
+      <div>
+        <div class="name">洗发水</div>
+        <div class="meta">美妆 / 500ml</div>
+      </div>
+      <div class="days">180<small>天</small></div>
+    </article>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active">首页</button>
+    <button class="tab add">＋ 添加</button>
+    <button class="tab">提醒</button>
+    <button class="tab">我的</button>
+  </nav>
+</div>
+</body>
+</html>

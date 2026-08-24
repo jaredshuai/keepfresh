@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 首页</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #ffffff;
+    --text: #111111;
+    --accent: #e2001a;
+    --muted: #8a8a8a;
+    --hairline: #e5e5e5;
+  }
+  html { background: #f4f4f4; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 左侧竖线 */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--hairline);
+    left: calc(50% - 210px + 20px);
+    z-index: 0;
+  }
+  .page { position: relative; z-index: 1; padding: 0 24px 96px 48px; }
+
+  /* 顶部品牌 */
+  .topbar {
+    padding: 32px 0 16px;
+    border-bottom: 1px solid var(--text);
+  }
+  .brand {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .brand em { font-style: normal; color: var(--accent); }
+  .summary {
+    display: flex;
+    gap: 16px;
+    padding: 12px 0 16px;
+    font-size: 12px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--hairline);
+    font-variant-numeric: tabular-nums;
+  }
+  .summary b { color: var(--text); font-weight: 600; }
+  .summary .red { color: var(--accent); font-weight: 600; }
+
+  /* 分组标题 */
+  .section { margin-top: 32px; }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--text);
+  }
+  .section-title .no { color: var(--accent); margin-right: 8px; }
+  .section-title .count { color: var(--muted); font-weight: 400; letter-spacing: 0; }
+
+  /* 列表项 */
+  .item {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    align-items: baseline;
+    gap: 8px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .item .idx {
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .item .name { font-size: 15px; font-weight: 600; }
+  .item .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .item .days {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .item .days small { display: block; font-size: 10px; font-weight: 400; color: var(--muted); letter-spacing: 0.05em; }
+
+  /* 过期区 — 黑底白字卡片 */
+  .expired-card {
+    background: var(--text);
+    color: #ffffff;
+    padding: 20px;
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .expired-card .idx { color: #8a8a8a; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .expired-card .name { font-size: 16px; font-weight: 700; }
+  .expired-card .meta { font-size: 12px; color: #b5b5b5; margin-top: 4px; }
+  .expired-card .days { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+  .expired-card .days small { display: block; font-size: 10px; font-weight: 400; color: #b5b5b5; letter-spacing: 0.05em; }
+  .expired-tag {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid #ffffff;
+    padding: 2px 8px;
+    margin-top: 8px;
+  }
+
+  /* 临期区 */
+  .expiring .days { color: var(--accent); font-size: 32px; line-height: 1.1; }
+  .expiring .days small { color: var(--muted); }
+
+  /* 安全区 — 折叠 */
+  .safe-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    font-family: inherit;
+    text-align: left;
+    padding: 16px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .safe-toggle .t {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .safe-toggle .t .no { color: var(--accent); margin-right: 8px; }
+  .safe-toggle .arrow { font-size: 12px; }
+  .safe-list { display: none; }
+  .safe-list.open { display: block; }
+  .safe-list .item .name { font-weight: 400; color: #444444; }
+  .safe-list .days { color: var(--muted); font-size: 16px; font-weight: 600; }
+
+  /* 底部 tab */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg);
+    border-top: 1px solid var(--text);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    z-index: 10;
+  }
+  .tab {
+    padding: 12px 0 14px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    position: relative;
+    font-weight: 400;
+  }
+  .tab.active { color: var(--text); font-weight: 700; }
+  .tab.active::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .tab.add {
+    background: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+    margin: 8px;
+    padding: 8px 0;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <div class="brand">Keep<em>Fresh</em></div>
+  </header>
+  <div class="summary">
+    <span>共 <b>12</b> 项</span>
+    <span>过期 <b>1</b></span>
+    <span class="red">临期 2</span>
+    <span>安全 9</span>
+  </div>
+
+  <!-- 01 已过期 -->
+  <section class="section">
+    <div class="section-title">
+      <span><span class="no">01</span> — EXPIRED</span>
+      <span class="count">1 项</span>
+    </div>
+    <div class="expired-card">
+      <div class="idx">01</div>
+      <div>
+        <div class="name">酸奶</div>
+        <div class="meta">食品 · 200g×6 · 到期 08-22</div>
+        <span class="expired-tag">已过期</span>
+      </div>
+      <div class="days">-2<small>DAYS</small></div>
+    </div>
+  </section>
+
+  <!-- 02 临期 -->
+  <section class="section expiring">
+    <div class="section-title">
+      <span><span class="no">02</span> — EXPIRING</span>
+      <span class="count">阈值 3 天</span>
+    </div>
+    <div class="item">
+      <div class="idx">02</div>
+      <div>
+        <div class="name">布洛芬缓释胶囊</div>
+        <div class="meta">药品 · 24 粒 · 到期 08-26</div>
+      </div>
+      <div class="days">2<small>DAYS</small></div>
+    </div>
+    <div class="item">
+      <div class="idx">03</div>
+      <div>
+        <div class="name">鲜牛奶</div>
+        <div class="meta">食品 · 950ml · 到期 08-27</div>
+      </div>
+      <div class="days">3<small>DAYS</small></div>
+    </div>
+  </section>
+
+  <!-- 03 安全（折叠） -->
+  <section class="section">
+    <button class="safe-toggle" onclick="toggleSafe(this)">
+      <span class="t"><span class="no">03</span> — SAFE · 9 项</span>
+      <span class="arrow">+</span>
+    </button>
+    <div class="safe-list">
+      <div class="item">
+        <div class="idx">04</div>
+        <div>
+          <div class="name">鸡蛋</div>
+          <div class="meta">食品 · 10 枚 · 到期 08-29</div>
+        </div>
+        <div class="days">5</div>
+      </div>
+      <div class="item">
+        <div class="idx">05</div>
+        <div>
+          <div class="name">纯牛奶</div>
+          <div class="meta">食品 · 1L · 到期 09-05</div>
+        </div>
+        <div class="days">12</div>
+      </div>
+      <div class="item">
+        <div class="idx">06</div>
+        <div>
+          <div class="name">洗发水</div>
+          <div class="meta">美妆 · 500ml · 到期 2027-02</div>
+        </div>
+        <div class="days">180</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<nav class="tabbar">
+  <a class="tab active" href="11-index.html">列表</a>
+  <a class="tab" href="11-detail.html">详情</a>
+  <a class="tab" href="11-settings.html">设置</a>
+  <a class="tab add" href="11-add.html">+ 添加</a>
+</nav>
+
+<script>
+  function toggleSafe(btn) {
+    var list = btn.nextElementSibling;
+    var open = list.classList.toggle('open');
+    btn.querySelector('.arrow').textContent = open ? '−' : '+';
+  }
+</script>
+</body>
+</html>

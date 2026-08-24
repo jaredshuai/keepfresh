@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 添加物资</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,900;1,900&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --paper: #fdfdfb;
+    --ink: #1a1a1a;
+    --accent: #c8102e;
+    --muted: #6b6b6b;
+    --hairline: #d8d8d4;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 84px;
+  }
+  .masthead-rule { height: 3px; background: var(--ink); }
+  /* 顶部 */
+  .topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 24px 24px 12px;
+    border-bottom: 1px solid var(--ink);
+  }
+  .topbar h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 30px;
+    line-height: 1;
+  }
+  .back {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .back:hover { color: var(--ink); }
+  .form-meta {
+    padding: 12px 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--hairline);
+  }
+  /* 表单 */
+  form { padding: 12px 24px 24px; }
+  .field { margin-top: 24px; }
+  .field label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field label .req { color: var(--accent); }
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 16px;
+    color: var(--ink);
+    padding: 6px 0 8px;
+    border-radius: 0;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .field textarea { resize: none; line-height: 1.5; }
+  .field input::placeholder,
+  .field textarea::placeholder { color: var(--hairline); }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus { border-bottom-color: var(--accent); }
+  .field select {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6' fill='%231a1a1a'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    cursor: pointer;
+  }
+  /* 分类选择（文字 tab 式） */
+  .cat-row {
+    display: flex;
+    border-bottom: 1px solid var(--ink);
+  }
+  .cat-row input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+  .cat-row label.cat {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    border-left: 1px solid var(--hairline);
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+  .cat-row label.cat:first-of-type { border-left: none; }
+  .cat-row input[type="radio"]:checked + label.cat {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 16px;
+    color: var(--ink);
+  }
+  /* 两列行 */
+  .row-2 { display: flex; gap: 24px; }
+  .row-2 .field { flex: 1; }
+  .hint {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .hint .calc { color: var(--accent); }
+  /* 保存按钮 */
+  .submit {
+    display: block;
+    width: calc(100% - 48px);
+    margin: 36px 24px 0;
+    padding: 16px 0;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: none;
+  }
+  .submit:active { background: var(--accent); }
+  /* 底部 tab */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--paper);
+    border-top: 1px solid var(--ink);
+    display: flex;
+    z-index: 10;
+  }
+  .tabbar a {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0 16px;
+    text-decoration: none;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border-left: 1px solid var(--hairline);
+  }
+  .tabbar a:first-child { border-left: none; }
+  .tabbar a.active {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 15px;
+    text-transform: none;
+    letter-spacing: 0;
+    padding-top: 12px;
+  }
+  .tabbar a.add.active { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="masthead-rule"></div>
+
+  <header class="topbar">
+    <h1>添加物资</h1>
+    <a class="back" href="07-index.html">← 返回</a>
+  </header>
+
+  <div class="form-meta">New Entry · Form No. 016 · 2026-08-24</div>
+
+  <form onsubmit="return false;">
+    <!-- 名称 -->
+    <div class="field">
+      <label for="name">名称 <span class="req">*</span></label>
+      <input type="text" id="name" placeholder="例：鲜牛奶" autocomplete="off">
+    </div>
+
+    <!-- 分类 -->
+    <div class="field">
+      <label>分类 <span class="req">*</span></label>
+      <div class="cat-row">
+        <input type="radio" name="cat" id="cat-food" checked>
+        <label class="cat" for="cat-food">食品</label>
+        <input type="radio" name="cat" id="cat-med">
+        <label class="cat" for="cat-med">药品</label>
+        <input type="radio" name="cat" id="cat-beauty">
+        <label class="cat" for="cat-beauty">美妆</label>
+        <input type="radio" name="cat" id="cat-daily">
+        <label class="cat" for="cat-daily">日化</label>
+      </div>
+    </div>
+
+    <!-- 规格 / 数量 -->
+    <div class="row-2">
+      <div class="field">
+        <label for="spec">规格</label>
+        <input type="text" id="spec" placeholder="例：950ml" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="qty">数量 <span class="req">*</span></label>
+        <input type="number" id="qty" placeholder="1" min="1" value="1">
+      </div>
+    </div>
+
+    <!-- 生产日期 / 保质期天数 -->
+    <div class="row-2">
+      <div class="field">
+        <label for="mfg">生产日期 <span class="req">*</span></label>
+        <input type="date" id="mfg" value="2026-08-21">
+      </div>
+      <div class="field">
+        <label for="shelf">保质期天数 <span class="req">*</span></label>
+        <input type="number" id="shelf" placeholder="例：7" min="1">
+      </div>
+    </div>
+    <div class="hint">到期日自动计算 — <span class="calc">2026-08-28（剩 3 天，临期）</span></div>
+
+    <!-- 备注 -->
+    <div class="field">
+      <label for="note">备注</label>
+      <textarea id="note" rows="3" placeholder="存放位置、开封日期等"></textarea>
+    </div>
+  </form>
+
+  <button class="submit" type="button">保存 Save</button>
+
+  <nav class="tabbar">
+    <a href="07-index.html">清单</a>
+    <a href="07-add.html" class="add active">+ Add</a>
+    <a href="07-detail.html">详情</a>
+    <a href="07-settings.html">设置</a>
+  </nav>
+</div>
+</body>
+</html>

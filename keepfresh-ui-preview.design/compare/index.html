@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · 美学模板对比</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    background: #fafafa;
+    color: #111;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 64px 32px 96px;
+  }
+
+  header { margin-bottom: 40px; }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    margin-top: 12px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #666;
+    max-width: 680px;
+  }
+
+  .round {
+    margin: 48px 0 20px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  .round h2 {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .round .hint {
+    font-size: 13px;
+    color: #999;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card.liked {
+    border: 2px solid #111;
+  }
+  .card.eliminated {
+    opacity: 0.35;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 3px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .badge.like { background: #111; color: #fff; }
+  .badge.out { background: #eee; color: #999; }
+  .badge.new { background: #ffe9b8; color: #7a5200; }
+
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .card-title {
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .card-title .num {
+    color: #999;
+    font-weight: 400;
+    margin-right: 8px;
+  }
+
+  .card-claim {
+    font-size: 13px;
+    color: #888;
+  }
+
+  .preview {
+    width: 100%;
+    height: 480px;
+    border: 1px solid #eee;
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+  }
+  .preview iframe {
+    width: 166.67%;
+    height: 800px;
+    transform: scale(0.6);
+    transform-origin: 0 0;
+    border: 0;
+    pointer-events: none;
+    display: block;
+  }
+
+  .open-link {
+    align-self: flex-start;
+    font-size: 14px;
+    color: #111;
+    text-decoration: none;
+    border-bottom: 1px solid #111;
+    padding-bottom: 1px;
+  }
+  .open-link:hover { opacity: 0.6; }
+
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+    .wrap { padding: 40px 20px 64px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <h1>KeepFresh · 美学模板对比</h1>
+    <p class="subtitle">第二轮新增 6 套浅色系（编号 11–16），都是浅色底、印刷/生活美学方向，顺着你喜欢的 3 和 7 的口味。已淘汰的 4 套暗色模板保留在最下方供参考（置灰）。看完告诉我最终留哪几套。</p>
+  </header>
+
+  <!-- ========== 第二轮新增 ========== -->
+  <div class="round">
+    <h2>第二轮 · 浅色系新增</h2>
+    <span class="hint">6 套全新，都是浅色</span>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="num">11</span>瑞士网格<span class="badge new">新</span></div>
+      </div>
+      <div class="card-claim">纯白+正红，编号列表，国际主义排版</div>
+      <div class="preview"><iframe src="11-swiss-grid.html" loading="lazy" title="瑞士网格预览"></iframe></div>
+      <a class="open-link" href="11-swiss-grid.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="num">12</span>超市收银条<span class="badge new">新</span></div>
+      </div>
+      <div class="card-claim">等宽字体+虚线分隔，像买菜小票</div>
+      <div class="preview"><iframe src="12-receipt.html" loading="lazy" title="超市收银条预览"></iframe></div>
+      <a class="open-link" href="12-receipt.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="num">13</span>宣纸墨迹<span class="badge new">新</span></div>
+      </div>
+      <div class="card-claim">宣纸底+宋体+朱红印章，中式留白</div>
+      <div class="preview"><iframe src="13-ink-seal.html" loading="lazy" title="宣纸墨迹预览"></iframe></div>
+      <a class="open-link" href="13-ink-seal.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="num">14</span>北欧晨光<span class="badge new">新</span></div>
+      </div>
+      <div class="card-claim">冷白+雾蓝灰+鼠尾草绿，干净不冷</div>
+      <div class="preview"><iframe src="14-nordic-morning.html" loading="lazy" title="北欧晨光预览"></iframe></div>
+      <a class="open-link" href="14-nordic-morning.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="num">15</span>包豪斯<span class="badge new">新</span></div>
+      </div>
+      <div class="card-claim">白底+三原色几何块，形状即状态</div>
+      <div class="preview"><iframe src="15-bauhaus.html" loading="lazy" title="包豪斯预览"></iframe></div>
+      <a class="open-link" href="15-bauhaus.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="num">16</span>植物园<span class="badge new">新</span></div>
+      </div>
+      <div class="card-claim">暖白+橄榄绿，种子包装袋质感</div>
+      <div class="preview"><iframe src="16-botanical.html" loading="lazy" title="植物园预览"></iframe></div>
+      <a class="open-link" href="16-botanical.html" target="_blank">打开完整页 →</a>
+    </div>
+
+  </div>
+
+  <!-- ========== 第一轮喜欢的 ========== -->
+  <div class="round">
+    <h2>第一轮 · 你已喜欢</h2>
+    <span class="hint">保留候选</span>
+  </div>
+
+  <div class="grid">
+
+    <div class="card liked">
+      <div class="card-head">
+        <div class="card-title"><span class="num">03</span>暖纸手作<span class="badge like">喜欢</span></div>
+      </div>
+      <div class="card-claim">奶油底，手写衬线</div>
+      <div class="preview"><iframe src="03-warm-paper-handcraft.html" loading="lazy" title="暖纸手作预览"></iframe></div>
+      <a class="open-link" href="03-warm-paper-handcraft.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card liked">
+      <div class="card-head">
+        <div class="card-title"><span class="num">07</span>杂志编辑<span class="badge like">喜欢</span></div>
+      </div>
+      <div class="card-claim">多栏排版，大标题压版</div>
+      <div class="preview"><iframe src="07-magazine-editorial.html" loading="lazy" title="杂志编辑预览"></iframe></div>
+      <a class="open-link" href="07-magazine-editorial.html" target="_blank">打开完整页 →</a>
+    </div>
+
+  </div>
+
+  <!-- ========== 第一轮已淘汰 ========== -->
+  <div class="round">
+    <h2>第一轮 · 已淘汰</h2>
+    <span class="hint">暗色或其他不匹配方向，置灰供参考</span>
+  </div>
+
+  <div class="grid">
+
+    <div class="card eliminated">
+      <div class="card-head">
+        <div class="card-title"><span class="num">01</span>编辑极简风<span class="badge out">暗色</span></div>
+      </div>
+      <div class="card-claim">克制深色底，蓝紫强调线</div>
+      <div class="preview"><iframe src="01-editorial-minimal.html" loading="lazy" title="编辑极简风预览"></iframe></div>
+      <a class="open-link" href="01-editorial-minimal.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card eliminated">
+      <div class="card-head">
+        <div class="card-title"><span class="num">02</span>电影感深空<span class="badge out">暗色</span></div>
+      </div>
+      <div class="card-claim">纯黑底，品红青色对撞</div>
+      <div class="preview"><iframe src="02-cinematic-deep-space.html" loading="lazy" title="电影感深空预览"></iframe></div>
+      <a class="open-link" href="02-cinematic-deep-space.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card eliminated">
+      <div class="card-head">
+        <div class="card-title"><span class="num">04</span>数据密集终端<span class="badge out">暗色</span></div>
+      </div>
+      <div class="card-claim">深色仪表盘，荧光标注</div>
+      <div class="preview"><iframe src="04-data-terminal.html" loading="lazy" title="数据密集终端预览"></iframe></div>
+      <a class="open-link" href="04-data-terminal.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card eliminated">
+      <div class="card-head">
+        <div class="card-title"><span class="num">10</span>复古未来<span class="badge out">暗色</span></div>
+      </div>
+      <div class="card-claim">Y2K 霓虹，CRT 扫描线</div>
+      <div class="preview"><iframe src="10-retrofuture-y2k.html" loading="lazy" title="复古未来预览"></iframe></div>
+      <a class="open-link" href="10-retrofuture-y2k.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card eliminated">
+      <div class="card-head">
+        <div class="card-title"><span class="num">05</span>粗野撞色<span class="badge out">淘汰</span></div>
+      </div>
+      <div class="card-claim">大胆撞色，零圆角</div>
+      <div class="preview"><iframe src="05-brutalist-clash.html" loading="lazy" title="粗野撞色预览"></iframe></div>
+      <a class="open-link" href="05-brutalist-clash.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card eliminated">
+      <div class="card-head">
+        <div class="card-title"><span class="num">06</span>液态玻璃<span class="badge out">淘汰</span></div>
+      </div>
+      <div class="card-claim">半透明叠层，毛玻璃</div>
+      <div class="preview"><iframe src="06-liquid-glass.html" loading="lazy" title="液态玻璃预览"></iframe></div>
+      <a class="open-link" href="06-liquid-glass.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card eliminated">
+      <div class="card-head">
+        <div class="card-title"><span class="num">08</span>游戏化活泼<span class="badge out">淘汰</span></div>
+      </div>
+      <div class="card-claim">圆润撞色，手绘涂鸦</div>
+      <div class="preview"><iframe src="08-playful-gamified.html" loading="lazy" title="游戏化活泼预览"></iframe></div>
+      <a class="open-link" href="08-playful-gamified.html" target="_blank">打开完整页 →</a>
+    </div>
+
+    <div class="card eliminated">
+      <div class="card-head">
+        <div class="card-title"><span class="num">09</span>日式禅意<span class="badge out">淘汰</span></div>
+      </div>
+      <div class="card-claim">大留白，灰阶朱红</div>
+      <div class="preview"><iframe src="09-japanese-zen.html" loading="lazy" title="日式禅意预览"></iframe></div>
+      <a class="open-link" href="09-japanese-zen.html" target="_blank">打开完整页 →</a>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

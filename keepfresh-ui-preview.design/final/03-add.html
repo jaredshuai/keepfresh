@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>添加物资 - KeepFresh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf8f2;
+    --text: #2d2a26;
+    --accent: #9d5f4d;
+    --aux: #537d96;
+    --warn: #c2703e;
+    --danger: #8b3a2a;
+    --safe: #6b7f5e;
+    --hairline: #e8e2d5;
+    --muted: #a8a29a;
+  }
+
+  body {
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    color: var(--text);
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0 20px 110px;
+    background: var(--bg);
+  }
+
+  /* ---------- 顶部 ---------- */
+  header.topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 32px 0 16px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .topbar h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 22px;
+  }
+
+  .topbar .back {
+    font-size: 13.5px;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .topbar .back:hover { color: var(--accent); }
+
+  .handnote {
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  /* ---------- 表单 ---------- */
+  form { margin-top: 8px; }
+
+  .field {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .field:last-of-type { border-bottom: none; }
+
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 7px;
+    letter-spacing: 0.3px;
+  }
+
+  .field label .req { color: var(--accent); margin-left: 2px; }
+
+  .field input[type="text"],
+  .field input[type="number"],
+  .field input[type="date"],
+  .field textarea,
+  .field select {
+    width: 100%;
+    padding: 10px 12px;
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px;
+    color: var(--text);
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.15s ease;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .field input:focus,
+  .field textarea:focus,
+  .field select:focus {
+    border-color: var(--accent);
+  }
+
+  .field input::placeholder,
+  .field textarea::placeholder { color: var(--muted); }
+
+  .field textarea {
+    resize: none;
+    min-height: 76px;
+    line-height: 1.5;
+  }
+
+  /* 分类选择：文字选项 */
+  .cat-row {
+    display: flex;
+    gap: 22px;
+    padding: 4px 2px 2px;
+  }
+
+  .cat-row .cat {
+    font-size: 14.5px;
+    color: var(--muted);
+    cursor: pointer;
+    padding-bottom: 3px;
+    border-bottom: 2px solid transparent;
+    user-select: none;
+  }
+
+  .cat-row .cat.selected {
+    color: var(--accent);
+    font-weight: 500;
+    border-bottom-color: var(--accent);
+  }
+
+  /* 双列小字段 */
+  .field-pair {
+    display: flex;
+    gap: 14px;
+  }
+
+  .field-pair .half { flex: 1; }
+
+  .hint {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .hint .calc {
+    font-family: 'Caveat', cursive;
+    font-size: 15px;
+    color: var(--aux);
+  }
+
+  /* ---------- 底部保存 ---------- */
+  .footer-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    padding: 14px 20px 22px;
+    background: var(--bg);
+    border-top: 1px solid var(--hairline);
+  }
+
+  .btn-save {
+    display: block;
+    width: 100%;
+    padding: 13px 0;
+    border: none;
+    border-radius: 4px;
+    background: var(--accent);
+    color: #fdfcf9;
+    font-family: 'Source Serif 4', serif;
+    font-weight: 500;
+    font-size: 15.5px;
+    letter-spacing: 2px;
+    cursor: pointer;
+  }
+
+  .btn-save:active { opacity: 0.88; }
+
+  .btn-save:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <h1>添加物资</h1>
+    <a class="back" href="03-index.html">← 返回</a>
+  </header>
+
+  <div class="handnote">记下来，就不会浪费啦</div>
+
+  <form id="addForm">
+    <div class="field">
+      <label for="name">名称<span class="req">*</span></label>
+      <input type="text" id="name" placeholder="例如：鲜牛奶" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>分类<span class="req">*</span></label>
+      <div class="cat-row" id="catRow">
+        <span class="cat selected" data-value="食品">食品</span>
+        <span class="cat" data-value="药品">药品</span>
+        <span class="cat" data-value="美妆">美妆</span>
+        <span class="cat" data-value="日化">日化</span>
+      </div>
+    </div>
+
+    <div class="field field-pair">
+      <div class="half">
+        <label for="spec">规格</label>
+        <input type="text" id="spec" placeholder="950ml / 10 枚" autocomplete="off">
+      </div>
+      <div class="half">
+        <label for="qty">数量</label>
+        <input type="number" id="qty" placeholder="1" min="1" value="1">
+      </div>
+    </div>
+
+    <div class="field field-pair">
+      <div class="half">
+        <label for="prodDate">生产日期<span class="req">*</span></label>
+        <input type="date" id="prodDate" value="2026-08-20">
+      </div>
+      <div class="half">
+        <label for="shelfDays">保质期天数<span class="req">*</span></label>
+        <input type="number" id="shelfDays" placeholder="7" min="1">
+      </div>
+    </div>
+
+    <div class="hint">填写后自动计算到期日：<span class="calc" id="calcHint">先填保质期天数哦</span></div>
+
+    <div class="field">
+      <label for="note">备注</label>
+      <textarea id="note" placeholder="存放位置、开封时间、购买渠道……"></textarea>
+    </div>
+  </form>
+
+</div>
+
+<div class="footer-bar">
+  <button type="submit" form="addForm" class="btn-save">保 存</button>
+</div>
+
+<script>
+  // 分类单选
+  document.getElementById('catRow').addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t.classList.contains('cat')) return;
+    this.querySelectorAll('.cat').forEach(function (c) { c.classList.remove('selected'); });
+    t.classList.add('selected');
+  });
+
+  // 到期日预估
+  var prodDate = document.getElementById('prodDate');
+  var shelfDays = document.getElementById('shelfDays');
+  var calcHint = document.getElementById('calcHint');
+
+  function updateHint() {
+    var d = prodDate.value;
+    var n = parseInt(shelfDays.value, 10);
+    if (!d || !n || n < 1) {
+      calcHint.textContent = '先填保质期天数哦';
+      return;
+    }
+    var date = new Date(d);
+    date.setDate(date.getDate() + n);
+    var mm = String(date.getMonth() + 1).padStart(2, '0');
+    var dd = String(date.getDate()).padStart(2, '0');
+    calcHint.textContent = '大约 ' + date.getFullYear() + '-' + mm + '-' + dd + ' 到期';
+  }
+
+  prodDate.addEventListener('input', updateHint);
+  shelfDays.addEventListener('input', updateHint);
+
+  document.getElementById('addForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    window.location.href = '03-index.html';
+  });
+</script>
+</body>
+</html>

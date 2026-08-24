@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 设置</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,900;1,900&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --paper: #fdfdfb;
+    --ink: #1a1a1a;
+    --accent: #c8102e;
+    --muted: #6b6b6b;
+    --hairline: #d8d8d4;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 84px;
+  }
+  .masthead-rule { height: 3px; background: var(--ink); }
+  /* 顶部 */
+  .topbar {
+    padding: 24px 24px 12px;
+    border-bottom: 1px solid var(--ink);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .topbar h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 30px;
+    line-height: 1;
+  }
+  .topbar .en {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  /* 分组标题 */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 24px 24px 12px;
+  }
+  .section-head h2 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .section-head .en {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  /* 设置列表 */
+  .setting-list { border-top: 1px solid var(--hairline); margin: 0 24px; }
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .setting-row .label { font-size: 15px; font-weight: 600; }
+  .setting-row .label small {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 400;
+    margin-top: 3px;
+  }
+  .setting-row .arrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  /* 阈值选项 */
+  .threshold-opts { display: flex; }
+  .threshold-opts input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+  .threshold-opts label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px 12px;
+    border: 1px solid var(--hairline);
+    border-left: none;
+    cursor: pointer;
+  }
+  .threshold-opts label:first-of-type { border-left: 1px solid var(--hairline); }
+  .threshold-opts input[type="radio"]:checked + label {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  /* 开关 */
+  .switch { position: relative; width: 46px; height: 24px; flex-shrink: 0; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+  .switch .track {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    transition: background 0.15s;
+    pointer-events: none;
+  }
+  .switch .knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    background: var(--ink);
+    transition: transform 0.15s;
+    pointer-events: none;
+  }
+  .switch input:checked ~ .track { background: var(--ink); }
+  .switch input:checked ~ .knob { transform: translateX(22px); background: var(--paper); }
+  /* 导出按钮 */
+  .export-btn {
+    display: block;
+    width: calc(100% - 48px);
+    margin: 24px;
+    padding: 14px 0;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: none;
+  }
+  .export-btn:active { background: var(--accent); }
+  /* 关于 */
+  .about {
+    padding: 24px;
+    text-align: center;
+  }
+  .about .logo {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 26px;
+  }
+  .about .ver {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .about .motto {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+    font-style: italic;
+  }
+  /* 底部 tab */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--paper);
+    border-top: 1px solid var(--ink);
+    display: flex;
+    z-index: 10;
+  }
+  .tabbar a {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0 16px;
+    text-decoration: none;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border-left: 1px solid var(--hairline);
+  }
+  .tabbar a:first-child { border-left: none; }
+  .tabbar a.active {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 15px;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink);
+    padding-top: 12px;
+  }
+  .tabbar a.add { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="masthead-rule"></div>
+
+  <header class="topbar">
+    <h1>设置</h1>
+    <span class="en">Settings</span>
+  </header>
+
+  <!-- 提醒 -->
+  <div class="section-head">
+    <h2>提醒</h2>
+    <span class="en">Alerts</span>
+  </div>
+  <div class="setting-list">
+    <div class="setting-row">
+      <div class="label">
+        临期阈值
+        <small>Expiring Threshold</small>
+      </div>
+      <div class="threshold-opts">
+        <input type="radio" name="th" id="th3" checked>
+        <label for="th3">3 天</label>
+        <input type="radio" name="th" id="th5">
+        <label for="th5">5 天</label>
+        <input type="radio" name="th" id="th7">
+        <label for="th7">7 天</label>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="label">
+        到期通知
+        <small>Push Notification</small>
+      </div>
+      <div class="switch">
+        <input type="checkbox" id="notify" checked>
+        <span class="track"></span>
+        <span class="knob"></span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="label">
+        每日摘要
+        <small>Daily Digest · 08:00</small>
+      </div>
+      <div class="switch">
+        <input type="checkbox" id="digest">
+        <span class="track"></span>
+        <span class="knob"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理 -->
+  <div class="section-head">
+    <h2>管理</h2>
+    <span class="en">Manage</span>
+  </div>
+  <div class="setting-list">
+    <div class="setting-row">
+      <div class="label">
+        分类管理
+        <small>食品 / 药品 / 美妆 / 日化</small>
+      </div>
+      <span class="arrow">→</span>
+    </div>
+    <div class="setting-row">
+      <div class="label">
+        数据导出
+        <small>CSV · 15 条记录</small>
+      </div>
+      <span class="arrow">→</span>
+    </div>
+  </div>
+  <button class="export-btn" type="button">导出全部数据 Export CSV</button>
+
+  <!-- 关于 -->
+  <div class="section-head">
+    <h2>关于</h2>
+    <span class="en">About</span>
+  </div>
+  <div class="about">
+    <div class="logo">KeepFresh</div>
+    <div class="ver">Version 1.2.0 · Build 20260824</div>
+    <div class="motto">"Waste nothing, want nothing."</div>
+  </div>
+
+  <nav class="tabbar">
+    <a href="07-index.html">清单</a>
+    <a href="07-add.html" class="add">+ Add</a>
+    <a href="07-detail.html">详情</a>
+    <a href="07-settings.html" class="active">设置</a>
+  </nav>
+</div>
+</body>
+</html>

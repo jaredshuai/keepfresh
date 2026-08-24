@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KeepFresh</title>
+    <style id="theme-vars">
+@layer base {
+  :root {
+    /* ─── Brand (Starbucks green system) ─── */
+    --fresh-primary: #00754A;
+    --fresh-primary-foreground: #FFFFFF;
+    --fresh-primary-soft: #d4e9e2;
+    --fresh-primary-dark: #006241;
+
+    /* ─── Surfaces ─── */
+    --fresh-background: #f2f0eb;
+    --fresh-foreground: rgba(0, 0, 0, 0.87);
+    --fresh-card: #ffffff;
+    --fresh-card-foreground: rgba(0, 0, 0, 0.87);
+    --fresh-popover: #ffffff;
+    --fresh-popover-foreground: rgba(0, 0, 0, 0.87);
+    --fresh-muted: #edebe9;
+    --fresh-muted-foreground: rgba(0, 0, 0, 0.58);
+
+    /* ─── Borders / Inputs ─── */
+    --fresh-border: #d6dbde;
+    --fresh-input: #f9f9f9;
+    --fresh-ring: #00754A;
+    --fresh-divider: #e7e7e7;
+
+    /* ─── Semantic Status ─── */
+    --fresh-state-success: #00754A;
+    --fresh-state-success-soft: #d4e9e2;
+    --fresh-state-warning: #D97706;
+    --fresh-state-warning-soft: #FEF3C7;
+    --fresh-state-error: #c82014;
+    --fresh-state-error-soft: #fce8e6;
+    --fresh-state-info: rgba(0, 0, 0, 0.58);
+
+    /* ─── Radius ─── */
+    --fresh-radius-sm: 4px;
+    --fresh-radius-md: 12px;
+    --fresh-radius-lg: 12px;
+    --fresh-radius-xl: 12px;
+    --fresh-radius-pill: 999px;
+
+    /* ─── Typography ─── */
+    --fresh-font-sans: "HarmonyOS Sans", "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--fresh-font-sans);
+    background-color: var(--fresh-background);
+    color: var(--fresh-foreground);
+  }
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--fresh-background);
+    --color-foreground: var(--fresh-foreground);
+    --color-card: var(--fresh-card);
+    --color-card-foreground: var(--fresh-card-foreground);
+    --color-popover: var(--fresh-popover);
+    --color-popover-foreground: var(--fresh-popover-foreground);
+    --color-primary: var(--fresh-primary);
+    --color-primary-foreground: var(--fresh-primary-foreground);
+    --color-muted: var(--fresh-muted);
+    --color-muted-foreground: var(--fresh-muted-foreground);
+    --color-border: var(--fresh-border);
+    --color-input: var(--fresh-input);
+    --color-ring: var(--fresh-ring);
+    --radius-sm: var(--fresh-radius-sm);
+    --radius-md: var(--fresh-radius-md);
+    --radius-lg: var(--fresh-radius-lg);
+    --radius-xl: var(--fresh-radius-xl);
+  }
+  @layer base {
+    body { background: var(--fresh-background); color: var(--fresh-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--fresh-background); }
+      .text-background { color: var(--fresh-background); }
+      .border-background { border-color: var(--fresh-background); }
+      .ring-background { --tw-ring-color: var(--fresh-background); }
+      .bg-foreground { background-color: var(--fresh-foreground); }
+      .text-foreground { color: var(--fresh-foreground); }
+      .border-foreground { border-color: var(--fresh-foreground); }
+      .ring-foreground { --tw-ring-color: var(--fresh-foreground); }
+      .bg-card { background-color: var(--fresh-card); }
+      .text-card { color: var(--fresh-card); }
+      .border-card { border-color: var(--fresh-card); }
+      .ring-card { --tw-ring-color: var(--fresh-card); }
+      .bg-card-foreground { background-color: var(--fresh-card-foreground); }
+      .text-card-foreground { color: var(--fresh-card-foreground); }
+      .border-card-foreground { border-color: var(--fresh-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--fresh-card-foreground); }
+      .bg-popover { background-color: var(--fresh-popover); }
+      .text-popover { color: var(--fresh-popover); }
+      .border-popover { border-color: var(--fresh-popover); }
+      .ring-popover { --tw-ring-color: var(--fresh-popover); }
+      .bg-popover-foreground { background-color: var(--fresh-popover-foreground); }
+      .text-popover-foreground { color: var(--fresh-popover-foreground); }
+      .border-popover-foreground { border-color: var(--fresh-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--fresh-popover-foreground); }
+      .bg-primary { background-color: var(--fresh-primary); }
+      .text-primary { color: var(--fresh-primary); }
+      .border-primary { border-color: var(--fresh-primary); }
+      .ring-primary { --tw-ring-color: var(--fresh-primary); }
+      .bg-primary-foreground { background-color: var(--fresh-primary-foreground); }
+      .text-primary-foreground { color: var(--fresh-primary-foreground); }
+      .border-primary-foreground { border-color: var(--fresh-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--fresh-primary-foreground); }
+      .bg-muted { background-color: var(--fresh-muted); }
+      .text-muted { color: var(--fresh-muted); }
+      .border-muted { border-color: var(--fresh-muted); }
+      .ring-muted { --tw-ring-color: var(--fresh-muted); }
+      .bg-muted-foreground { background-color: var(--fresh-muted-foreground); }
+      .text-muted-foreground { color: var(--fresh-muted-foreground); }
+      .border-muted-foreground { border-color: var(--fresh-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--fresh-muted-foreground); }
+      .bg-border { background-color: var(--fresh-border); }
+      .text-border { color: var(--fresh-border); }
+      .border-border { border-color: var(--fresh-border); }
+      .ring-border { --tw-ring-color: var(--fresh-border); }
+      .bg-input { background-color: var(--fresh-input); }
+      .text-input { color: var(--fresh-input); }
+      .border-input { border-color: var(--fresh-input); }
+      .ring-input { --tw-ring-color: var(--fresh-input); }
+      .bg-ring { background-color: var(--fresh-ring); }
+      .text-ring { color: var(--fresh-ring); }
+      .border-ring { border-color: var(--fresh-ring); }
+      .ring-ring { --tw-ring-color: var(--fresh-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="bg-background text-foreground antialiased">
+    <div class="max-w-md mx-auto min-h-screen pb-24">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm px-5 pt-14 pb-3">
+            <div class="flex items-center justify-between">
+                <div class="space-y-0.5">
+                    <h1 class="text-[24px] font-bold tracking-tight text-foreground">KeepFresh</h1>
+                    <p class="text-[13px] text-muted-foreground">3 项临期，1 项已过期</p>
+                </div>
+                <button aria-label="搜索" class="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground active:opacity-70 transition-opacity">
+                    <i data-lucide="search" class="w-5 h-5 shrink-0"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="px-5 pt-4">
+            <!-- Hero -->
+            <section class="mb-6">
+                <div class="relative w-full aspect-[3/2] rounded-md overflow-hidden">
+                    <img src="../assets/images/hero-produce.jpg" alt="新鲜食材" class="w-full h-full object-cover" />
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                    <div class="absolute bottom-4 left-4 text-white">
+                        <p class="text-[12px] font-medium tracking-wide uppercase">管理家中物资</p>
+                        <p class="text-[19px] font-bold mt-1">减少浪费，从新鲜开始</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick stats -->
+            <section id="stats-row" class="flex items-center gap-5 mb-6 px-1">
+                <div class="flex items-baseline gap-1.5">
+                    <span class="text-[13px] text-muted-foreground">全部</span>
+                    <strong class="text-foreground font-semibold text-[15px]">12</strong>
+                </div>
+                <div class="flex items-baseline gap-1.5">
+                    <span class="text-[13px] text-muted-foreground">临期</span>
+                    <strong class="font-semibold text-[15px]" style="color: var(--fresh-state-warning);">3</strong>
+                </div>
+                <div class="flex items-baseline gap-1.5">
+                    <span class="text-[13px] text-muted-foreground">已过期</span>
+                    <strong class="font-semibold text-[15px]" style="color: var(--fresh-state-error);">1</strong>
+                </div>
+            </section>
+
+            <!-- List header -->
+            <div class="flex items-center justify-between mb-3 px-1">
+                <h2 class="text-[15px] font-semibold text-foreground">我的物资</h2>
+                <button class="text-[13px] text-primary font-medium active:opacity-70 transition-opacity">查看全部</button>
+            </div>
+
+            <!-- List -->
+            <section id="material-list" class="space-y-0">
+                <!-- 纯牛奶 -->
+                <article class="flex items-center gap-3 py-4 border-b border-border active:opacity-70 transition-opacity">
+                    <div class="w-10 h-10 rounded-full bg-[var(--fresh-state-success-soft)] flex items-center justify-center shrink-0">
+                        <i data-lucide="milk" class="w-5 h-5 shrink-0" style="color: var(--fresh-state-success);"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <div class="text-[15px] font-medium text-foreground truncate">纯牛奶</div>
+                            <div class="text-[13px] font-semibold text-foreground">12 天</div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[12px] text-muted-foreground">食品 · 1L</span>
+                            <span class="text-[12px] px-1.5 py-0.5 rounded-sm bg-[var(--fresh-state-success-soft)] text-[var(--fresh-state-success)]">安全</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- 布洛芬 -->
+                <article class="flex items-center gap-3 py-4 border-b border-border active:opacity-70 transition-opacity">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background-color: var(--fresh-state-warning-soft);">
+                        <i data-lucide="pill" class="w-5 h-5 shrink-0" style="color: var(--fresh-state-warning);"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <div class="text-[15px] font-medium text-foreground truncate">布洛芬缓释胶囊</div>
+                            <div class="text-[13px] font-semibold" style="color: var(--fresh-state-warning);">2 天</div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[12px] text-muted-foreground">药品 · 24 粒</span>
+                            <span class="text-[12px] px-1.5 py-0.5 rounded-sm" style="background-color: var(--fresh-state-warning-soft); color: var(--fresh-state-warning);">临期</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- 酸奶 -->
+                <article class="flex items-center gap-3 py-4 border-b border-border active:opacity-70 transition-opacity">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background-color: var(--fresh-state-error-soft);">
+                        <i data-lucide="cup-soda" class="w-5 h-5 shrink-0" style="color: var(--fresh-state-error);"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <div class="text-[15px] font-medium text-foreground truncate">酸奶</div>
+                            <div class="text-[13px] font-semibold" style="color: var(--fresh-state-error);">已过期</div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[12px] text-muted-foreground">食品 · 200g×6</span>
+                            <span class="text-[12px] px-1.5 py-0.5 rounded-sm" style="background-color: var(--fresh-state-error-soft); color: var(--fresh-state-error);">已过期</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- 洗发水 -->
+                <article class="flex items-center gap-3 py-4 border-b border-border active:opacity-70 transition-opacity">
+                    <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                        <i data-lucide="sparkles" class="w-5 h-5 shrink-0"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <div class="text-[15px] font-medium text-foreground truncate">洗发水</div>
+                            <div class="text-[13px] font-semibold text-foreground">180 天</div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[12px] text-muted-foreground">美妆护肤 · 500ml</span>
+                            <span class="text-[12px] px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground">安全</span>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <!-- Empty state (hidden) -->
+            <section id="empty-state" class="hidden flex-col items-center justify-center py-16 text-center">
+                <img src="../assets/images/empty-state.jpg" alt="空状态" class="w-36 h-36 object-contain mb-4" />
+                <p class="text-[15px] font-medium text-foreground mb-1">还没有物资</p>
+                <p class="text-[13px] text-muted-foreground mb-5">点击下方按钮添加第一件物资</p>
+                <button class="h-10 px-5 rounded-full bg-primary text-primary-foreground text-[14px] font-medium active:opacity-80 transition-opacity">添加物资</button>
+            </section>
+        </main>
+
+        <!-- Bottom tab bar -->
+        <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-border safe-area-bottom">
+            <div class="max-w-md mx-auto h-14 flex items-center justify-around px-2">
+                <button class="flex flex-col items-center justify-center gap-1 w-14 h-full text-primary">
+                    <i data-lucide="home" class="w-6 h-6 shrink-0"></i>
+                    <span class="text-[10px] font-medium">首页</span>
+                </button>
+                <button class="flex flex-col items-center justify-center gap-1 w-14 h-full text-muted-foreground active:opacity-70 transition-opacity">
+                    <i data-lucide="search" class="w-6 h-6 shrink-0"></i>
+                    <span class="text-[10px] font-medium">搜索</span>
+                </button>
+                <div class="relative -top-5">
+                    <button aria-label="添加物资" class="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:opacity-80 transition-opacity" style="box-shadow: 0 4px 12px rgba(0, 117, 74, 0.28);">
+                        <i data-lucide="plus" class="w-6 h-6 shrink-0"></i>
+                    </button>
+                </div>
+                <button class="flex flex-col items-center justify-center gap-1 w-14 h-full text-muted-foreground active:opacity-70 transition-opacity">
+                    <i data-lucide="bell" class="w-6 h-6 shrink-0"></i>
+                    <span class="text-[10px] font-medium">提醒</span>
+                </button>
+                <button class="flex flex-col items-center justify-center gap-1 w-14 h-full text-muted-foreground active:opacity-70 transition-opacity">
+                    <i data-lucide="user" class="w-6 h-6 shrink-0"></i>
+                    <span class="text-[10px] font-medium">我的</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <style>
+      /* Hide scrollbar but allow scroll */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

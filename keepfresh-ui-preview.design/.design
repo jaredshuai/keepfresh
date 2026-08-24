@@ -1,0 +1,250 @@
+{
+  "data": [
+    {
+      "id": "page-index",
+      "title": "首页",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1787546400000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 375,
+          "sourceHash": "fnv1a-935180d8",
+          "measuredAt": 1787559421355
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-add-item",
+      "title": "录入物资",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1787546400001,
+      "canvasData": {
+        "x": 169,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 375,
+          "sourceHash": "fnv1a-192fbc73",
+          "measuredAt": 1787559421355
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/add-item.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-item-detail",
+      "title": "物资详情",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1787546400002,
+      "canvasData": {
+        "x": 338,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 375,
+          "sourceHash": "fnv1a-581482d2",
+          "measuredAt": 1787559421355
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/item-detail.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-settings",
+      "title": "设置",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1787546400003,
+      "canvasData": {
+        "x": 507,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 912,
+          "viewportWidth": 375,
+          "sourceHash": "fnv1a-3f295d52",
+          "measuredAt": 1787559421355
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/settings.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "image-001",
+      "title": "食品分类图标",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787548500000,
+      "imageSrc": "assets/images/icon-food.jpg",
+      "canvasData": {
+        "x": 0,
+        "y": 375,
+        "width": 120,
+        "height": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/icon-food.jpg"
+      }
+    },
+    {
+      "id": "image-002",
+      "title": "药品分类图标",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787548500001,
+      "imageSrc": "assets/images/icon-medicine.jpg",
+      "canvasData": {
+        "x": 169,
+        "y": 375,
+        "width": 120,
+        "height": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/icon-medicine.jpg"
+      }
+    },
+    {
+      "id": "image-003",
+      "title": "日用品分类图标",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787548500002,
+      "imageSrc": "assets/images/icon-daily.jpg",
+      "canvasData": {
+        "x": 338,
+        "y": 375,
+        "width": 120,
+        "height": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/icon-daily.jpg"
+      }
+    },
+    {
+      "id": "image-004",
+      "title": "美妆护肤分类图标",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787548500003,
+      "imageSrc": "assets/images/icon-beauty.jpg",
+      "canvasData": {
+        "x": 507,
+        "y": 375,
+        "width": 120,
+        "height": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/icon-beauty.jpg"
+      }
+    },
+    {
+      "id": "image-005",
+      "title": "其他分类图标",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787548500004,
+      "imageSrc": "assets/images/icon-other.jpg",
+      "canvasData": {
+        "x": 676,
+        "y": 375,
+        "width": 120,
+        "height": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/icon-other.jpg"
+      }
+    },
+    {
+      "id": "image-006",
+      "title": "空状态插画",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787548500005,
+      "imageSrc": "assets/images/empty-state.jpg",
+      "canvasData": {
+        "x": 845,
+        "y": 375,
+        "width": 160,
+        "height": 160,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/empty-state.jpg"
+      }
+    },
+    {
+      "id": "image-007",
+      "title": "新鲜食材主视觉",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787554800000,
+      "imageSrc": "assets/images/hero-produce.jpg",
+      "canvasData": {
+        "x": 1014,
+        "y": 375,
+        "width": 213,
+        "height": 120,
+        "naturalSize": {
+          "width": 2560,
+          "height": 1440
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/hero-produce.jpg"
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "mobile",
+    "projectName": "KeepFresh UI Preview",
+    "visualEditorEnabled": false,
+    "showEdge": false
+  }
+}

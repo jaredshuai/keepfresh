@@ -2,6 +2,10 @@
 
 个人物资保质期管理（HarmonyOS App）：只管入库与到期提醒，不追踪消耗/出入库流水。
 
+## Design
+
+UI 设计系统：**包豪斯**（暖白纸底 + 三原色几何 + 硬阴影 + 零圆角），详见 `DESIGN.md`。原型文件在 `keepfresh-ui-preview.design/final/15-*.html`。
+
 ## Language
 
 **物资（Material）**:

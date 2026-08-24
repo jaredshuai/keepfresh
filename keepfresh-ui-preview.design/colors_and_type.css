@@ -1,0 +1,52 @@
+@layer base {
+  :root {
+    /* ─── Brand (Starbucks green system) ─── */
+    --fresh-primary: #00754A;
+    --fresh-primary-foreground: #FFFFFF;
+    --fresh-primary-soft: #d4e9e2;
+    --fresh-primary-dark: #006241;
+
+    /* ─── Surfaces ─── */
+    --fresh-background: #f2f0eb;
+    --fresh-foreground: rgba(0, 0, 0, 0.87);
+    --fresh-card: #ffffff;
+    --fresh-card-foreground: rgba(0, 0, 0, 0.87);
+    --fresh-popover: #ffffff;
+    --fresh-popover-foreground: rgba(0, 0, 0, 0.87);
+    --fresh-muted: #edebe9;
+    --fresh-muted-foreground: rgba(0, 0, 0, 0.58);
+
+    /* ─── Borders / Inputs ─── */
+    --fresh-border: #d6dbde;
+    --fresh-input: #f9f9f9;
+    --fresh-ring: #00754A;
+    --fresh-divider: #e7e7e7;
+
+    /* ─── Semantic Status ─── */
+    --fresh-state-success: #00754A;
+    --fresh-state-success-soft: #d4e9e2;
+    --fresh-state-warning: #D97706;
+    --fresh-state-warning-soft: #FEF3C7;
+    --fresh-state-error: #c82014;
+    --fresh-state-error-soft: #fce8e6;
+    --fresh-state-info: rgba(0, 0, 0, 0.58);
+
+    /* ─── Radius ─── */
+    --fresh-radius-sm: 4px;
+    --fresh-radius-md: 12px;
+    --fresh-radius-lg: 12px;
+    --fresh-radius-xl: 12px;
+    --fresh-radius-pill: 999px;
+
+    /* ─── Typography ─── */
+    --fresh-font-sans: "HarmonyOS Sans", "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--fresh-font-sans);
+    background-color: var(--fresh-background);
+    color: var(--fresh-foreground);
+  }
+}

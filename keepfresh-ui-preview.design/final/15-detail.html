@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh - 鲜牛奶</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; border-radius: 0; }
+  :root {
+    --paper: #f2f0ea;
+    --ink: #1a1a1a;
+    --red: #e63946;
+    --orange: #f4a261;
+    --teal: #2a9d8f;
+    --yellow: #ffb703;
+    --yellow-dark: #d69a00;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Archivo', sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0 16px 48px;
+  }
+
+  /* ===== 几何形状 ===== */
+  .shape-triangle {
+    width: 0; height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 16px solid var(--orange);
+    flex-shrink: 0;
+  }
+  .shape-triangle-lg {
+    width: 0; height: 0;
+    border-left: 13px solid transparent;
+    border-right: 13px solid transparent;
+    border-bottom: 22px solid var(--orange);
+    flex-shrink: 0;
+  }
+  .shape-square-sm {
+    width: 10px; height: 10px;
+    background: var(--teal);
+    flex-shrink: 0;
+  }
+
+  /* ===== 顶部 ===== */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 0 20px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .back-btn {
+    width: 40px; height: 40px;
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: box-shadow 0.08s, transform 0.08s;
+  }
+  .back-btn:active {
+    box-shadow: 1px 1px 0 var(--ink);
+    transform: translate(3px, 3px);
+  }
+  .back-arrow {
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 12px solid var(--ink);
+  }
+  .item-title {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 24px;
+    letter-spacing: -0.5px;
+    flex: 1;
+    min-width: 0;
+  }
+  .cat-tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border: 2px solid var(--ink);
+    background: #ffffff;
+    padding: 4px 8px;
+    flex-shrink: 0;
+  }
+
+  /* ===== 天数主视觉 ===== */
+  .days-hero {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    padding: 32px 0 24px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .days-number {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 56px;
+    line-height: 0.9;
+  }
+  .days-unit {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 20px;
+    padding-bottom: 4px;
+  }
+  .days-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    padding: 10px 14px;
+  }
+  .days-status .status-label {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* 进度条 */
+  .progress-block { padding: 20px 0 0; }
+  .progress-track {
+    height: 16px;
+    border: 2px solid var(--ink);
+    background: #ffffff;
+    position: relative;
+  }
+  .progress-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 58%;
+    background: var(--orange);
+    border-right: 2px solid var(--ink);
+  }
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+
+  /* ===== 信息网格 ===== */
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 20px;
+    margin: 32px 0 16px;
+  }
+  .info-grid {
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .info-cell {
+    padding: 14px 16px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .info-cell:nth-child(odd) { border-right: 2px solid var(--ink); }
+  .info-cell:nth-last-child(-n+2) { border-bottom: none; }
+  .info-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #5a5a5a;
+    margin-bottom: 6px;
+  }
+  .info-value {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .info-value.highlight { color: var(--red); }
+
+  /* ===== 备注 ===== */
+  .note-box {
+    background: #ffffff;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .note-box .note-inner {
+    border-left: 4px solid var(--yellow);
+    padding-left: 12px;
+  }
+
+  /* ===== 底部操作 ===== */
+  .action-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 32px;
+  }
+  /* Focus ring — 可访问性 */
+  *:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 2px;
+  }
+  /* 动效偏好降级 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+
+  .btn {
+    border: 2px solid var(--ink);
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    padding: 16px 0;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: box-shadow 0.08s, transform 0.08s;
+    min-height: 48px;
+  }
+  .btn-edit {
+    background: var(--yellow-dark);
+    color: #ffffff;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .btn-edit:active {
+    box-shadow: 1px 1px 0 var(--ink);
+    transform: translate(3px, 3px);
+  }
+  .btn-delete {
+    background: #ffffff;
+    color: var(--red);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .btn-delete:active {
+    box-shadow: 1px 1px 0 var(--ink);
+    transform: translate(3px, 3px);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: 2px 2px 0 var(--ink);
+    transform: none;
+  }
+
+  /* 消耗记录 */
+  .consume-list {
+    border: 2px solid #b8b4a8;
+    background: #ffffff;
+  }
+  .consume-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 2px solid #b8b4a8;
+    font-size: 13px;
+  }
+  .consume-row:last-child { border-bottom: none; }
+  .consume-row .consume-date { font-weight: 600; }
+  .consume-row .consume-text { color: #5a5a5a; flex: 1; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 顶部 -->
+  <header class="top-bar">
+    <a class="back-btn" href="15-index.html" aria-label="返回"><span class="back-arrow"></span></a>
+    <h1 class="item-title">鲜牛奶</h1>
+    <span class="cat-tag">食品</span>
+  </header>
+
+  <!-- 天数主视觉 -->
+  <section class="days-hero">
+    <span class="days-number">3</span>
+    <span class="days-unit">天</span>
+    <div class="days-status">
+      <span class="shape-triangle"></span>
+      <span class="status-label">临期</span>
+    </div>
+  </section>
+
+  <!-- 保质期进度 -->
+  <section class="progress-block">
+    <div class="progress-track"><div class="progress-fill"></div></div>
+    <div class="progress-labels">
+      <span>生产 08-20</span>
+      <span>到期 08-27</span>
+    </div>
+  </section>
+
+  <!-- 信息网格 -->
+  <section>
+    <div class="section-title"><span class="shape-square-sm"></span>物资信息</div>
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="info-label">分类</div>
+        <div class="info-value">食品</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">规格</div>
+        <div class="info-value">950ml</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">数量</div>
+        <div class="info-value">2 盒</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">生产日期</div>
+        <div class="info-value">2026-08-20</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">保质期</div>
+        <div class="info-value">7 天</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">到期日</div>
+        <div class="info-value highlight">2026-08-27</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 备注 -->
+  <section>
+    <div class="section-title"><span class="shape-square-sm"></span>备注</div>
+    <div class="note-box">
+      <div class="note-inner">冷藏存放于冰箱门架，开封后 24 小时内饮用完毕。另一盒未开封。</div>
+    </div>
+  </section>
+
+  <!-- 消耗记录 -->
+  <section>
+    <div class="section-title"><span class="shape-square-sm"></span>最近记录</div>
+    <div class="consume-list">
+      <div class="consume-row">
+        <span class="shape-triangle"></span>
+        <span class="consume-date">08-24</span>
+        <span class="consume-text">进入临期（阈值 3 天）</span>
+      </div>
+      <div class="consume-row">
+        <span class="shape-square-sm"></span>
+        <span class="consume-date">08-21</span>
+        <span class="consume-text">入库 2 盒</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 底部操作 -->
+  <div class="action-bar">
+    <a class="btn btn-edit" href="15-add.html">编辑</a>
+    <button class="btn btn-delete" type="button">删除</button>
+  </div>
+
+</div>
+</body>
+</html>

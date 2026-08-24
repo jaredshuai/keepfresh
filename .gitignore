@@ -23,6 +23,13 @@ Thumbs.db
 /.codegraph
 /.codebase-memory
 
+# design preview (local working files)
+/keepfresh-ui-preview.design/.preflight/
+/keepfresh-ui-preview.design/runtime-dispatch-manifest.json
+/keepfresh-ui-preview.design/runtime-orchestration-summary.json
+/keepfresh-ui-preview.design/validation-report.json
+/keepfresh-ui-preview.design/mobile-nav-repair-report.json
+
 # IDE local data
 /.arts
 /.codeartsdoer

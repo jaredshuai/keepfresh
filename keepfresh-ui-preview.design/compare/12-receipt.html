@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh · Receipt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f7f5f0; --ink:#1a1a1a; --accent:#d9480f; --muted:#666666;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:#dcd8d0;
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--ink);
+    padding:32px 0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .receipt{
+    max-width:420px;margin:0 auto;background:var(--paper);
+    position:relative;padding:28px 22px 96px;
+    box-shadow:0 6px 24px rgba(0,0,0,.12);
+  }
+  /* 锯齿边缘：顶部与底部 */
+  .receipt::before,
+  .receipt::after{
+    content:"";position:absolute;left:0;right:0;height:10px;
+    background:
+      linear-gradient(45deg, var(--paper) 5px, transparent 0) 0 0/14px 10px repeat-x,
+      linear-gradient(-45deg, var(--paper) 5px, transparent 0) 7px 0/14px 10px repeat-x;
+  }
+  .receipt::before{top:-10px;transform:scaleY(-1);}
+  .receipt::after{bottom:-10px;}
+
+  header{text-align:center;padding-bottom:16px;border-bottom:2px dashed var(--ink);}
+  .brand{font-size:24px;font-weight:600;letter-spacing:3px;}
+  .sub{font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:1px;}
+  .summary{
+    margin-top:12px;font-size:12px;font-weight:600;letter-spacing:1px;
+  }
+  .summary em{font-style:normal;color:var(--accent);}
+
+  .cols{
+    display:flex;justify-content:space-between;
+    font-size:10px;color:var(--muted);letter-spacing:1px;
+    padding:12px 0 8px;border-bottom:1px dashed var(--muted);
+  }
+
+  .list{padding:4px 0 0;}
+  .row{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:12px 0;border-bottom:1px dashed var(--muted);
+    font-size:13px;line-height:1.6;
+  }
+  .row:last-child{border-bottom:none;}
+  .l{flex:1;min-width:0;padding-right:12px;}
+  .nm{font-weight:600;}
+  .dt{font-size:11px;color:var(--muted);margin-top:2px;}
+  .st{font-size:11px;font-weight:600;letter-spacing:1px;margin-top:4px;}
+  .days{
+    font-size:16px;font-weight:600;text-align:right;white-space:nowrap;
+    min-width:76px;
+  }
+  .days small{display:block;font-size:9px;font-weight:400;color:var(--muted);letter-spacing:1px;margin-top:2px;}
+
+  .row.expired .nm::before{content:"! ";color:var(--accent);font-weight:600;}
+  .row.expired .st{color:var(--accent);}
+  .row.expired .days{color:var(--accent);}
+  .row.soon .nm::before{content:"* ";color:var(--accent);font-weight:600;}
+  .row.soon .st{color:var(--accent);}
+  .row.soon .days{color:var(--accent);}
+  .row.ok .st{color:var(--muted);}
+
+  .totals{
+    margin-top:16px;padding-top:14px;border-top:2px dashed var(--ink);
+    font-size:12px;line-height:2;
+  }
+  .totals .line{display:flex;justify-content:space-between;}
+  .totals .line strong{color:var(--accent);}
+  .barcode{
+    margin-top:20px;text-align:center;
+  }
+  .barcode .bars{
+    height:38px;margin:0 auto;width:78%;
+    background:repeating-linear-gradient(90deg,
+      var(--ink) 0 2px, transparent 2px 4px,
+      var(--ink) 4px 7px, transparent 7px 9px,
+      var(--ink) 9px 10px, transparent 10px 14px);
+  }
+  .barcode .no{font-size:10px;letter-spacing:4px;margin-top:8px;color:var(--muted);}
+  .thanks{
+    margin-top:16px;text-align:center;font-size:11px;letter-spacing:2px;color:var(--muted);
+  }
+
+  nav{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:420px;background:var(--paper);
+    border-top:2px dashed var(--ink);
+    display:grid;grid-template-columns:repeat(4,1fr);
+  }
+  nav a{
+    text-decoration:none;color:var(--muted);text-align:center;
+    padding:12px 0;font-size:10px;font-weight:600;letter-spacing:1px;
+  }
+  nav a.active{color:var(--ink);}
+  nav a.add{
+    color:#fff;background:var(--accent);
+  }
+</style>
+</head>
+<body>
+<div class="receipt">
+  <header>
+    <div class="brand">KEEPFRESH</div>
+    <div class="sub">*** 物资保质期管理 ***</div>
+    <div class="summary"><em>3 临期 · 1 过期</em> / 共 12 项</div>
+  </header>
+
+  <div class="cols">
+    <span>ITEM / 物资</span>
+    <span>DAYS / 天数</span>
+  </div>
+
+  <section class="list">
+    <div class="row expired">
+      <div class="l">
+        <div class="nm">酸奶</div>
+        <div class="dt">食品 · 200g×6</div>
+        <div class="st">[EXPIRED]</div>
+      </div>
+      <div class="days">-2<small>DAYS</small></div>
+    </div>
+    <div class="row soon">
+      <div class="l">
+        <div class="nm">布洛芬缓释胶囊</div>
+        <div class="dt">药品 · 24 粒</div>
+        <div class="st">[SOON]</div>
+      </div>
+      <div class="days">2<small>DAYS</small></div>
+    </div>
+    <div class="row soon">
+      <div class="l">
+        <div class="nm">鲜牛奶</div>
+        <div class="dt">食品 · 950ml</div>
+        <div class="st">[SOON]</div>
+      </div>
+      <div class="days">3<small>DAYS</small></div>
+    </div>
+    <div class="row soon">
+      <div class="l">
+        <div class="nm">鸡蛋</div>
+        <div class="dt">食品 · 10 枚</div>
+        <div class="st">[SOON]</div>
+      </div>
+      <div class="days">5<small>DAYS</small></div>
+    </div>
+    <div class="row ok">
+      <div class="l">
+        <div class="nm">纯牛奶</div>
+        <div class="dt">食品 · 1L</div>
+        <div class="st">[OK]</div>
+      </div>
+      <div class="days">12<small>DAYS</small></div>
+    </div>
+    <div class="row ok">
+      <div class="l">
+        <div class="nm">洗发水</div>
+        <div class="dt">美妆 · 500ml</div>
+        <div class="st">[OK]</div>
+      </div>
+      <div class="days">180<small>DAYS</small></div>
+    </div>
+  </section>
+
+  <div class="totals">
+    <div class="line"><span>EXPIRED / 已过期</span><strong>1</strong></div>
+    <div class="line"><span>SOON / 临期</span><strong>3</strong></div>
+    <div class="line"><span>TOTAL / 合计</span><span>12</span></div>
+  </div>
+
+  <div class="barcode">
+    <div class="bars"></div>
+    <div class="no">KF-2026-0824</div>
+  </div>
+  <div class="thanks">** 请及时处理临期物资 **</div>
+
+  <nav>
+    <a href="#" class="active">[ 首页 ]</a>
+    <a href="#" class="add">[ + 添加 ]</a>
+    <a href="#">[ 提醒 ]</a>
+    <a href="#">[ 我的 ]</a>
+  </nav>
+</div>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeepFresh — 添加物资</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #ffffff;
+    --text: #111111;
+    --accent: #e2001a;
+    --muted: #8a8a8a;
+    --hairline: #e5e5e5;
+  }
+  html { background: #f4f4f4; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--hairline);
+    left: calc(50% - 210px + 20px);
+    z-index: 0;
+  }
+  .page { position: relative; z-index: 1; padding: 0 24px 120px 48px; }
+
+  /* 顶部 */
+  .topbar {
+    padding: 32px 0 16px;
+    border-bottom: 1px solid var(--text);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  .back {
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .back:hover { color: var(--accent); }
+  .title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 12px 0 8px;
+  }
+
+  /* 分组标题 */
+  .group-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 32px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--text);
+  }
+  .group-title .no { color: var(--accent); margin-right: 8px; }
+
+  /* 表单 */
+  .field { padding: 16px 0 0; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .field label .req { color: var(--accent); }
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 0;
+    padding: 12px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .field textarea { resize: vertical; min-height: 72px; line-height: 1.65; }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    border-color: var(--accent);
+  }
+  .field input::placeholder,
+  .field textarea::placeholder { color: #c4c4c4; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* 分类选择 */
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--hairline);
+  }
+  .cat-grid input { display: none; }
+  .cat-grid label {
+    margin: 0;
+    padding: 12px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+    border-right: 1px solid var(--hairline);
+    cursor: pointer;
+  }
+  .cat-grid label:last-child { border-right: none; }
+  .cat-grid input:checked + label {
+    background: var(--text);
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .hint b { color: var(--accent); font-weight: 600; }
+
+  /* 保存按钮 */
+  .savebar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg);
+    border-top: 1px solid var(--text);
+    padding: 16px 24px 24px 48px;
+    z-index: 10;
+  }
+  .btn-save {
+    width: 100%;
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 0;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 16px 0;
+    cursor: pointer;
+  }
+  .btn-save:active { background: #b80015; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="back" href="11-index.html">← 返回</a>
+    <div class="title">添加物资</div>
+  </header>
+  <div class="subtitle">填写物资信息，系统将按生产日期 + 保质期自动计算到期日。</div>
+
+  <form onsubmit="return false;">
+
+    <div class="group-title"><span class="no">01</span> — 基本信息</div>
+
+    <div class="field">
+      <label for="name">名称 <span class="req">*</span></label>
+      <input id="name" type="text" placeholder="例如：鲜牛奶" required>
+    </div>
+
+    <div class="field">
+      <label>分类 <span class="req">*</span></label>
+      <div class="cat-grid">
+        <input type="radio" name="cat" id="cat-food" checked><label for="cat-food">食品</label>
+        <input type="radio" name="cat" id="cat-med"><label for="cat-med">药品</label>
+        <input type="radio" name="cat" id="cat-beauty"><label for="cat-beauty">美妆</label>
+        <input type="radio" name="cat" id="cat-daily"><label for="cat-daily">日化</label>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="spec">规格</label>
+        <input id="spec" type="text" placeholder="例如：950ml">
+      </div>
+      <div class="field">
+        <label for="qty">数量 <span class="req">*</span></label>
+        <input id="qty" type="number" min="1" value="1" required>
+      </div>
+    </div>
+
+    <div class="group-title"><span class="no">02</span> — 保质期</div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="mfg">生产日期 <span class="req">*</span></label>
+        <input id="mfg" type="date" value="2026-08-20" required>
+      </div>
+      <div class="field">
+        <label for="shelf">保质期（天） <span class="req">*</span></label>
+        <input id="shelf" type="number" min="1" placeholder="例如：7" required>
+      </div>
+    </div>
+    <div class="hint">预计到期日：<b id="duePreview">2026-08-27</b>（剩 3 天，将进入临期分组）</div>
+
+    <div class="group-title"><span class="no">03</span> — 备注</div>
+
+    <div class="field">
+      <label for="note">备注</label>
+      <textarea id="note" placeholder="存放位置、开封日期等其他信息"></textarea>
+    </div>
+
+  </form>
+</div>
+
+<div class="savebar">
+  <button class="btn-save" type="submit">保存</button>
+</div>
+
+<script>
+  var mfg = document.getElementById('mfg');
+  var shelf = document.getElementById('shelf');
+  var preview = document.getElementById('duePreview');
+  function updatePreview() {
+    if (!mfg.value || !shelf.value) return;
+    var d = new Date(mfg.value);
+    d.setDate(d.getDate() + parseInt(shelf.value, 10));
+    var left = Math.ceil((d - new Date()) / 86400000);
+    var s = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    preview.textContent = s + '（剩 ' + left + ' 天）';
+  }
+  mfg.addEventListener('change', updatePreview);
+  shelf.addEventListener('input', updatePreview);
+</script>
+</body>
+</html>
