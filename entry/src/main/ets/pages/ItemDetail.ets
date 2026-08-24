@@ -228,13 +228,10 @@ struct ItemDetail {
   @Builder
   geoShape(lv: number) {
     if (lv === ExpiryLevel.EXPIRED) {
-      Row() {
-      }
-      .width(56)
-      .height(56)
-      .backgroundColor(Theme.expired)
-      .borderRadius(28)
-      .border({ width: 2, color: Theme.ink })
+      Circle({ width: 56, height: 56 })
+        .fill(Theme.expired)
+        .stroke(Theme.ink)
+        .strokeWidth(2)
     } else if (lv === ExpiryLevel.NEAR) {
       Shape() {
         Polygon()
@@ -246,12 +243,10 @@ struct ItemDetail {
       .width(60)
       .height(56)
     } else {
-      Row() {
-      }
-      .width(56)
-      .height(56)
-      .backgroundColor(Theme.safe)
-      .border({ width: 2, color: Theme.ink })
+      Rect({ width: 56, height: 56 })
+        .fill(Theme.safe)
+        .stroke(Theme.ink)
+        .strokeWidth(2)
     }
   }
 
