@@ -1,6 +1,7 @@
 import type { Material } from '../model/Material';
 import { ExpiryLevel } from '../model/Material';
 import { addDays, diffDays, todayStr } from '../common/DateUtils';
+import { Theme } from '../common/Theme';
 
 export const DEFAULT_NEAR_EXPIRY_DAYS: number = 7;
 
@@ -47,23 +48,45 @@ export function levelOf(m: Material, customThreshold?: number): ExpiryLevel {
 
 export function levelColor(level: ExpiryLevel): string {
   if (level === ExpiryLevel.EXPIRED) {
-    return '#FA2A2D';
+    return Theme.expired;
   }
   if (level === ExpiryLevel.NEAR) {
-    return '#FF8D00';
+    return Theme.near;
   }
-  return '#2FA84F';
+  return Theme.safe;
+}
+
+/** 状态色浅色背景（用于徽标、卡片装饰条） */
+export function levelSoftColor(level: ExpiryLevel): string {
+  if (level === ExpiryLevel.EXPIRED) {
+    return Theme.expiredSoft;
+  }
+  if (level === ExpiryLevel.NEAR) {
+    return Theme.nearSoft;
+  }
+  return Theme.safeSoft;
+}
+
+/** 状态徽标文字颜色：过期/临期用自身主色，安全用主色 */
+export function levelBadgeTextColor(level: ExpiryLevel): string {
+  if (level === ExpiryLevel.EXPIRED) {
+    return Theme.expired;
+  }
+  if (level === ExpiryLevel.NEAR) {
+    return Theme.near;
+  }
+  return Theme.safe;
 }
 
 /** 列表徽标短文案 */
 export function levelText(level: ExpiryLevel, left: number): string {
   if (level === ExpiryLevel.EXPIRED) {
-    return `已过期${-left}天`;
+    return `已过期 ${-left} 天`;
   }
   if (left === 0) {
     return '今天到期';
   }
-  return `剩${left}天`;
+  return `剩 ${left} 天`;
 }
 
 /** 详情页剩余天数文案 */

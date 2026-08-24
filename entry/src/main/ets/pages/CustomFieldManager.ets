@@ -1,5 +1,5 @@
 /**
- * 自定义字段管理页 —— 鸿蒙官方设计风格。
+ * 自定义字段管理页 —— 清新自然风格。
  * 支持新建、编辑（改名/选项，禁改类型）、删除（二次确认）、排序（上移/下移）。
  */
 import { router, promptAction } from '@kit.ArkUI';
@@ -16,17 +16,7 @@ import {
 } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { todayStr } from '../common/DateUtils';
-
-const CLR_BRAND = '#2FA84F';
-const CLR_BG = '#F1F3F5';
-const CLR_CARD = '#FFFFFF';
-const CLR_TEXT = '#182431';
-const CLR_TEXT_SUB = '#99182431';
-const CLR_TEXT_TIP = '#4D182431';
-const CLR_INPUT_BG = '#F1F3F5';
-const CLR_DANGER = '#FA2A2D';
-const CLR_PREVIEW_BG = '#E8F5EF';
-const CLR_BORDER = '#E5E5E5';
+import { Theme } from '../common/Theme';
 
 @Entry
 @Component
@@ -169,7 +159,7 @@ struct CustomFieldManager {
       },
       secondaryButton: {
         value: '删除',
-        fontColor: CLR_DANGER,
+        fontColor: Theme.danger,
         action: async () => {
           await this.doDelete(field.id);
         }
@@ -214,24 +204,32 @@ struct CustomFieldManager {
   build() {
     Stack({ alignContent: Alignment.BottomEnd }) {
       Column() {
+        // 顶部导航
         Row() {
-          SymbolGlyph($r('sys.symbol.chevron_left'))
-            .fontSize(24)
-            .fontColor([CLR_TEXT])
-            .padding({ left: 4, right: 4, top: 6, bottom: 6 })
-            .onClick(() => {
-              router.back();
-            })
+          Button({ type: ButtonType.Circle, stateEffect: true }) {
+            SymbolGlyph($r('sys.symbol.chevron_left'))
+              .fontSize(24)
+              .fontColor([Theme.textPrimary])
+          }
+          .backgroundColor(Theme.inputBg)
+          .width(Theme.iconBtnSize)
+          .height(Theme.iconBtnSize)
+          .onClick(() => {
+            router.back();
+          })
+
           Text('自定义字段管理')
-            .fontSize(18)
+            .fontSize(Theme.textTitle)
             .fontWeight(FontWeight.Medium)
-            .fontColor(CLR_TEXT)
-            .margin({ left: 4 })
+            .fontColor(Theme.textPrimary)
+            .margin({ left: Theme.smallGap })
+
           Blank()
+
           Button('新建字段')
             .fontSize(14)
             .fontColor(Color.White)
-            .backgroundColor(CLR_BRAND)
+            .backgroundColor(Theme.brand)
             .borderRadius(20)
             .height(36)
             .padding({ left: 16, right: 16 })
@@ -240,41 +238,23 @@ struct CustomFieldManager {
             })
         }
         .width('100%')
-        .padding({ left: 12, right: 16, top: 12, bottom: 12 })
+        .padding({
+          left: Theme.pagePadding - 4,
+          right: Theme.pagePadding,
+          top: 12,
+          bottom: 12
+        })
 
         if (this.loading) {
           Column() {
-            LoadingProgress().width(40).height(40).color(CLR_BRAND)
+            LoadingProgress().width(40).height(40).color(Theme.brand)
           }
           .layoutWeight(1)
           .justifyContent(FlexAlign.Center)
         } else if (this.customFields.length === 0) {
-          Column({ space: 12 }) {
-            Text('暂无自定义字段')
-              .fontSize(16)
-              .fontColor(CLR_TEXT_SUB)
-            Text('创建自定义字段后，可在录入物资时添加个性化信息（如存放位置、品牌等）')
-              .fontSize(13)
-              .fontColor(CLR_TEXT_TIP)
-              .textAlign(TextAlign.Center)
-              .padding({ left: 32, right: 32 })
-
-            Button('+ 新建自定义字段')
-              .fontSize(15)
-              .fontColor(Color.White)
-              .backgroundColor(CLR_BRAND)
-              .borderRadius(20)
-              .height(42)
-              .padding({ left: 24, right: 24 })
-              .margin({ top: 16 })
-              .onClick(() => {
-                this.openCreateSheet();
-              })
-          }
-          .layoutWeight(1)
-          .justifyContent(FlexAlign.Center)
+          this.emptyState()
         } else {
-          List({ space: 10 }) {
+          List({ space: Theme.elementGap }) {
             ForEach(this.customFields, (f: CustomField, index: number) => {
               ListItem() {
                 this.fieldCard(f, index)
@@ -283,7 +263,12 @@ struct CustomFieldManager {
           }
           .layoutWeight(1)
           .width('100%')
-          .padding({ left: 16, right: 16, top: 8, bottom: 30 })
+          .padding({
+            left: Theme.pagePadding,
+            right: Theme.pagePadding,
+            top: 8,
+            bottom: 30
+          })
           .scrollBar(BarState.Off)
         }
       }
@@ -292,11 +277,11 @@ struct CustomFieldManager {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(CLR_BG)
+    .backgroundColor(Theme.pageBg)
     .bindSheet($$this.showEditSheet, this.fieldEditSheet(), {
       height: SheetSize.FIT_CONTENT,
       dragBar: true,
-      backgroundColor: CLR_CARD,
+      backgroundColor: Theme.cardBg,
       onDisappear: () => {
         this.showEditSheet = false;
       }
@@ -304,33 +289,74 @@ struct CustomFieldManager {
   }
 
   @Builder
+  emptyState() {
+    Column({ space: Theme.elementGap }) {
+      Column() {
+        SymbolGlyph($r('sys.symbol.list_bullet_rectangle'))
+          .fontSize(48)
+          .fontColor([Theme.brand])
+          .opacity(0.4)
+      }
+      .width(80)
+      .height(80)
+      .borderRadius(40)
+      .backgroundColor(Theme.brandSoft)
+      .justifyContent(FlexAlign.Center)
+      .margin({ bottom: Theme.smallGap })
+
+      Text('暂无自定义字段')
+        .fontSize(Theme.textBody)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Theme.textPrimary)
+      Text('创建自定义字段后，可在录入物资时添加个性化信息（如存放位置、品牌等）')
+        .fontSize(Theme.textCaption)
+        .fontColor(Theme.textTertiary)
+        .textAlign(TextAlign.Center)
+        .padding({ left: 32, right: 32 })
+
+      Button('+ 新建自定义字段')
+        .fontSize(Theme.textSubhead)
+        .fontColor(Color.White)
+        .backgroundColor(Theme.brand)
+        .borderRadius(20)
+        .height(42)
+        .padding({ left: 24, right: 24 })
+        .margin({ top: 16 })
+        .onClick(() => {
+          this.openCreateSheet();
+        })
+    }
+    .layoutWeight(1)
+    .justifyContent(FlexAlign.Center)
+  }
+
+  @Builder
   fieldCard(f: CustomField, index: number) {
-    Column({ space: 10 }) {
+    Column({ space: Theme.smallGap }) {
       Row() {
-        Row({ space: 8 }) {
+        Row({ space: Theme.smallGap }) {
           Text(f.name)
-            .fontSize(16)
+            .fontSize(Theme.textBody)
             .fontWeight(FontWeight.Medium)
-            .fontColor(CLR_TEXT)
+            .fontColor(Theme.textPrimary)
 
           Text(getFieldTypeName(f.type))
-            .fontSize(12)
-            .fontColor(CLR_BRAND)
-            .backgroundColor(CLR_PREVIEW_BG)
+            .fontSize(Theme.textTiny)
+            .fontColor(Theme.brand)
+            .backgroundColor(Theme.brandSoft)
             .padding({ left: 8, right: 8, top: 2, bottom: 2 })
             .borderRadius(6)
         }
         .layoutWeight(1)
 
-        Row({ space: 4 }) {
+        Row({ space: Theme.tinyGap }) {
           // 上移
           Button({ type: ButtonType.Normal, stateEffect: true }) {
-            Text('↑')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(index > 0 ? CLR_TEXT : CLR_BORDER)
+            SymbolGlyph($r('sys.symbol.arrow_up'))
+              .fontSize(14)
+              .fontColor([index > 0 ? Theme.textSecondary : Theme.border])
           }
-          .backgroundColor(CLR_INPUT_BG)
+          .backgroundColor(Theme.inputBg)
           .borderRadius(8)
           .width(32)
           .height(32)
@@ -341,12 +367,11 @@ struct CustomFieldManager {
 
           // 下移
           Button({ type: ButtonType.Normal, stateEffect: true }) {
-            Text('↓')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(index < this.customFields.length - 1 ? CLR_TEXT : CLR_BORDER)
+            SymbolGlyph($r('sys.symbol.arrow_down'))
+              .fontSize(14)
+              .fontColor([index < this.customFields.length - 1 ? Theme.textSecondary : Theme.border])
           }
-          .backgroundColor(CLR_INPUT_BG)
+          .backgroundColor(Theme.inputBg)
           .borderRadius(8)
           .width(32)
           .height(32)
@@ -358,8 +383,8 @@ struct CustomFieldManager {
           // 编辑
           Button('编辑')
             .fontSize(13)
-            .fontColor(CLR_BRAND)
-            .backgroundColor(CLR_PREVIEW_BG)
+            .fontColor(Theme.brand)
+            .backgroundColor(Theme.brandSoft)
             .borderRadius(8)
             .height(32)
             .padding({ left: 10, right: 10 })
@@ -370,8 +395,8 @@ struct CustomFieldManager {
           // 删除
           Button('删除')
             .fontSize(13)
-            .fontColor(CLR_DANGER)
-            .backgroundColor('rgba(250, 42, 45, 0.08)')
+            .fontColor(Theme.danger)
+            .backgroundColor(Theme.dangerSoft)
             .borderRadius(8)
             .height(32)
             .padding({ left: 10, right: 10 })
@@ -385,8 +410,8 @@ struct CustomFieldManager {
       if (f.type === 'enum' && f.options && f.options.length > 0) {
         Row() {
           Text(`选项：${f.options.join(' · ')}`)
-            .fontSize(13)
-            .fontColor(CLR_TEXT_SUB)
+            .fontSize(Theme.textCaption)
+            .fontColor(Theme.textSecondary)
             .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
@@ -395,36 +420,48 @@ struct CustomFieldManager {
       }
     }
     .width('100%')
-    .padding(14)
-    .borderRadius(14)
-    .backgroundColor(CLR_CARD)
+    .padding(Theme.cardPadding)
+    .borderRadius(Theme.cardRadius)
+    .backgroundColor(Theme.cardBg)
+    .shadow(Theme.shadowStyle)
   }
 
   @Builder
   fieldEditSheet() {
-    Column({ space: 14 }) {
+    Column({ space: Theme.elementGap }) {
       Text(this.isEditing ? '编辑自定义字段' : '新建自定义字段')
-        .fontSize(18)
+        .fontSize(Theme.textHeadline)
         .fontWeight(FontWeight.Bold)
-        .fontColor(CLR_TEXT)
+        .fontColor(Theme.textPrimary)
         .width('100%')
         .padding({ top: 6, bottom: 2 })
 
       if (this.sheetErrorMsg !== '') {
-        Text(this.sheetErrorMsg)
-          .fontSize(13)
-          .fontColor(CLR_DANGER)
-          .width('100%')
+        Row({ space: Theme.smallGap }) {
+          SymbolGlyph($r('sys.symbol.exclamationmark_circle'))
+            .fontSize(16)
+            .fontColor([Theme.danger])
+          Text(this.sheetErrorMsg)
+            .fontSize(Theme.textCaption)
+            .fontColor(Theme.danger)
+            .layoutWeight(1)
+        }
+        .width('100%')
+        .padding(Theme.cardPadding)
+        .borderRadius(Theme.cardRadius)
+        .backgroundColor(Theme.dangerSoft)
       }
 
-      Column({ space: 6 }) {
+      Column({ space: Theme.tinyGap }) {
         Text('字段名称 *')
-          .fontSize(13)
-          .fontColor(CLR_TEXT_SUB)
+          .fontSize(Theme.textCaption)
+          .fontColor(Theme.textSecondary)
         TextInput({ text: this.inputName, placeholder: '如：存放位置、品牌、规格' })
-          .fontSize(16)
-          .backgroundColor(CLR_INPUT_BG)
-          .borderRadius(12)
+          .fontSize(Theme.textBody)
+          .fontColor(Theme.textPrimary)
+          .placeholderColor(Theme.textTertiary)
+          .backgroundColor(Theme.inputBg)
+          .borderRadius(Theme.inputRadius)
           .onChange((v: string) => {
             this.inputName = v;
           })
@@ -432,35 +469,35 @@ struct CustomFieldManager {
       .width('100%')
       .alignItems(HorizontalAlign.Start)
 
-      Column({ space: 6 }) {
+      Column({ space: Theme.tinyGap }) {
         Text(this.isEditing ? '字段类型（创建后不可修改）' : '字段类型 *')
-          .fontSize(13)
-          .fontColor(CLR_TEXT_SUB)
+          .fontSize(Theme.textCaption)
+          .fontColor(Theme.textSecondary)
 
         if (this.isEditing) {
           Row() {
             Text(getFieldTypeName(this.selectedType))
-              .fontSize(15)
-              .fontColor(CLR_TEXT)
+              .fontSize(Theme.textSubhead)
+              .fontColor(Theme.textPrimary)
               .fontWeight(FontWeight.Medium)
             Blank()
             Text('不可修改')
-              .fontSize(13)
-              .fontColor(CLR_TEXT_TIP)
+              .fontSize(Theme.textCaption)
+              .fontColor(Theme.textTertiary)
           }
           .width('100%')
-          .padding(12)
-          .borderRadius(12)
-          .backgroundColor(CLR_INPUT_BG)
+          .padding(Theme.cardPadding)
+          .borderRadius(Theme.inputRadius)
+          .backgroundColor(Theme.inputBg)
         } else {
           Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
             ForEach(CUSTOM_FIELD_TYPES, (type: CustomFieldType) => {
               Text(getFieldTypeName(type))
                 .fontSize(14)
-                .fontColor(this.selectedType === type ? Color.White : CLR_TEXT)
+                .fontColor(this.selectedType === type ? Color.White : Theme.textPrimary)
                 .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-                .borderRadius(20)
-                .backgroundColor(this.selectedType === type ? CLR_BRAND : CLR_INPUT_BG)
+                .borderRadius(Theme.chipRadius)
+                .backgroundColor(this.selectedType === type ? Theme.brand : Theme.inputBg)
                 .margin({ right: 8, bottom: 8 })
                 .onClick(() => {
                   this.selectedType = type;
@@ -474,26 +511,28 @@ struct CustomFieldManager {
       .alignItems(HorizontalAlign.Start)
 
       if (this.selectedType === 'enum') {
-        Column({ space: 8 }) {
+        Column({ space: Theme.smallGap }) {
           Text('单选选项（至少 2 个选项）*')
-            .fontSize(13)
-            .fontColor(CLR_TEXT_SUB)
+            .fontSize(Theme.textCaption)
+            .fontColor(Theme.textSecondary)
 
-          Row({ space: 8 }) {
+          Row({ space: Theme.smallGap }) {
             TextInput({ text: this.newOptionInput, placeholder: '输入选项名称，如：冷藏' })
-              .fontSize(15)
-              .backgroundColor(CLR_INPUT_BG)
-              .borderRadius(12)
+              .fontSize(Theme.textSubhead)
+              .fontColor(Theme.textPrimary)
+              .placeholderColor(Theme.textTertiary)
+              .backgroundColor(Theme.inputBg)
+              .borderRadius(Theme.inputRadius)
               .layoutWeight(1)
               .onChange((v: string) => {
                 this.newOptionInput = v;
               })
 
             Button('添加')
-              .fontSize(14)
+              .fontSize(Theme.textCaption)
               .fontColor(Color.White)
-              .backgroundColor(CLR_BRAND)
-              .borderRadius(12)
+              .backgroundColor(Theme.brand)
+              .borderRadius(Theme.inputRadius)
               .height(40)
               .padding({ left: 16, right: 16 })
               .onClick(() => {
@@ -505,13 +544,13 @@ struct CustomFieldManager {
           if (this.enumOptions.length > 0) {
             Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
               ForEach(this.enumOptions, (opt: string, idx: number) => {
-                Row({ space: 4 }) {
+                Row({ space: Theme.tinyGap }) {
                   Text(opt)
                     .fontSize(13)
-                    .fontColor(CLR_TEXT)
-                  Text('✕')
+                    .fontColor(Theme.textPrimary)
+                  SymbolGlyph($r('sys.symbol.xmark'))
                     .fontSize(12)
-                    .fontColor(CLR_TEXT_SUB)
+                    .fontColor([Theme.textTertiary])
                     .padding({ left: 2, right: 2 })
                     .onClick(() => {
                       this.removeEnumOption(idx);
@@ -519,7 +558,7 @@ struct CustomFieldManager {
                 }
                 .padding({ left: 12, right: 8, top: 6, bottom: 6 })
                 .borderRadius(16)
-                .backgroundColor(CLR_INPUT_BG)
+                .backgroundColor(Theme.inputBg)
                 .margin({ right: 8, bottom: 8 })
               }, (opt: string) => opt)
             }
@@ -527,8 +566,8 @@ struct CustomFieldManager {
             .padding({ top: 4 })
           } else {
             Text('暂无选项，请在上方的输入框中添加')
-              .fontSize(12)
-              .fontColor(CLR_TEXT_TIP)
+              .fontSize(Theme.textCaption)
+              .fontColor(Theme.textTertiary)
               .margin({ top: 2 })
           }
         }
@@ -536,14 +575,14 @@ struct CustomFieldManager {
         .alignItems(HorizontalAlign.Start)
       }
 
-      Row({ space: 12 }) {
+      Row({ space: Theme.elementGap }) {
         Button('取消')
           .layoutWeight(1)
           .height(44)
           .borderRadius(12)
-          .backgroundColor(CLR_INPUT_BG)
-          .fontColor(CLR_TEXT)
-          .fontSize(15)
+          .backgroundColor(Theme.inputBg)
+          .fontColor(Theme.textPrimary)
+          .fontSize(Theme.textSubhead)
           .onClick(() => {
             this.showEditSheet = false;
           })
@@ -552,9 +591,9 @@ struct CustomFieldManager {
           .layoutWeight(1)
           .height(44)
           .borderRadius(12)
-          .backgroundColor(CLR_BRAND)
+          .backgroundColor(Theme.brand)
           .fontColor(Color.White)
-          .fontSize(15)
+          .fontSize(Theme.textSubhead)
           .onClick(() => {
             this.saveField();
           })
@@ -563,6 +602,11 @@ struct CustomFieldManager {
       .margin({ top: 12, bottom: 16 })
     }
     .width('100%')
-    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .padding({
+      left: Theme.pagePadding,
+      right: Theme.pagePadding,
+      top: 12,
+      bottom: 12
+    })
   }
 }

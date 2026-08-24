@@ -1,27 +1,26 @@
 /**
- * 首页：临期概览 + 物资列表（按到期日升序）—— 鸿蒙官方设计风格。
+ * 首页：临期概览 + 物资列表（按到期日升序）—— 清新自然风格。
  */
-import { router, promptAction } from '@kit.ArkUI';
+import { router, promptAction, TimePickerResult } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, ExpiryLevel } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
-import { ExpiryStats, levelOf, levelColor, levelText, remainingDays, statsOf } from '../service/ExpiryService';
+import {
+  ExpiryStats,
+  levelOf,
+  levelColor,
+  levelSoftColor,
+  levelBadgeTextColor,
+  levelText,
+  remainingDays,
+  statsOf
+} from '../service/ExpiryService';
 import { ensureNotificationEnabled, publishExpiryAlert, requestNotificationEnable } from '../service/NotificationService';
 import { ReminderService, ReminderSettings } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
-
-/* ───── 鸿蒙官方色值体系 ───── */
-const CLR_BRAND = '#2FA84F';
-const CLR_BG = '#F1F3F5';
-const CLR_CARD = '#FFFFFF';
-const CLR_TEXT = '#182431';
-const CLR_TEXT_SUB = '#99182431';
-const CLR_TEXT_TIP = '#4D182431';
-const CLR_BORDER = '#E5E5E5';
-const CLR_DANGER = '#FA2A2D';
-const CLR_WARNING = '#FF8D00';
-const CLR_SUCCESS = '#2FA84F';
+import { Theme } from '../common/Theme';
+import { getCategoryIcon } from '../common/CategoryIcons';
 
 enum ListFilter {
   ALL = 0,
@@ -163,79 +162,30 @@ struct Index {
   build() {
     Stack({ alignContent: Alignment.BottomEnd }) {
       Column() {
-        Row() {
-          Column() {
-            Text('KeepFresh')
-              .fontSize(24)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(CLR_TEXT)
-            Text('物资保质期管理')
-              .fontSize(14)
-              .fontColor(CLR_TEXT_SUB)
-              .margin({ top: 4 })
-          }
-          .alignItems(HorizontalAlign.Start)
+        this.header()
 
-          Blank()
-
-          Row({ space: 8 }) {
-            Button({ type: ButtonType.Circle, stateEffect: true }) {
-              SymbolGlyph($r('sys.symbol.bell'))
-                .fontSize(20)
-                .fontColor([this.reminderEnabled ? CLR_BRAND : CLR_TEXT_SUB])
-            }
-            .backgroundColor(CLR_CARD)
-            .width(40)
-            .height(40)
-            .onClick(() => {
-              this.openReminderSettingsDialog();
-            })
-
-            Button({ type: ButtonType.Circle, stateEffect: true }) {
-              SymbolGlyph($r('sys.symbol.gearshape'))
-                .fontSize(20)
-                .fontColor([CLR_TEXT])
-            }
-            .backgroundColor(CLR_CARD)
-            .width(40)
-            .height(40)
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/Settings' });
-            })
-          }
+        Row({ space: Theme.elementGap }) {
+          this.statCard('全部', this.stats.total, ListFilter.ALL, Theme.textPrimary, $r('sys.symbol.archivebox'))
+          this.statCard('临期', this.stats.near, ListFilter.NEAR, Theme.near, $r('sys.symbol.clock'))
+          this.statCard('已过期', this.stats.expired, ListFilter.EXPIRED, Theme.expired, $r('sys.symbol.exclamationmark_triangle'))
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 16, bottom: 12 })
-
-        Row({ space: 8 }) {
-          this.statCard('全部', this.stats.total, ListFilter.ALL, CLR_TEXT)
-          this.statCard('临期', this.stats.near, ListFilter.NEAR, CLR_WARNING)
-          this.statCard('已过期', this.stats.expired, ListFilter.EXPIRED, CLR_DANGER)
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, bottom: 12 })
+        .padding({
+          left: Theme.pagePadding,
+          right: Theme.pagePadding,
+          bottom: Theme.cardGap
+        })
 
         if (this.loading) {
           Column() {
-            LoadingProgress().width(40).height(40).color(CLR_BRAND)
+            LoadingProgress().width(40).height(40).color(Theme.brand)
           }
           .layoutWeight(1)
           .justifyContent(FlexAlign.Center)
         } else if (this.visibleList().length === 0) {
-          Column({ space: 8 }) {
-            Text(this.stats.total === 0 ? '还没有物资' : '当前筛选下没有物资')
-              .fontSize(16)
-              .fontColor(CLR_TEXT_SUB)
-            if (this.stats.total === 0) {
-              Text('点击右下角 + 添加第一件物资')
-                .fontSize(14)
-                .fontColor(CLR_TEXT_TIP)
-            }
-          }
-          .layoutWeight(1)
-          .justifyContent(FlexAlign.Center)
+          this.emptyState()
         } else {
-          List({ space: 8 }) {
+          List({ space: Theme.elementGap }) {
             ForEach(this.visibleList(), (m: Material) => {
               ListItem() {
                 this.materialCard(m)
@@ -244,7 +194,12 @@ struct Index {
           }
           .layoutWeight(1)
           .width('100%')
-          .padding({ left: 16, right: 16, top: 4, bottom: 88 })
+          .padding({
+            left: Theme.pagePadding,
+            right: Theme.pagePadding,
+            top: Theme.smallGap,
+            bottom: 96
+          })
           .scrollBar(BarState.Off)
         }
       }
@@ -252,28 +207,28 @@ struct Index {
       .height('100%')
 
       Button() {
-        Text('+')
+        SymbolGlyph($r('sys.symbol.plus'))
           .fontSize(28)
-          .fontColor(Color.White)
+          .fontColor([Theme.textWhite])
           .fontWeight(FontWeight.Bold)
       }
-      .width(56)
-      .height(56)
-      .borderRadius(16)
-      .backgroundColor(CLR_BRAND)
-      .shadow({ radius: 12, color: 'rgba(47,168,79,0.25)', offsetX: 0, offsetY: 4 })
-      .margin(16)
+      .width(Theme.fabSize)
+      .height(Theme.fabSize)
+      .borderRadius(Theme.fabRadius)
+      .backgroundColor(Theme.brand)
+      .shadow(Theme.fabShadowStyle)
+      .margin(Theme.pagePadding)
       .onClick(() => {
         router.pushUrl({ url: 'pages/AddItem' });
       })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(CLR_BG)
+    .backgroundColor(Theme.pageBg)
     .bindSheet($$this.showSettingsDialog, this.reminderSettingsSheet(), {
       height: SheetSize.FIT_CONTENT,
       dragBar: true,
-      backgroundColor: CLR_CARD,
+      backgroundColor:Theme.cardBg,
       onDisappear: () => {
         this.showSettingsDialog = false;
       }
@@ -281,85 +236,264 @@ struct Index {
   }
 
   @Builder
+  header() {
+    Row() {
+      Column() {
+        Text('KeepFresh')
+          .fontSize(Theme.textHero)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Theme.textPrimary)
+        Text('让每一件物资都新鲜可见')
+          .fontSize(Theme.textCaption)
+          .fontColor(Theme.textSecondary)
+          .margin({ top: Theme.tinyGap })
+      }
+      .alignItems(HorizontalAlign.Start)
+
+      Blank()
+
+      Row({ space: Theme.smallGap }) {
+        this.iconButton(
+          $r('sys.symbol.bell'),
+          this.reminderEnabled ? Theme.brand : Theme.textSecondary,
+          () => this.openReminderSettingsDialog()
+        )
+        this.iconButton(
+          $r('sys.symbol.gearshape'),
+          Theme.textPrimary,
+          () => router.pushUrl({ url: 'pages/Settings' })
+        )
+      }
+    }
+    .width('100%')
+    .padding({
+      left: Theme.pagePadding,
+      right: Theme.pagePadding,
+      top: Theme.cardGap,
+      bottom: Theme.elementGap
+    })
+  }
+
+  @Builder
+  iconButton(symbol: Resource, color: string, onClick: () => void) {
+    Button({ type: ButtonType.Circle, stateEffect: true }) {
+      SymbolGlyph(symbol)
+        .fontSize(20)
+        .fontColor([color])
+    }
+    .backgroundColor(Theme.cardBg)
+    .width(Theme.iconBtnSize)
+    .height(Theme.iconBtnSize)
+    .shadow(Theme.shadowStyle)
+    .onClick(onClick)
+  }
+
+  @Builder
+  statCard(label: string, count: number, f: ListFilter, color: string, icon: Resource) {
+    Column({ space: Theme.tinyGap }) {
+      Row({ space: Theme.smallGap }) {
+        SymbolGlyph(icon)
+          .fontSize(14)
+          .fontColor([color])
+        Text(label)
+          .fontSize(Theme.textSmall)
+          .fontColor(Theme.textSecondary)
+      }
+
+      Text(count.toString())
+        .fontSize(Theme.statNumber)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(color)
+        .margin({ top: 2 })
+    }
+    .layoutWeight(1)
+    .padding({ top: Theme.cardPadding, bottom: Theme.cardPadding })
+    .borderRadius(Theme.cardRadius)
+    .backgroundColor(Theme.cardBg)
+    .shadow(Theme.shadowStyle)
+    .border(this.filter === f ? Theme.borderBrand : Theme.borderThin)
+    .onClick(() => {
+      this.filter = f;
+    })
+  }
+
+  @Builder
+  materialCard(m: Material) {
+    const lv: ExpiryLevel = levelOf(m);
+    const iconInfo = getCategoryIcon(m.category);
+
+    Row() {
+      // 左侧彩色状态条
+      Column()
+        .width(4)
+        .height('100%')
+        .borderRadius(2)
+        .backgroundColor(levelColor(lv))
+        .margin({ right: Theme.elementGap })
+
+      // 分类图标
+      Column() {
+        SymbolGlyph(iconInfo.symbol)
+          .fontSize(22)
+          .fontColor([Theme.brand])
+      }
+      .width(44)
+      .height(44)
+      .borderRadius(Theme.iconBtnRadius)
+      .backgroundColor(iconInfo.bgColor)
+      .margin({ right: Theme.elementGap })
+      .justifyContent(FlexAlign.Center)
+
+      // 物资信息
+      Column() {
+        Text(m.name)
+          .fontSize(Theme.textBody)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Theme.textPrimary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Text(`${m.category} · ${m.quantity}${m.unit}`)
+          .fontSize(Theme.textCaption)
+          .fontColor(Theme.textSecondary)
+          .margin({ top: Theme.tinyGap })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      // 状态徽标
+      Column() {
+        Text(levelText(lv, remainingDays(m)))
+          .fontSize(Theme.textSmall)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(levelBadgeTextColor(lv))
+        Text(m.expiryDate)
+          .fontSize(Theme.textTiny)
+          .fontColor(Theme.textTertiary)
+          .margin({ top: 2 })
+      }
+      .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+      .borderRadius(Theme.badgeRadius)
+      .backgroundColor(levelSoftColor(lv))
+      .alignItems(HorizontalAlign.Center)
+    }
+    .width('100%')
+    .padding(Theme.cardPadding)
+    .borderRadius(Theme.cardRadius)
+    .backgroundColor(Theme.cardBg)
+    .shadow(Theme.shadowStyle)
+    .onClick(() => {
+      router.pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+    })
+  }
+
+  @Builder
+  emptyState() {
+    Column({ space: Theme.elementGap }) {
+      Column() {
+        SymbolGlyph($r('sys.symbol.leaf'))
+          .fontSize(64)
+          .fontColor([Theme.brand])
+          .opacity(0.4)
+      }
+      .width(100)
+      .height(100)
+      .borderRadius(50)
+      .backgroundColor(Theme.brandSoft)
+      .justifyContent(FlexAlign.Center)
+      .margin({ bottom: Theme.smallGap })
+
+      Text(this.stats.total === 0 ? '还没有物资' : '当前筛选下没有物资')
+        .fontSize(Theme.textBody)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Theme.textPrimary)
+      Text(this.stats.total === 0 ? '点击右下角按钮，添加第一件物资吧' : '试试切换其他筛选条件')
+        .fontSize(Theme.textCaption)
+        .fontColor(Theme.textTertiary)
+    }
+    .layoutWeight(1)
+    .justifyContent(FlexAlign.Center)
+  }
+
+  @Builder
   reminderSettingsSheet() {
-    Column({ space: 16 }) {
+    Column({ space: Theme.elementGap }) {
       Row() {
         Text('临期提醒设置')
-          .fontSize(18)
+          .fontSize(Theme.textHeadline)
           .fontWeight(FontWeight.Bold)
-          .fontColor(CLR_TEXT)
+          .fontColor(Theme.textPrimary)
         Blank()
       }
       .width('100%')
       .padding({ top: 8, bottom: 4 })
 
       Row() {
-        Column({ space: 4 }) {
+        Column({ space: Theme.tinyGap }) {
           Text('每日临期汇总提醒')
-            .fontSize(16)
+            .fontSize(Theme.textBody)
             .fontWeight(FontWeight.Medium)
-            .fontColor(CLR_TEXT)
+            .fontColor(Theme.textPrimary)
           Text('每天定时检查物资，有临期或过期物品时推送通知')
-            .fontSize(12)
-            .fontColor(CLR_TEXT_SUB)
+            .fontSize(Theme.textCaption)
+            .fontColor(Theme.textSecondary)
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
 
         Toggle({ type: ToggleType.Switch, isOn: this.reminderEnabled })
-          .selectedColor(CLR_BRAND)
+          .selectedColor(Theme.brand)
           .onChange(async (isOn: boolean) => {
             this.reminderEnabled = isOn;
             await this.saveReminderSettings();
           })
       }
       .width('100%')
-      .padding(14)
-      .borderRadius(14)
-      .backgroundColor(CLR_BG)
+      .padding(Theme.cardPadding)
+      .borderRadius(Theme.cardRadius)
+      .backgroundColor(Theme.inputBg)
 
       if (this.reminderEnabled) {
         Row() {
-          Column({ space: 4 }) {
+          Column({ space: Theme.tinyGap }) {
             Text('提醒时间')
-              .fontSize(16)
+              .fontSize(Theme.textBody)
               .fontWeight(FontWeight.Medium)
-              .fontColor(CLR_TEXT)
+              .fontColor(Theme.textPrimary)
             Text('设定每天触发离线提醒的时间')
-              .fontSize(12)
-              .fontColor(CLR_TEXT_SUB)
+              .fontSize(Theme.textCaption)
+              .fontColor(Theme.textSecondary)
           }
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)
 
-          Row({ space: 6 }) {
+          Row({ space: Theme.smallGap }) {
             Text(this.formatTime(this.reminderHour, this.reminderMinute))
-              .fontSize(16)
+              .fontSize(Theme.textBody)
               .fontWeight(FontWeight.Medium)
-              .fontColor(CLR_BRAND)
+              .fontColor(Theme.brand)
             SymbolGlyph($r('sys.symbol.chevron_right'))
               .fontSize(16)
-              .fontColor([CLR_TEXT_SUB])
+              .fontColor([Theme.textTertiary])
           }
           .padding({ left: 12, right: 10, top: 8, bottom: 8 })
-          .borderRadius(8)
-          .backgroundColor(CLR_CARD)
+          .borderRadius(Theme.inputRadius)
+          .backgroundColor(Theme.cardBg)
           .onClick(() => {
             this.pickReminderTime();
           })
         }
         .width('100%')
-        .padding(14)
-        .borderRadius(14)
-        .backgroundColor(CLR_BG)
+        .padding(Theme.cardPadding)
+        .borderRadius(Theme.cardRadius)
+        .backgroundColor(Theme.inputBg)
       }
 
       Button('完成')
         .width('100%')
         .height(44)
         .borderRadius(12)
-        .backgroundColor(CLR_BRAND)
-        .fontSize(16)
+        .backgroundColor(Theme.brand)
+        .fontSize(Theme.textBody)
         .fontWeight(FontWeight.Medium)
         .fontColor(Color.White)
         .margin({ top: 8, bottom: 16 })
@@ -368,71 +502,11 @@ struct Index {
         })
     }
     .width('100%')
-    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-  }
-
-  @Builder
-  statCard(label: string, count: number, f: ListFilter, color: string) {
-    Column() {
-      Text(count.toString())
-        .fontSize(28)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(color)
-      Text(label)
-        .fontSize(12)
-        .fontColor(CLR_TEXT_SUB)
-        .margin({ top: 4 })
-    }
-    .layoutWeight(1)
-    .padding({ top: 14, bottom: 14 })
-    .borderRadius(16)
-    .backgroundColor(CLR_CARD)
-    .border(this.filter === f
-      ? { width: 2, color: CLR_BRAND }
-      : { width: 1, color: CLR_BORDER })
-    .onClick(() => {
-      this.filter = f;
-    })
-  }
-
-  @Builder
-  materialCard(m: Material) {
-    Row() {
-      Column() {
-        Text(m.name)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(CLR_TEXT)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(`${m.category} · ${m.quantity}${m.unit}`)
-          .fontSize(13)
-          .fontColor(CLR_TEXT_SUB)
-          .margin({ top: 4 })
-      }
-      .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
-
-      Column() {
-        Text(levelText(levelOf(m), remainingDays(m)))
-          .fontSize(12)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Color.White)
-        Text(m.expiryDate)
-          .fontSize(11)
-          .fontColor('rgba(255,255,255,0.9)')
-          .margin({ top: 2 })
-      }
-      .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-      .borderRadius(10)
-      .backgroundColor(levelColor(levelOf(m)))
-    }
-    .width('100%')
-    .padding(16)
-    .borderRadius(16)
-    .backgroundColor(CLR_CARD)
-    .onClick(() => {
-      router.pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+    .padding({
+      left: Theme.pagePadding,
+      right: Theme.pagePadding,
+      top: 12,
+      bottom: 12
     })
   }
 }
