@@ -1,8 +1,3 @@
-/**
- * 物资分类图标与颜色映射。
- * 返回 HarmonyOS 系统 Symbol 资源，未命中时返回默认叶子图标。
- */
-
 import { Theme } from './Theme';
 
 export interface CategoryIcon {
@@ -15,22 +10,22 @@ export function getCategoryIcon(category: string): CategoryIcon {
     case '食品':
       return {
         symbol: $r('sys.symbol.carrot'),
-        bgColor: '#E8F8EC'
+        bgColor: '#fff0e5'
       };
     case '药品':
       return {
         symbol: $r('sys.symbol.cross_case'),
-        bgColor: '#FFF4E5'
+        bgColor: '#e0f2f0'
       };
     case '日用品':
       return {
         symbol: $r('sys.symbol.house'),
-        bgColor: '#E8F4FD'
+        bgColor: '#fff8e0'
       };
     case '美妆护肤':
       return {
         symbol: $r('sys.symbol.sparkles'),
-        bgColor: '#F3E8FF'
+        bgColor: '#ffe5e7'
       };
     case '其他':
     default:

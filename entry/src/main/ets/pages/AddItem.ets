@@ -1,5 +1,5 @@
 /**
- * 新增 / 编辑物资页 —— 清新自然风格。
+ * 新增 / 编辑物资页 —— 包豪斯（Bauhaus）设计风格。
  */
 import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
@@ -151,7 +151,7 @@ struct AddItem {
     await this.db.init(ctx);
     const result: ScanFillResult | undefined = await scanForSuggestions(ctx, this.db);
     if (!result) {
-      return; // 用户取消扫码
+      return;
     }
     if (!result.ok) {
       promptAction.showToast({ message: '扫码失败或设备不支持，请手动填写' });
@@ -159,7 +159,6 @@ struct AddItem {
     }
     this.barcode = result.barcode;
     if (result.suggestions.length === 0) {
-      // 陌生条码：不预填，条码随本条物资记录一并保存
       this.scanSuggestions = [];
       promptAction.showToast({ message: '该条码无历史记录，请手动填写' });
       return;
@@ -168,7 +167,6 @@ struct AddItem {
     this.showScanSheet = true;
   }
 
-  /** 点选搜索建议：预填名称/分类/单位/保质期天数，生产日期和数量留给用户 */
   private applyScanSuggestion(m: Material): void {
     this.name = m.name;
     this.category = m.category;
@@ -178,7 +176,6 @@ struct AddItem {
     promptAction.showToast({ message: '已预填，请补充生产日期和数量' });
   }
 
-  /** 「都不对，手动填写」：丢弃预填，仅保留条码 */
   private discardScanSuggestions(): void {
     this.showScanSheet = false;
     promptAction.showToast({ message: '请手动填写物资信息' });
@@ -250,43 +247,68 @@ struct AddItem {
 
   build() {
     Column() {
-      // 顶部导航
       Row() {
-        Button({ type: ButtonType.Circle, stateEffect: true }) {
-          SymbolGlyph($r('sys.symbol.chevron_left'))
-            .fontSize(24)
-            .fontColor([Theme.textPrimary])
+        Stack() {
+          Row()
+            .width(Theme.iconBtnSize)
+            .height(Theme.iconBtnSize)
+            .backgroundColor(Theme.ink)
+            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+          Button({ type: ButtonType.Circle, stateEffect: true }) {
+            SymbolGlyph($r('sys.symbol.chevron_left'))
+              .fontSize(24)
+              .fontColor([Theme.textPrimary])
+          }
+          .backgroundColor(Theme.cardBg)
+          .width(Theme.iconBtnSize)
+          .height(Theme.iconBtnSize)
+          .border(Theme.borderThin)
+          .borderRadius(Theme.iconBtnRadius)
+          .onClick(() => {
+            router.back();
+          })
         }
-        .backgroundColor(Theme.inputBg)
-        .width(Theme.iconBtnSize)
-        .height(Theme.iconBtnSize)
-        .onClick(() => {
-          router.back();
-        })
+        .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
         Text(this.isEdit ? '编辑物资' : '新增物资')
           .fontSize(Theme.textTitle)
-          .fontWeight(FontWeight.Medium)
+          .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textPrimary)
-          .margin({ left: Theme.smallGap })
+          .margin({ left: Theme.elementGap })
 
         Blank()
 
         if (this.saving) {
-          LoadingProgress().width(20).height(20).color(Theme.brand).margin({ right: 8 })
+          LoadingProgress()
+            .width(20)
+            .height(20)
+            .color(Theme.yellowDark)
+            .margin({ right: Theme.smallGap })
         }
 
-        Button(this.isEdit ? '保存' : '添加')
-          .fontSize(14)
-          .fontColor(Color.White)
-          .backgroundColor(Theme.brand)
-          .borderRadius(20)
-          .height(38)
-          .padding({ left: 20, right: 20 })
-          .enabled(!this.saving)
-          .onClick(() => {
-            this.save();
-          })
+        Stack() {
+          Row()
+            .height(Theme.primaryBtnHeight)
+            .constraintSize({ minWidth: 88 })
+            .backgroundColor(Theme.ink)
+            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+          Button(this.isEdit ? '保存' : '添加')
+            .fontSize(Theme.textSubhead)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Theme.textWhite)
+            .backgroundColor(Theme.yellowDark)
+            .border(Theme.borderThin)
+            .borderRadius(Theme.buttonRadius)
+            .height(Theme.primaryBtnHeight)
+            .padding({ left: 20, right: 20 })
+            .enabled(!this.saving)
+            .onClick(() => {
+              this.save();
+            })
+        }
+        .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
       }
       .width('100%')
       .padding({
@@ -299,72 +321,115 @@ struct AddItem {
       Scroll() {
         Column({ space: Theme.cardGap }) {
           if (this.errorMsg !== '') {
-            Row({ space: Theme.smallGap }) {
-              SymbolGlyph($r('sys.symbol.exclamationmark_circle'))
-                .fontSize(16)
-                .fontColor([Theme.danger])
-              Text(this.errorMsg)
-                .fontSize(Theme.textCaption)
-                .fontColor(Theme.danger)
+            Stack() {
+              Row()
+                .width('100%')
+                .backgroundColor(Theme.ink)
+                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+              Row({ space: Theme.smallGap }) {
+                Column()
+                  .width(6)
+                  .height('100%')
+                  .backgroundColor(Theme.danger)
+
+                Row({ space: Theme.smallGap }) {
+                  SymbolGlyph($r('sys.symbol.exclamationmark_circle'))
+                    .fontSize(18)
+                    .fontColor([Theme.danger])
+                  Text(this.errorMsg)
+                    .fontSize(Theme.textCaption)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor(Theme.danger)
+                    .layoutWeight(1)
+                }
                 .layoutWeight(1)
+              }
+              .width('100%')
+              .padding(Theme.cardPadding)
+              .backgroundColor(Theme.cardBg)
+              .border(Theme.borderThin)
+              .borderRadius(Theme.cardRadius)
             }
             .width('100%')
-            .padding(Theme.cardPadding)
-            .borderRadius(Theme.cardRadius)
-            .backgroundColor(Theme.dangerSoft)
+            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
 
-          // 快捷识别：扫码快填
           Row({ space: Theme.elementGap }) {
             this.actionCapsule(
               $r('sys.symbol.barcode'),
               '扫码快填',
-              Theme.brand,
+              Theme.yellowDark,
               Theme.textWhite,
               () => this.handleScanBarcode()
             )
           }
           .width('100%')
 
-          // 基本信息卡片
-          Column({ space: 4 }) {
-            this.sectionTitle('基本信息')
+          Stack() {
+            Column()
+              .width('100%')
+              .backgroundColor(Theme.ink)
+              .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
             Column({ space: Theme.elementGap }) {
+              this.sectionTitle('基本信息', Theme.yellowDark)
+
               this.fieldLabel('物资名称 *')
-              TextInput({ text: this.name, placeholder: '如：牛奶、感冒灵、洗面奶' })
-                .fontSize(Theme.textBody)
-                .fontColor(Theme.textPrimary)
-                .placeholderColor(Theme.textTertiary)
-                .backgroundColor(Theme.inputBg)
-                .borderRadius(Theme.inputRadius)
-                .onChange((v: string) => {
-                  this.name = v;
-                })
+              Stack() {
+                Row()
+                  .width('100%')
+                  .backgroundColor(Theme.ink)
+                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                TextInput({ text: this.name, placeholder: '如：牛奶、感冒灵、洗面奶' })
+                  .fontSize(Theme.textBody)
+                  .fontColor(Theme.textPrimary)
+                  .placeholderColor(Theme.textTertiary)
+                  .backgroundColor(Theme.inputBg)
+                  .border(Theme.borderThin)
+                  .borderRadius(Theme.inputRadius)
+                  .height(48)
+                  .onChange((v: string) => {
+                    this.name = v;
+                  })
+              }
+              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
               if (this.barcode.trim().length > 0) {
                 this.fieldLabel('条形码')
-                Row() {
-                  SymbolGlyph($r('sys.symbol.barcode'))
-                    .fontSize(18)
-                    .fontColor([Theme.brand])
-                    .margin({ right: Theme.smallGap })
-                  Text(this.barcode)
-                    .fontSize(Theme.textSubhead)
-                    .fontColor(Theme.textPrimary)
-                    .layoutWeight(1)
-                  Text('清除')
-                    .fontSize(13)
-                    .fontColor(Theme.danger)
-                    .padding({ left: 8, right: 4, top: 4, bottom: 4 })
-                    .onClick(() => {
-                      this.barcode = '';
-                    })
+                Stack() {
+                  Row()
+                    .width('100%')
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                  Row() {
+                    SymbolGlyph($r('sys.symbol.barcode'))
+                      .fontSize(18)
+                      .fontColor([Theme.yellowDark])
+                      .margin({ right: Theme.smallGap })
+                    Text(this.barcode)
+                      .fontSize(Theme.textSubhead)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor(Theme.textPrimary)
+                      .layoutWeight(1)
+                    Text('清除')
+                      .fontSize(Theme.textCaption)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor(Theme.danger)
+                      .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+                      .border(Theme.borderThin)
+                      .borderRadius(Theme.buttonRadius)
+                      .onClick(() => {
+                        this.barcode = '';
+                      })
+                  }
+                  .width('100%')
+                  .padding(Theme.cardPadding)
+                  .backgroundColor(Theme.inputBg)
+                  .border(Theme.borderThin)
+                  .borderRadius(Theme.inputRadius)
                 }
-                .width('100%')
-                .padding(Theme.cardPadding)
-                .borderRadius(Theme.inputRadius)
-                .backgroundColor(Theme.inputBg)
+                .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
               }
 
               this.fieldLabel('分类')
@@ -373,145 +438,213 @@ struct AddItem {
               })
 
               this.fieldLabel('数量 *')
-              TextInput({ text: this.quantityStr, placeholder: '数量' })
-                .type(InputType.Number)
-                .fontSize(Theme.textBody)
-                .fontColor(Theme.textPrimary)
-                .placeholderColor(Theme.textTertiary)
-                .backgroundColor(Theme.inputBg)
-                .borderRadius(Theme.inputRadius)
-                .onChange((v: string) => {
-                  this.quantityStr = v;
-                })
+              Stack() {
+                Row()
+                  .width('100%')
+                  .backgroundColor(Theme.ink)
+                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                TextInput({ text: this.quantityStr, placeholder: '数量' })
+                  .type(InputType.Number)
+                  .fontSize(Theme.textBody)
+                  .fontColor(Theme.textPrimary)
+                  .placeholderColor(Theme.textTertiary)
+                  .backgroundColor(Theme.inputBg)
+                  .border(Theme.borderThin)
+                  .borderRadius(Theme.inputRadius)
+                  .height(48)
+                  .onChange((v: string) => {
+                    this.quantityStr = v;
+                  })
+              }
+              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
               this.chipGroup(DEFAULT_UNITS, this.unit, (v: string) => {
                 this.unit = v;
               })
             }
             .width('100%')
+            .padding(Theme.cardPadding)
+            .backgroundColor(Theme.cardBg)
+            .border(Theme.borderThin)
+            .borderRadius(Theme.cardRadius)
+            .alignItems(HorizontalAlign.Start)
           }
           .width('100%')
-          .padding(Theme.cardPadding)
-          .borderRadius(Theme.cardRadius)
-          .backgroundColor(Theme.cardBg)
-          .shadow(Theme.shadowStyle)
-          .alignItems(HorizontalAlign.Start)
+          .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
-          // 日期与保质期卡片
-          Column({ space: 4 }) {
-            this.sectionTitle('日期与保质期')
+          Stack() {
+            Column()
+              .width('100%')
+              .backgroundColor(Theme.ink)
+              .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
             Column({ space: Theme.elementGap }) {
+              this.sectionTitle('日期与保质期', Theme.near)
+
               this.fieldLabel('生产日期 *')
-              Row() {
-                Text(this.productionDate)
-                  .fontSize(Theme.textBody)
-                  .fontColor(Theme.textPrimary)
-                  .layoutWeight(1)
-                SymbolGlyph($r('sys.symbol.calendar'))
-                  .fontSize(20)
-                  .fontColor([Theme.brand])
+              Stack() {
+                Row()
+                  .width('100%')
+                  .backgroundColor(Theme.ink)
+                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                Row() {
+                  Text(this.productionDate)
+                    .fontSize(Theme.textBody)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor(Theme.textPrimary)
+                    .layoutWeight(1)
+                  SymbolGlyph($r('sys.symbol.calendar'))
+                    .fontSize(20)
+                    .fontColor([Theme.near])
+                }
+                .width('100%')
+                .padding(Theme.cardPadding)
+                .backgroundColor(Theme.inputBg)
+                .border(Theme.borderThin)
+                .borderRadius(Theme.inputRadius)
+                .height(48)
+                .onClick(() => {
+                  this.pickProductionDate();
+                })
               }
-              .width('100%')
-              .padding(Theme.cardPadding)
-              .borderRadius(Theme.inputRadius)
-              .backgroundColor(Theme.inputBg)
-              .onClick(() => {
-                this.pickProductionDate();
-              })
+              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
               this.fieldLabel('保质期（天）*')
-              TextInput({ text: this.shelfLifeStr, placeholder: '天数' })
-                .type(InputType.Number)
-                .fontSize(Theme.textBody)
-                .fontColor(Theme.textPrimary)
-                .placeholderColor(Theme.textTertiary)
-                .backgroundColor(Theme.inputBg)
-                .borderRadius(Theme.inputRadius)
-                .onChange((v: string) => {
-                  this.shelfLifeStr = v;
-                })
+              Stack() {
+                Row()
+                  .width('100%')
+                  .backgroundColor(Theme.ink)
+                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                TextInput({ text: this.shelfLifeStr, placeholder: '天数' })
+                  .type(InputType.Number)
+                  .fontSize(Theme.textBody)
+                  .fontColor(Theme.textPrimary)
+                  .placeholderColor(Theme.textTertiary)
+                  .backgroundColor(Theme.inputBg)
+                  .border(Theme.borderThin)
+                  .borderRadius(Theme.inputRadius)
+                  .height(48)
+                  .onChange((v: string) => {
+                    this.shelfLifeStr = v;
+                  })
+              }
+              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
               this.chipGroup(this.presetLabels(), `${this.shelfLifeStr}天`, (v: string) => {
                 this.shelfLifeStr = v.replace('天', '');
               })
 
-              // 到期预览
-              Row() {
-                Column({ space: Theme.tinyGap }) {
-                  Text('预计到期日')
-                    .fontSize(Theme.textCaption)
-                    .fontColor(Theme.textWhite)
-                    .opacity(0.9)
-                  Text(this.expiryPreview())
-                    .fontSize(Theme.textTitle)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor(Theme.textWhite)
-                }
-                .alignItems(HorizontalAlign.Start)
-                .layoutWeight(1)
+              Stack() {
+                Row()
+                  .width('100%')
+                  .backgroundColor(Theme.ink)
+                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
-                SymbolGlyph($r('sys.symbol.calendar_badge_clock'))
-                  .fontSize(32)
-                  .fontColor(['rgba(255,255,255,0.35)'])
+                Row() {
+                  Column({ space: Theme.tinyGap }) {
+                    Text('预计到期日')
+                      .fontSize(Theme.textCaption)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor(Theme.textWhite)
+                      .opacity(0.9)
+                    Text(this.expiryPreview())
+                      .fontSize(Theme.textHero)
+                      .fontWeight(FontWeight.Bold)
+                      .fontColor(Theme.textWhite)
+                  }
+                  .alignItems(HorizontalAlign.Start)
+                  .layoutWeight(1)
+
+                  Column()
+                    .width(20)
+                    .height(20)
+                    .backgroundColor(Theme.cardBg)
+                    .opacity(0.3)
+                }
+                .width('100%')
+                .padding(Theme.cardPadding)
+                .border(Theme.borderThin)
+                .borderRadius(Theme.cardRadius)
+                .backgroundColor(Theme.safe)
               }
               .width('100%')
-              .padding(Theme.cardPadding)
-              .borderRadius(Theme.cardRadius)
-              .backgroundColor(Theme.brand)
+              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
               .margin({ top: Theme.smallGap })
             }
             .width('100%')
+            .padding(Theme.cardPadding)
+            .backgroundColor(Theme.cardBg)
+            .border(Theme.borderThin)
+            .borderRadius(Theme.cardRadius)
+            .alignItems(HorizontalAlign.Start)
           }
           .width('100%')
-          .padding(Theme.cardPadding)
-          .borderRadius(Theme.cardRadius)
-          .backgroundColor(Theme.cardBg)
-          .shadow(Theme.shadowStyle)
-          .alignItems(HorizontalAlign.Start)
+          .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
-          // 自定义字段
           if (this.customFieldsDefs.length > 0) {
-            Column({ space: 4 }) {
-              this.sectionTitle('扩展信息')
+            Stack() {
+              Column()
+                .width('100%')
+                .backgroundColor(Theme.ink)
+                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
               Column({ space: Theme.elementGap }) {
+                this.sectionTitle('扩展信息', Theme.expired)
+
                 ForEach(this.customFieldsDefs, (def: CustomField) => {
                   this.renderCustomFieldInput(def)
                 }, (def: CustomField) => def.id)
               }
               .width('100%')
+              .padding(Theme.cardPadding)
+              .backgroundColor(Theme.cardBg)
+              .border(Theme.borderThin)
+              .borderRadius(Theme.cardRadius)
+              .alignItems(HorizontalAlign.Start)
+            }
+            .width('100%')
+            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+          }
+
+          Stack() {
+            Column()
+              .width('100%')
+              .backgroundColor(Theme.ink)
+              .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+            Column({ space: Theme.elementGap }) {
+              this.sectionTitle('备注', Theme.safe)
+
+              Stack() {
+                Row()
+                  .width('100%')
+                  .backgroundColor(Theme.ink)
+                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                TextArea({ text: this.note, placeholder: '选填，如存放位置、购买渠道等' })
+                  .fontSize(Theme.textBody)
+                  .fontColor(Theme.textPrimary)
+                  .placeholderColor(Theme.textTertiary)
+                  .backgroundColor(Theme.inputBg)
+                  .border(Theme.borderThin)
+                  .borderRadius(Theme.inputRadius)
+                  .height(120)
+                  .onChange((v: string) => {
+                    this.note = v;
+                  })
+              }
+              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
             }
             .width('100%')
             .padding(Theme.cardPadding)
-            .borderRadius(Theme.cardRadius)
             .backgroundColor(Theme.cardBg)
-            .shadow(Theme.shadowStyle)
+            .border(Theme.borderThin)
+            .borderRadius(Theme.cardRadius)
             .alignItems(HorizontalAlign.Start)
           }
-
-          // 备注
-          Column({ space: 4 }) {
-            this.sectionTitle('备注')
-
-            TextArea({ text: this.note, placeholder: '选填，如存放位置、购买渠道等' })
-              .fontSize(Theme.textBody)
-              .fontColor(Theme.textPrimary)
-              .placeholderColor(Theme.textTertiary)
-              .backgroundColor(Theme.inputBg)
-              .borderRadius(Theme.inputRadius)
-              .height(100)
-              .onChange((v: string) => {
-                this.note = v;
-              })
-          }
           .width('100%')
-          .padding(Theme.cardPadding)
-          .borderRadius(Theme.cardRadius)
-          .backgroundColor(Theme.cardBg)
-          .shadow(Theme.shadowStyle)
-          .alignItems(HorizontalAlign.Start)
+          .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
-          // 底部安全区
-          Column().width('100%').height(20)
+          Column()
+            .width('100%')
+            .height(20)
         }
         .width('100%')
         .padding({
@@ -530,7 +663,7 @@ struct AddItem {
     .bindSheet($$this.showScanSheet, this.scanSuggestionsSheet(), {
       height: SheetSize.FIT_CONTENT,
       dragBar: true,
-      backgroundColor: Theme.cardBg,
+      backgroundColor: Theme.sheetBg,
       onDisappear: () => {
         this.showScanSheet = false;
       }
@@ -539,45 +672,71 @@ struct AddItem {
 
   @Builder
   actionCapsule(symbol: Resource, label: string, bgColor: string, textColor: string, onClick: () => void) {
-    Button({ type: ButtonType.Capsule, stateEffect: true }) {
-      Row({ space: Theme.smallGap }) {
-        SymbolGlyph(symbol)
-          .fontSize(16)
-          .fontColor([textColor])
-        Text(label)
-          .fontSize(Theme.textCaption)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(textColor)
+    Stack() {
+      Row()
+        .layoutWeight(1)
+        .height(Theme.primaryBtnHeight)
+        .backgroundColor(Theme.ink)
+        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+      Button({ type: ButtonType.Capsule, stateEffect: true }) {
+        Row({ space: Theme.smallGap }) {
+          SymbolGlyph(symbol)
+            .fontSize(18)
+            .fontColor([textColor])
+          Text(label)
+            .fontSize(Theme.textSubhead)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(textColor)
+        }
       }
+      .layoutWeight(1)
+      .height(Theme.primaryBtnHeight)
+      .backgroundColor(bgColor)
+      .border(Theme.borderThin)
+      .borderRadius(Theme.buttonRadius)
+      .onClick(onClick)
     }
     .layoutWeight(1)
-    .height(42)
-    .backgroundColor(bgColor)
-    .onClick(onClick)
+    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   @Builder
-  sectionTitle(title: string) {
-    Text(title)
-      .fontSize(Theme.textHeadline)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(Theme.textPrimary)
-      .margin({ bottom: Theme.elementGap })
-  }
+  sectionTitle(title: string, accentColor: string) {
+    Row({ space: Theme.smallGap }) {
+      Column()
+        .width(6)
+        .height(Theme.textHeadline + 2)
+        .backgroundColor(accentColor)
 
-  /** 扫码快填搜索建议半模态：历史入库记录列表 + 手动填写入口 */
-  @Builder
-  scanSuggestionsSheet() {
-    Column() {
-      Text('扫码快填')
+      Text(title)
         .fontSize(Theme.textHeadline)
         .fontWeight(FontWeight.Bold)
         .fontColor(Theme.textPrimary)
-        .margin({ top: 8, bottom: 4 })
+    }
+    .width('100%')
+    .margin({ bottom: Theme.tinyGap })
+  }
+
+  @Builder
+  scanSuggestionsSheet() {
+    Column({ space: Theme.elementGap }) {
+      Row({ space: Theme.smallGap }) {
+        Column()
+          .width(6)
+          .height(Theme.textHero)
+          .backgroundColor(Theme.yellowDark)
+        Text('扫码快填')
+          .fontSize(Theme.textHeadline)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Theme.textPrimary)
+      }
+      .width('100%')
+      .margin({ top: Theme.smallGap })
+
       Text(`条码 ${this.barcode} 匹配到历史入库记录，选择一条预填表单`)
         .fontSize(Theme.textCaption)
         .fontColor(Theme.textSecondary)
-        .margin({ bottom: Theme.elementGap })
 
       List({ space: Theme.smallGap }) {
         ForEach(this.scanSuggestions, (m: Material) => {
@@ -590,88 +749,119 @@ struct AddItem {
       .constraintSize({ maxHeight: 320 })
       .scrollBar(BarState.Off)
 
-      Button('都不对，手动填写')
-        .width('100%')
-        .height(44)
-        .borderRadius(12)
-        .backgroundColor(Color.Transparent)
-        .border({ width: 1, color: Theme.brand })
-        .fontSize(Theme.textSubhead)
-        .fontColor(Theme.brand)
-        .margin({ top: Theme.elementGap, bottom: 16 })
-        .onClick(() => {
-          this.discardScanSuggestions();
-        })
+      Stack() {
+        Row()
+          .width('100%')
+          .height(Theme.primaryBtnHeight)
+          .backgroundColor(Theme.ink)
+          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+        Button('都不对，手动填写')
+          .width('100%')
+          .height(Theme.primaryBtnHeight)
+          .borderRadius(Theme.buttonRadius)
+          .backgroundColor(Theme.cardBg)
+          .border(Theme.borderThin)
+          .fontSize(Theme.textSubhead)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Theme.textPrimary)
+          .onClick(() => {
+            this.discardScanSuggestions();
+          })
+      }
+      .width('100%')
+      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+      .margin({ bottom: Theme.cardGap })
     }
     .width('100%')
     .padding({
       left: Theme.pagePadding,
       right: Theme.pagePadding,
-      top: 12
+      top: Theme.cardPadding
     })
   }
 
-  /** 单条搜索建议：名称 + 数量单位/保质期 + 最近入库时间 */
   @Builder
   suggestionRow(m: Material) {
-    Row() {
-      Column() {
-        Text(m.name)
-          .fontSize(Theme.textBody)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Theme.textPrimary)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(`${m.category} · ${m.quantity}${m.unit} · 保质期${m.shelfLifeDays}天`)
-          .fontSize(Theme.textCaption)
-          .fontColor(Theme.textSecondary)
-          .margin({ top: Theme.tinyGap })
-      }
-      .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
+    Stack() {
+      Row()
+        .width('100%')
+        .backgroundColor(Theme.ink)
+        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
-      Column() {
-        Text('最近入库')
-          .fontSize(Theme.textTiny)
-          .fontColor(Theme.textTertiary)
-        Text(m.createdAt)
-          .fontSize(Theme.textCaption)
-          .fontColor(Theme.textSecondary)
-          .margin({ top: 2 })
+      Row() {
+        Column() {
+          Text(m.name)
+            .fontSize(Theme.textBody)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Theme.textPrimary)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Text(`${m.category} · ${m.quantity}${m.unit} · 保质期${m.shelfLifeDays}天`)
+            .fontSize(Theme.textCaption)
+            .fontColor(Theme.textSecondary)
+            .margin({ top: Theme.tinyGap })
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+
+        Column() {
+          Text('最近入库')
+            .fontSize(Theme.textTiny)
+            .fontColor(Theme.textTertiary)
+            .fontWeight(FontWeight.Medium)
+          Text(m.createdAt)
+            .fontSize(Theme.textCaption)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Theme.textSecondary)
+            .margin({ top: 2 })
+        }
+        .alignItems(HorizontalAlign.End)
       }
-      .alignItems(HorizontalAlign.End)
+      .width('100%')
+      .padding(Theme.cardPadding)
+      .backgroundColor(Theme.inputBg)
+      .border(Theme.borderThin)
+      .borderRadius(Theme.inputRadius)
+      .onClick(() => {
+        this.applyScanSuggestion(m);
+      })
     }
     .width('100%')
-    .padding(Theme.cardPadding)
-    .borderRadius(Theme.inputRadius)
-    .backgroundColor(Theme.inputBg)
-    .onClick(() => {
-      this.applyScanSuggestion(m);
-    })
+    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   @Builder
   fieldLabel(label: string) {
     Text(label)
       .fontSize(Theme.textCaption)
+      .fontWeight(FontWeight.Medium)
       .fontColor(Theme.textSecondary)
-      .margin({ top: 4, bottom: 4 })
+      .margin({ bottom: Theme.tinyGap })
   }
 
   @Builder
   chipGroup(options: string[], selected: string, onSelect: (v: string) => void) {
     Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
       ForEach(options, (opt: string) => {
-        Text(opt)
-          .fontSize(13)
-          .fontColor(selected === opt ? Color.White : Theme.textPrimary)
-          .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-          .borderRadius(Theme.chipRadius)
-          .backgroundColor(selected === opt ? Theme.brand : Theme.inputBg)
-          .margin({ right: 8, bottom: 8 })
-          .onClick(() => {
-            onSelect(opt);
-          })
+        Stack() {
+          Row()
+            .backgroundColor(Theme.ink)
+            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+          Text(opt)
+            .fontSize(Theme.textCaption)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(selected === opt ? Theme.textWhite : Theme.textPrimary)
+            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+            .borderRadius(Theme.chipRadius)
+            .backgroundColor(selected === opt ? Theme.yellowDark : Theme.inputBg)
+            .border(Theme.borderThin)
+            .onClick(() => {
+              onSelect(opt);
+            })
+        }
+        .margin({ right: Theme.smallGap + Theme.hardShadowOffset, bottom: Theme.smallGap + Theme.hardShadowOffset })
       }, (opt: string) => opt)
     }
     .width('100%')
@@ -681,54 +871,86 @@ struct AddItem {
   renderCustomFieldInput(def: CustomField) {
     if (def.type === 'text') {
       this.fieldLabel(def.name)
-      TextInput({ text: this.customFieldValues[def.id] || '', placeholder: '选填' })
-        .fontSize(Theme.textBody)
-        .fontColor(Theme.textPrimary)
-        .placeholderColor(Theme.textTertiary)
-        .backgroundColor(Theme.inputBg)
-        .borderRadius(Theme.inputRadius)
-        .onChange((v: string) => {
-          this.updateCustomFieldValue(def.id, v);
-        })
+      Stack() {
+        Row()
+          .width('100%')
+          .backgroundColor(Theme.ink)
+          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+        TextInput({ text: this.customFieldValues[def.id] || '', placeholder: '选填' })
+          .fontSize(Theme.textBody)
+          .fontColor(Theme.textPrimary)
+          .placeholderColor(Theme.textTertiary)
+          .backgroundColor(Theme.inputBg)
+          .border(Theme.borderThin)
+          .borderRadius(Theme.inputRadius)
+          .height(48)
+          .onChange((v: string) => {
+            this.updateCustomFieldValue(def.id, v);
+          })
+      }
+      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     } else if (def.type === 'number') {
       this.fieldLabel(def.name)
-      TextInput({ text: this.customFieldValues[def.id] || '', placeholder: '选填（数字）' })
-        .type(InputType.Number)
-        .fontSize(Theme.textBody)
-        .fontColor(Theme.textPrimary)
-        .placeholderColor(Theme.textTertiary)
-        .backgroundColor(Theme.inputBg)
-        .borderRadius(Theme.inputRadius)
-        .onChange((v: string) => {
-          this.updateCustomFieldValue(def.id, v);
-        })
+      Stack() {
+        Row()
+          .width('100%')
+          .backgroundColor(Theme.ink)
+          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+        TextInput({ text: this.customFieldValues[def.id] || '', placeholder: '选填（数字）' })
+          .type(InputType.Number)
+          .fontSize(Theme.textBody)
+          .fontColor(Theme.textPrimary)
+          .placeholderColor(Theme.textTertiary)
+          .backgroundColor(Theme.inputBg)
+          .border(Theme.borderThin)
+          .borderRadius(Theme.inputRadius)
+          .height(48)
+          .onChange((v: string) => {
+            this.updateCustomFieldValue(def.id, v);
+          })
+      }
+      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     } else if (def.type === 'date') {
       this.fieldLabel(def.name)
-      Row() {
-        Text(this.customFieldValues[def.id] ? this.customFieldValues[def.id] : `选择${def.name}`)
-          .fontSize(Theme.textBody)
-          .fontColor(this.customFieldValues[def.id] ? Theme.textPrimary : Theme.textTertiary)
-          .layoutWeight(1)
-        if (this.customFieldValues[def.id] && this.customFieldValues[def.id].length > 0) {
-          Text('清除')
-            .fontSize(13)
-            .fontColor(Theme.danger)
-            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-            .onClick(() => {
-              this.updateCustomFieldValue(def.id, '');
-            })
+      Stack() {
+        Row()
+          .width('100%')
+          .backgroundColor(Theme.ink)
+          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+        Row() {
+          Text(this.customFieldValues[def.id] ? this.customFieldValues[def.id] : `选择${def.name}`)
+            .fontSize(Theme.textBody)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.customFieldValues[def.id] ? Theme.textPrimary : Theme.textTertiary)
+            .layoutWeight(1)
+          if (this.customFieldValues[def.id] && this.customFieldValues[def.id].length > 0) {
+            Text('清除')
+              .fontSize(Theme.textCaption)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Theme.danger)
+              .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+              .border(Theme.borderThin)
+              .borderRadius(Theme.buttonRadius)
+              .margin({ right: Theme.smallGap })
+              .onClick(() => {
+                this.updateCustomFieldValue(def.id, '');
+              })
+          }
+          SymbolGlyph($r('sys.symbol.calendar'))
+            .fontSize(20)
+            .fontColor([Theme.expired])
         }
-        SymbolGlyph($r('sys.symbol.calendar'))
-          .fontSize(20)
-          .fontColor([Theme.brand])
+        .width('100%')
+        .padding(Theme.cardPadding)
+        .backgroundColor(Theme.inputBg)
+        .border(Theme.borderThin)
+        .borderRadius(Theme.inputRadius)
+        .height(48)
+        .onClick(() => {
+          this.pickCustomFieldDate(def.id);
+        })
       }
-      .width('100%')
-      .padding(Theme.cardPadding)
-      .borderRadius(Theme.inputRadius)
-      .backgroundColor(Theme.inputBg)
-      .onClick(() => {
-        this.pickCustomFieldDate(def.id);
-      })
+      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     } else if (def.type === 'enum') {
       this.fieldLabel(def.name)
       this.customEnumChipGroup(def.id, def.options || [])
@@ -739,16 +961,24 @@ struct AddItem {
   customEnumChipGroup(fieldId: string, options: string[]) {
     Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
       ForEach(options, (opt: string) => {
-        Text(opt)
-          .fontSize(13)
-          .fontColor(this.customFieldValues[fieldId] === opt ? Color.White : Theme.textPrimary)
-          .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-          .borderRadius(Theme.chipRadius)
-          .backgroundColor(this.customFieldValues[fieldId] === opt ? Theme.brand : Theme.inputBg)
-          .margin({ right: 8, bottom: 8 })
-          .onClick(() => {
-            this.selectCustomEnumOption(fieldId, opt);
-          })
+        Stack() {
+          Row()
+            .backgroundColor(Theme.ink)
+            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+          Text(opt)
+            .fontSize(Theme.textCaption)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.customFieldValues[fieldId] === opt ? Theme.textWhite : Theme.textPrimary)
+            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+            .borderRadius(Theme.chipRadius)
+            .backgroundColor(this.customFieldValues[fieldId] === opt ? Theme.yellowDark : Theme.inputBg)
+            .border(Theme.borderThin)
+            .onClick(() => {
+              this.selectCustomEnumOption(fieldId, opt);
+            })
+        }
+        .margin({ right: Theme.smallGap + Theme.hardShadowOffset, bottom: Theme.smallGap + Theme.hardShadowOffset })
       }, (opt: string) => opt)
     }
     .width('100%')

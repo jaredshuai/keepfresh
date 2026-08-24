@@ -1,5 +1,5 @@
 /**
- * 物资详情页：信息展示 + 编辑入口 + 删除 —— 清新自然风格。
+ * 物资详情页：信息展示 + 编辑入口 + 删除 —— 包豪斯（Bauhaus）风格。
  */
 import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
@@ -88,39 +88,29 @@ struct ItemDetail {
 
   build() {
     Column() {
-      // 顶部导航
+      // 顶部导航：返回按钮（白底黑边40x40 + 硬阴影） + 标题
       Row() {
-        Button({ type: ButtonType.Circle, stateEffect: true }) {
-          SymbolGlyph($r('sys.symbol.chevron_left'))
-            .fontSize(24)
-            .fontColor([Theme.textPrimary])
-        }
-        .backgroundColor(Theme.inputBg)
-        .width(Theme.iconBtnSize)
-        .height(Theme.iconBtnSize)
-        .onClick(() => {
-          router.back();
-        })
+        this.backButton()
 
         Text('物资详情')
           .fontSize(Theme.textTitle)
-          .fontWeight(FontWeight.Medium)
+          .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textPrimary)
-          .margin({ left: Theme.smallGap })
+          .margin({ left: Theme.elementGap })
 
         Blank()
       }
       .width('100%')
       .padding({
-        left: Theme.pagePadding - 4,
+        left: Theme.pagePadding,
         right: Theme.pagePadding,
-        top: 12,
-        bottom: 12
+        top: 16,
+        bottom: 16
       })
 
       if (this.loading) {
         Column() {
-          LoadingProgress().width(40).height(40).color(Theme.brand)
+          LoadingProgress().width(40).height(40).color(Theme.ink)
         }
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
@@ -129,44 +119,20 @@ struct ItemDetail {
           Column({ space: Theme.cardGap }) {
             this.statusBanner()
             this.infoCard()
-
-            Row({ space: Theme.elementGap }) {
-              Button('编辑')
-                .layoutWeight(1)
-                .height(Theme.primaryBtnHeight)
-                .borderRadius(Theme.buttonRadius)
-                .backgroundColor(Theme.brand)
-                .fontColor(Color.White)
-                .fontSize(Theme.textBody)
-                .shadow(Theme.buttonShadow)
-                .onClick(() => {
-                  router.pushUrl({ url: 'pages/AddItem', params: { id: this.itemId } });
-                })
-
-              Button('删除')
-                .layoutWeight(1)
-                .height(Theme.primaryBtnHeight)
-                .borderRadius(Theme.buttonRadius)
-                .backgroundColor(Theme.cardBg)
-                .fontColor(Theme.danger)
-                .fontSize(Theme.textBody)
-                .border({ width: 1.5, color: Theme.danger })
-                .onClick(() => {
-                  this.confirmDelete();
-                })
-            }
-            .width('100%')
           }
           .width('100%')
           .padding({
             left: Theme.pagePadding,
             right: Theme.pagePadding,
             top: 4,
-            bottom: 30
+            bottom: 24
           })
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
+
+        // 底部固定按钮：编辑 + 删除
+        this.bottomBar()
       } else {
         Column() {
           Text('物资不存在或已删除')
@@ -183,112 +149,200 @@ struct ItemDetail {
   }
 
   @Builder
+  backButton() {
+    Stack({ alignContent: Alignment.TopStart }) {
+      Row() {
+      }
+      .width(Theme.iconBtnSize)
+      .height(Theme.iconBtnSize)
+      .backgroundColor(Theme.ink)
+      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+      Button({ type: ButtonType.Circle, stateEffect: true }) {
+        SymbolGlyph($r('sys.symbol.chevron_left'))
+          .fontSize(22)
+          .fontColor([Theme.textPrimary])
+      }
+      .backgroundColor(Theme.cardBg)
+      .width(Theme.iconBtnSize)
+      .height(Theme.iconBtnSize)
+      .borderRadius(Theme.iconBtnRadius)
+      .border(Theme.borderThin)
+      .onClick(() => {
+        router.back();
+      })
+    }
+    .width(Theme.iconBtnSize + Theme.hardShadowOffset)
+    .height(Theme.iconBtnSize + Theme.hardShadowOffset)
+    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+  }
+
+  @Builder
   statusBanner() {
     const lv = levelOf(this.m!);
     const left = remainingDays(this.m!);
+    const bgColor = levelColor(lv);
 
-    Column({ space: Theme.smallGap }) {
-      SymbolGlyph(lv === ExpiryLevel.EXPIRED
-        ? $r('sys.symbol.exclamationmark_triangle')
-        : (lv === ExpiryLevel.NEAR
-            ? $r('sys.symbol.clock')
-            : $r('sys.symbol.checkmark_seal')))
-        .fontSize(48)
-        .fontColor([Theme.textWhite])
-        .opacity(0.9)
+    Stack({ alignContent: Alignment.TopStart }) {
+      Row() {
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(Theme.ink)
+      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
-      Text(levelText(lv, left))
-        .fontSize(Theme.textHero)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(Theme.textWhite)
-        .margin({ top: 4 })
+      Column({ space: Theme.smallGap }) {
+        Row() {
+          this.geoShape(lv)
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.Start)
 
-      Text(`${this.m!.expiryDate} 到期`)
-        .fontSize(Theme.textBody)
-        .fontColor(Theme.textWhite)
-        .opacity(0.9)
+        Text(levelText(lv, left))
+          .fontSize(Theme.statNumber)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Theme.textWhite)
+          .margin({ top: Theme.smallGap })
+
+        Text(`${this.m!.expiryDate} 到期`)
+          .fontSize(Theme.textBody)
+          .fontColor(Theme.textWhite)
+          .opacity(0.95)
+      }
+      .width('100%')
+      .padding({
+        left: Theme.cardPadding,
+        right: Theme.cardPadding,
+        top: 28,
+        bottom: 28
+      })
+      .borderRadius(Theme.cardRadius)
+      .border(Theme.borderThin)
+      .backgroundColor(bgColor)
+      .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
-    .padding(Theme.cardPadding)
-    .padding({ top: 32, bottom: 32 })
-    .borderRadius(Theme.cardRadius)
-    .backgroundColor(levelColor(lv))
-    .alignItems(HorizontalAlign.Center)
+    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+  }
+
+  @Builder
+  geoShape(lv: number) {
+    if (lv === ExpiryLevel.EXPIRED) {
+      Row() {
+      }
+      .width(56)
+      .height(56)
+      .backgroundColor(Theme.expired)
+      .borderRadius(28)
+      .border({ width: 2, color: Theme.ink })
+    } else if (lv === ExpiryLevel.NEAR) {
+      Shape() {
+        Polygon()
+          .points([['50%', '0%'], ['100%', '100%'], ['0%', '100%']])
+          .fill(Theme.near)
+          .stroke(Theme.ink)
+          .strokeWidth(2)
+      }
+      .width(60)
+      .height(56)
+    } else {
+      Row() {
+      }
+      .width(56)
+      .height(56)
+      .backgroundColor(Theme.safe)
+      .border({ width: 2, color: Theme.ink })
+    }
   }
 
   @Builder
   infoCard() {
     const iconInfo = getCategoryIcon(this.m!.category);
 
-    Column({ space: Theme.elementGap }) {
-      // 名称 + 分类
-      Row({ space: Theme.elementGap }) {
-        Column() {
-          SymbolGlyph(iconInfo.symbol)
-            .fontSize(24)
-            .fontColor([Theme.brand])
-        }
-        .width(52)
-        .height(52)
-        .borderRadius(Theme.cardRadius)
-        .backgroundColor(iconInfo.bgColor)
-        .justifyContent(FlexAlign.Center)
-
-        Column({ space: Theme.tinyGap }) {
-          Text(this.m!.name)
-            .fontSize(Theme.textTitle)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(Theme.textPrimary)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          Text(`${this.m!.category} · ${this.m!.quantity} ${this.m!.unit}`)
-            .fontSize(Theme.textCaption)
-            .fontColor(Theme.textSecondary)
-        }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
+    Stack({ alignContent: Alignment.TopStart }) {
+      Row() {
       }
       .width('100%')
+      .height('100%')
+      .backgroundColor(Theme.ink)
+      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
-      Divider().color(Theme.divider).strokeWidth(1)
+      Column({ space: 0 }) {
+        // 头部：分类图标方块（2vp黑边） + 名称 + 分类/数量
+        Row({ space: Theme.elementGap }) {
+          Stack({ alignContent: Alignment.Center }) {
+            SymbolGlyph(iconInfo.symbol)
+              .fontSize(24)
+              .fontColor([Theme.textPrimary])
+          }
+          .width(52)
+          .height(52)
+          .backgroundColor(Theme.cardBg)
+          .border(Theme.borderThin)
 
-      this.infoRow('生产日期', this.m!.productionDate)
-      this.infoRow('保质期', `${this.m!.shelfLifeDays} 天`)
-      this.infoRow('到期日期', this.m!.expiryDate)
-      this.infoRow('距到期', remainingText(this.m!))
-      if (this.m!.barcode && this.m!.barcode.trim().length > 0) {
-        this.infoRow('条形码', this.m!.barcode)
-      }
-
-      ForEach(this.customFieldsDefs, (def: CustomField) => {
-        if (this.hasCustomFieldValue(def.id)) {
-          this.infoRow(def.name, this.getCustomFieldValue(def.id))
-        }
-      }, (def: CustomField) => def.id)
-
-      if (this.m!.note !== '') {
-        Divider().color(Theme.divider).strokeWidth(1)
-        Column({ space: Theme.tinyGap }) {
-          Text('备注')
-            .fontSize(Theme.textCaption)
-            .fontColor(Theme.textSecondary)
-          Text(this.m!.note)
-            .fontSize(Theme.textBody)
-            .fontColor(Theme.textPrimary)
+          Column({ space: Theme.tinyGap }) {
+            Text(this.m!.name)
+              .fontSize(Theme.textTitle)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Theme.textPrimary)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            Text(`${this.m!.category} · ${this.m!.quantity} ${this.m!.unit}`)
+              .fontSize(Theme.textCaption)
+              .fontColor(Theme.textSecondary)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
         }
         .width('100%')
-        .alignItems(HorizontalAlign.Start)
-      }
+        .padding({ bottom: Theme.cardPadding })
 
-      Divider().color(Theme.divider).strokeWidth(1)
-      this.infoRow('创建于', this.m!.createdAt)
+        Divider().color(Theme.divider).strokeWidth(1)
+
+        this.infoRow('生产日期', this.m!.productionDate)
+        this.infoRow('保质期', `${this.m!.shelfLifeDays} 天`)
+        this.infoRow('到期日期', this.m!.expiryDate)
+        this.infoRow('距到期', remainingText(this.m!))
+
+        if (this.m!.barcode && this.m!.barcode.trim().length > 0) {
+          Divider().color(Theme.divider).strokeWidth(1)
+          this.infoRow('条形码', this.m!.barcode)
+        }
+
+        ForEach(this.customFieldsDefs, (def: CustomField) => {
+          if (this.hasCustomFieldValue(def.id)) {
+            Divider().color(Theme.divider).strokeWidth(1)
+            this.infoRow(def.name, this.getCustomFieldValue(def.id))
+          }
+        }, (def: CustomField) => def.id)
+
+        if (this.m!.note !== '') {
+          Divider().color(Theme.divider).strokeWidth(1)
+          Column({ space: Theme.tinyGap }) {
+            Text('备注')
+              .fontSize(Theme.textCaption)
+              .fontColor(Theme.textSecondary)
+            Text(this.m!.note)
+              .fontSize(Theme.textBody)
+              .fontColor(Theme.textPrimary)
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start)
+          .padding({ top: 12, bottom: 12 })
+        }
+
+        Divider().color(Theme.divider).strokeWidth(1)
+        this.infoRow('创建于', this.m!.createdAt)
+      }
+      .width('100%')
+      .padding(Theme.cardPadding)
+      .borderRadius(Theme.cardRadius)
+      .border(Theme.borderThin)
+      .backgroundColor(Theme.cardBg)
+      .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
-    .padding(Theme.cardPadding)
-    .borderRadius(Theme.cardRadius)
-    .backgroundColor(Theme.cardBg)
-    .shadow(Theme.shadowStyle)
-    .alignItems(HorizontalAlign.Start)
+    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   private hasCustomFieldValue(fieldId: string): boolean {
@@ -319,6 +373,56 @@ struct ItemDetail {
         .fontWeight(FontWeight.Medium)
     }
     .width('100%')
-    .padding({ top: 10, bottom: 10 })
+    .padding({ top: 12, bottom: 12 })
+  }
+
+  @Builder
+  bottomBar() {
+    Row({ space: Theme.elementGap }) {
+      // 编辑：深黄底白字 + 黑边 + 硬阴影
+      this.primaryBtn('编辑', Theme.yellowDark, Theme.textWhite, () => {
+        router.pushUrl({ url: 'pages/AddItem', params: { id: this.itemId } });
+      })
+
+      // 删除：白底红字 + 黑边 + 硬阴影
+      this.primaryBtn('删除', Theme.cardBg, Theme.danger, () => {
+        this.confirmDelete();
+      })
+    }
+    .width('100%')
+    .padding({
+      left: Theme.pagePadding,
+      right: Theme.pagePadding,
+      top: 12,
+      bottom: 20
+    })
+  }
+
+  @Builder
+  primaryBtn(text: string, bg: string, fg: string, action: () => void) {
+    Stack({ alignContent: Alignment.TopStart }) {
+      Row() {
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(Theme.ink)
+      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+      Button(text)
+        .width('100%')
+        .height(Theme.primaryBtnHeight)
+        .backgroundColor(bg)
+        .fontColor(fg)
+        .fontSize(Theme.textBody)
+        .fontWeight(FontWeight.Bold)
+        .borderRadius(Theme.buttonRadius)
+        .border(Theme.borderThin)
+        .onClick(() => {
+          action();
+        })
+    }
+    .layoutWeight(1)
+    .height(Theme.primaryBtnHeight + Theme.hardShadowOffset)
+    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 }
