@@ -239,7 +239,7 @@ struct CustomFieldManager {
       .width(40)
       .height(40)
       .border(Theme.borderThin)
-      .borderRadius(0)
+      .borderRadius(Theme.iconBtnRadius)
       .enabled(enabled)
       .onClick(() => {
         if (enabled) {
@@ -265,7 +265,7 @@ struct CustomFieldManager {
         .fontColor(Theme.textWhite)
         .backgroundColor(Theme.yellowDark)
         .border(Theme.borderThin)
-        .borderRadius(0)
+        .borderRadius(Theme.buttonRadius)
         .height(btnHeight)
         .padding({ left: 16, right: 16 })
         .onClick(() => {
@@ -289,7 +289,7 @@ struct CustomFieldManager {
         .fontColor(Theme.textPrimary)
         .backgroundColor(Theme.cardBg)
         .border(Theme.borderThin)
-        .borderRadius(0)
+        .borderRadius(Theme.buttonRadius)
         .height(btnHeight)
         .padding({ left: 16, right: 16 })
         .onClick(() => {
@@ -313,7 +313,7 @@ struct CustomFieldManager {
         .fontColor(Theme.danger)
         .backgroundColor(Theme.cardBg)
         .border(Theme.borderThin)
-        .borderRadius(0)
+        .borderRadius(Theme.buttonRadius)
         .height(btnHeight)
         .padding({ left: 16, right: 16 })
         .onClick(() => {
@@ -343,7 +343,7 @@ struct CustomFieldManager {
       .width(btnSize)
       .height(btnSize)
       .border(Theme.borderThin)
-      .borderRadius(0)
+      .borderRadius(Theme.iconBtnRadius)
       .enabled(enabled)
       .onClick(() => {
         if (enabled) {
@@ -369,7 +369,7 @@ struct CustomFieldManager {
         .fontColor(btnKind === 'primary' ? Theme.textWhite : (btnKind === 'danger' ? Theme.danger : Theme.textPrimary))
         .backgroundColor(btnKind === 'primary' ? Theme.yellowDark : Theme.cardBg)
         .border(Theme.borderThin)
-        .borderRadius(0)
+        .borderRadius(Theme.buttonRadius)
         .height(btnHeight)
         .padding({ left: 10, right: 10 })
         .onClick(() => {
@@ -393,7 +393,7 @@ struct CustomFieldManager {
         .padding({ left: 16, right: 16, top: 8, bottom: 8 })
         .backgroundColor(isSelected ? Theme.yellowDark : Theme.cardBg)
         .border(Theme.borderThin)
-        .borderRadius(0)
+        .borderRadius(Theme.chipRadius)
         .onClick(() => {
           onClickAction();
         })
@@ -424,7 +424,7 @@ struct CustomFieldManager {
       .padding({ left: 12, right: 8, top: 6, bottom: 6 })
       .backgroundColor(Theme.cardBg)
       .border(Theme.borderThin)
-      .borderRadius(0)
+      .borderRadius(Theme.chipRadius)
     }
     .padding({ right: 4, bottom: 4 })
     .margin({ right: 8, bottom: 8 })
@@ -444,7 +444,7 @@ struct CustomFieldManager {
         .placeholderColor(Theme.textTertiary)
         .backgroundColor(Theme.inputBg)
         .border(Theme.borderThin)
-        .borderRadius(0)
+        .borderRadius(Theme.inputRadius)
         .height(44)
         .padding({ left: 12, right: 12 })
         .onChange((v: string) => {
@@ -743,7 +743,7 @@ struct CustomFieldManager {
                 .placeholderColor(Theme.textTertiary)
                 .backgroundColor(Theme.inputBg)
                 .border(Theme.borderThin)
-                .borderRadius(0)
+                .borderRadius(Theme.inputRadius)
                 .height(44)
                 .padding({ left: 12, right: 12 })
                 .onChange((v: string) => {
@@ -792,7 +792,7 @@ struct CustomFieldManager {
           Button('取消')
             .layoutWeight(1)
             .height(48)
-            .borderRadius(0)
+            .borderRadius(Theme.buttonRadius)
             .backgroundColor(Theme.cardBg)
             .fontColor(Theme.textPrimary)
             .fontSize(Theme.textSubhead)
@@ -815,7 +815,7 @@ struct CustomFieldManager {
           Button(this.isEditing ? '保存' : '创建')
             .layoutWeight(1)
             .height(48)
-            .borderRadius(0)
+            .borderRadius(Theme.buttonRadius)
             .backgroundColor(Theme.yellowDark)
             .fontColor(Theme.textWhite)
             .fontSize(Theme.textSubhead)
