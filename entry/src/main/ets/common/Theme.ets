@@ -23,6 +23,7 @@ export namespace Theme {
   export const textSecondary: string = '#5c5c5c';// 次文字
   export const textTertiary: string = '#a8a498'; // 占位符/禁用态
   export const textWhite: string = '#ffffff';    // 反白文字
+  export const textWhiteDim: string = 'rgba(255,255,255,0.85)'; // 反白次级文字（红/橙/绿卡内辅助文字）
 
   /* ───── 状态色（几何形状语言）
    * 过期：圆形 + 红
@@ -130,4 +131,10 @@ export namespace Theme {
   /* ───── 几何状态形状尺寸 ───── */
   export const geoSize: number = 16;              // 状态几何图形尺寸
   export const hardShadowOffset: number = 4;      // 硬阴影偏移量
+
+  /* ───── 分类图标浅底（供 CategoryIcons 使用） ───── */
+  export const categoryFoodBg: string = '#fff0e0';    // 食品 → 临期橙浅底
+  export const categoryMedicineBg: string = '#e0f2f0';// 药品 → 安全蓝绿浅底
+  export const categoryDailyBg: string = '#fff8e0';   // 日用品 → 黄系浅底
+  export const categoryBeautyBg: string = '#ffe5e7';  // 美妆护肤 → 过期红浅底
 }
