@@ -461,7 +461,7 @@ struct Index {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
           Text(`${m.category} · ${m.quantity}${m.unit} · ${m.expiryDate}`)
             .fontSize(Theme.textCaption)
-            .fontColor('rgba(255,255,255,0.85)')
+            .fontColor(Theme.textWhiteDim)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
@@ -475,7 +475,7 @@ struct Index {
             .fontColor(Theme.textWhite)
           Text('已过期')
             .fontSize(Theme.textTiny)
-            .fontColor('rgba(255,255,255,0.85)')
+            .fontColor(Theme.textWhiteDim)
         }
         .alignItems(HorizontalAlign.End)
       }
