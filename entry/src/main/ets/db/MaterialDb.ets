@@ -54,6 +54,27 @@ export class MaterialDb {
     return MaterialDb.instance;
   }
 
+  /**
+   * 统一异常处理：打印结构化日志 + 保留原错误 code/stack 后重新抛出。
+   * 解决 1. as BusinessError 后直接 throw err 触发 arkts-limited-throw；
+   *      2. throw new Error(message) 丢失 code/stack 的两难。
+   */
+  private rethrow(e: Object, op: string): never {
+    const be = e as BusinessError;
+    const codeStr = (be.code !== undefined && be.code !== null) ? `[${be.code}]` : '';
+    console.error(`${op} failed${codeStr}: ${be.message}`);
+    const out: Error = new Error(be.message);
+    // 用 BusinessError 接口写附加属性（code/stack），保留原错误信息给调用方
+    const beOut: BusinessError = out as BusinessError;
+    if (be.code !== undefined && be.code !== null) {
+      beOut.code = be.code;
+    }
+    if (be.stack !== undefined && be.stack !== null) {
+      beOut.stack = be.stack;
+    }
+    throw out;
+  }
+
   async init(context: Context): Promise<void> {
     if (this.store) {
       return;
@@ -68,18 +89,16 @@ export class MaterialDb {
       await this.store.executeSql(CREATE_CUSTOM_FIELD_DEFS_TABLE_SQL);
       try {
         await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN barcode TEXT;`);
-      } catch (e) {
+      } catch (_) {
         // Column might already exist, ignore error
       }
       try {
         await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN custom_fields TEXT;`);
-      } catch (e) {
+      } catch (_) {
         // Column might already exist, ignore error
       }
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`init db failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'init db');
     }
   }
 
@@ -129,9 +148,7 @@ export class MaterialDb {
       };
       return m;
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`rowToMaterial failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'rowToMaterial');
     }
   }
 
@@ -168,9 +185,7 @@ export class MaterialDb {
         rs.close();
       }
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`listAll failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'listAll');
     }
     return list;
   }
@@ -189,9 +204,7 @@ export class MaterialDb {
         rs.close();
       }
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`getById failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'getById');
     }
     return m;
   }
@@ -217,9 +230,7 @@ export class MaterialDb {
         rs.close();
       }
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`findByBarcode failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'findByBarcode');
     }
     return list;
   }
@@ -229,9 +240,7 @@ export class MaterialDb {
     try {
       return await this.getStore().insert(TABLE, this.toRow(m));
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`insert failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'insert');
     }
   }
 
@@ -242,9 +251,7 @@ export class MaterialDb {
       predicates.equalTo('id', m.id);
       return await this.getStore().update(this.toRow(m), predicates);
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`update failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'update');
     }
   }
 
@@ -255,9 +262,7 @@ export class MaterialDb {
       predicates.equalTo('id', id);
       return await this.getStore().delete(predicates);
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`remove failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'remove');
     }
   }
 
@@ -292,9 +297,7 @@ export class MaterialDb {
       };
       return f;
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`rowToCustomField failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'rowToCustomField');
     }
   }
 
@@ -326,9 +329,7 @@ export class MaterialDb {
         rs.close();
       }
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`listCustomFields failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'listCustomFields');
     }
     return list;
   }
@@ -348,9 +349,7 @@ export class MaterialDb {
         rs.close();
       }
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`getCustomFieldById failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'getCustomFieldById');
     }
     return field;
   }
@@ -360,9 +359,7 @@ export class MaterialDb {
     try {
       return await this.getStore().insert(CUSTOM_FIELDS_TABLE, this.customFieldToRow(field));
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`insertCustomField failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'insertCustomField');
     }
   }
 
@@ -373,9 +370,7 @@ export class MaterialDb {
       predicates.equalTo('id', field.id);
       return await this.getStore().update(this.customFieldToRow(field), predicates);
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`updateCustomField failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'updateCustomField');
     }
   }
 
@@ -386,9 +381,7 @@ export class MaterialDb {
       predicates.equalTo('id', id);
       return await this.getStore().delete(predicates);
     } catch (e) {
-      const err = e as BusinessError;
-      console.error(`removeCustomField failed: ${err.message}`);
-      throw new Error(err.message);
+      this.rethrow(e, 'removeCustomField');
     }
   }
 
@@ -405,9 +398,7 @@ export class MaterialDb {
         };
         await this.getStore().update(row, predicates);
       } catch (e) {
-        const err = e as BusinessError;
-        console.error(`updateCustomFieldsOrder [${i}] failed: ${err.message}`);
-        throw new Error(err.message);
+        this.rethrow(e, `updateCustomFieldsOrder[${i}]`);
       }
     }
   }
