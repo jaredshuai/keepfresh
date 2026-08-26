@@ -2,7 +2,6 @@
  * 首页：包豪斯风格 —— 变体 C 状态分组布局（已过期 / 临期 / 安全折叠）
  * 几何状态语言：过期=红色圆形，临期=橙色三角形，安全=蓝绿正方形
  */
-import { router, promptAction, TimePickerResult } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, ExpiryLevel } from '../model/Material';
@@ -20,6 +19,17 @@ import { SettingsService } from '../service/SettingsService';
 import { Theme } from '../common/Theme';
 import { getCategoryIcon } from '../common/CategoryIcons';
 
+interface TimePickerResult {
+  hour?: number;
+  minute?: number;
+}
+
+interface GroupedMaterials {
+  expired: Material[];
+  near: Material[];
+  safe: Material[];
+}
+
 /** 每次启动只发一条汇总通知 */
 let notifiedThisSession: boolean = false;
 
@@ -28,6 +38,7 @@ let notifiedThisSession: boolean = false;
 struct Index {
   @State materials: Material[] = [];
   @State stats: ExpiryStats = { total: 0, expired: 0, near: 0, safe: 0 };
+  @State groupedMaterials: GroupedMaterials = { expired: [], near: [], safe: [] };
   @State loading: boolean = true;
   @State showSettingsDialog: boolean = false;
   @State reminderEnabled: boolean = true;
@@ -99,15 +110,19 @@ struct Index {
 
   private async saveReminderSettings(): Promise<void> {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    await ReminderService.getInstance().init(ctx);
-    const settings: ReminderSettings = {
-      enabled: this.reminderEnabled,
-      hour: this.reminderHour,
-      minute: this.reminderMinute
-    };
-    await ReminderService.getInstance().updateSettings(settings);
-    await ReminderService.getInstance().syncDailyReminder(ctx);
-    promptAction.showToast({ message: '已更新提醒设置' });
+    try {
+      await ReminderService.getInstance().init(ctx);
+      const settings: ReminderSettings = {
+        enabled: this.reminderEnabled,
+        hour: this.reminderHour,
+        minute: this.reminderMinute
+      };
+      await ReminderService.getInstance().updateSettings(settings);
+      await ReminderService.getInstance().syncDailyReminder(ctx);
+      this.getUIContext().getPromptAction().showToast({ message: '已更新提醒设置' });
+    } catch (e) {
+      console.error(`save reminder settings failed: ${(e as BusinessError).message}`);
+    }
   }
 
   private async setupNotification(ctx: common.UIAbilityContext): Promise<void> {
@@ -126,6 +141,7 @@ struct Index {
       const list: Material[] = await this.db.listAll();
       this.materials = list;
       this.stats = statsOf(list);
+      this.groupedMaterials = this.groupByLevel();
       if (!notifiedThisSession && this.stats.near + this.stats.expired > 0) {
         notifiedThisSession = true;
         await publishExpiryAlert(this.stats.near, this.stats.expired);
@@ -138,7 +154,7 @@ struct Index {
   }
 
   /** 分组辅助：按级别分组并按剩余天数升序（过期项负天数越小越靠前） */
-  private groupByLevel(): { expired: Material[]; near: Material[]; safe: Material[] } {
+  private groupByLevel(): GroupedMaterials {
     const expired: Material[] = [];
     const near: Material[] = [];
     const safe: Material[] = [];
@@ -153,7 +169,8 @@ struct Index {
     expired.sort(cmp);
     near.sort(cmp);
     safe.sort(cmp);
-    return { expired, near, safe };
+    const result: GroupedMaterials = { expired: expired, near: near, safe: safe };
+    return result;
   }
 
   build() {
@@ -172,13 +189,11 @@ struct Index {
         } else {
           Scroll() {
             Column({ space: Theme.cardGap }) {
-              const groups = this.groupByLevel();
-
               // ─── 已过期组（红色圆形） ───
-              if (groups.expired.length > 0) {
-                this.groupHeader('已过期', ExpiryLevel.EXPIRED, groups.expired.length)
+              if (this.groupedMaterials.expired.length > 0) {
+                this.groupHeader('已过期', ExpiryLevel.EXPIRED, this.groupedMaterials.expired.length)
                 Column({ space: Theme.smallGap }) {
-                  ForEach(groups.expired, (m: Material) => {
+                  ForEach(this.groupedMaterials.expired, (m: Material) => {
                     this.expiredCard(m)
                   }, (m: Material) => m.id.toString())
                 }
@@ -186,11 +201,13 @@ struct Index {
               }
 
               // ─── 临期组（橙色三角形） ───
-              if (groups.near.length > 0) {
-                this.groupHeader('临期', ExpiryLevel.NEAR, groups.near.length)
-                  .margin({ top: groups.expired.length > 0 ? 0 : 0 })
+              if (this.groupedMaterials.near.length > 0) {
+                Stack() {
+                  this.groupHeader('临期', ExpiryLevel.NEAR, this.groupedMaterials.near.length)
+                }
+                .margin({ top: this.groupedMaterials.expired.length > 0 ? 0 : 0 })
                 Column({ space: Theme.smallGap }) {
-                  ForEach(groups.near, (m: Material) => {
+                  ForEach(this.groupedMaterials.near, (m: Material) => {
                     this.materialCard(m)
                   }, (m: Material) => m.id.toString())
                 }
@@ -198,11 +215,11 @@ struct Index {
               }
 
               // ─── 安全组（蓝绿正方形，可折叠） ───
-              if (groups.safe.length > 0) {
-                this.groupHeaderWithToggle('安全', ExpiryLevel.SAFE, groups.safe.length)
+              if (this.groupedMaterials.safe.length > 0) {
+                this.groupHeaderWithToggle('安全', ExpiryLevel.SAFE, this.groupedMaterials.safe.length)
                 if (!this.safeCollapsed) {
                   Column({ space: Theme.smallGap }) {
-                    ForEach(groups.safe, (m: Material) => {
+                    ForEach(this.groupedMaterials.safe, (m: Material) => {
                       this.materialCard(m)
                     }, (m: Material) => m.id.toString())
                   }
@@ -229,7 +246,7 @@ struct Index {
 
       // FAB：深黄 + 纯黑边框 + 硬阴影
       this.hardShadowFab(() => {
-        router.pushUrl({ url: 'pages/AddItem' });
+        this.getUIContext().getRouter().pushUrl({ url: 'pages/AddItem' });
       })
     }
     .width('100%')
@@ -297,7 +314,7 @@ struct Index {
         )
         this.iconButton(
           $r('sys.symbol.gearshape'),
-          () => router.pushUrl({ url: 'pages/Settings' })
+          () => this.getUIContext().getRouter().pushUrl({ url: 'pages/Settings' })
         )
       }
     }
@@ -428,9 +445,6 @@ struct Index {
    * ============================================================ */
   @Builder
   expiredCard(m: Material) {
-    const left = remainingDays(m);
-    const iconInfo = getCategoryIcon(m.category);
-
     Stack() {
       // 阴影层
       Column()
@@ -442,7 +456,7 @@ struct Index {
       // 主层：红底白字
       Row() {
         Column() {
-          SymbolGlyph(iconInfo.symbol)
+          SymbolGlyph(getCategoryIcon(m.category).symbol)
             .fontSize(22)
             .fontColor([Theme.textWhite])
         }
@@ -469,7 +483,7 @@ struct Index {
         .layoutWeight(1)
 
         Column({ space: 2 }) {
-          Text(`-${-left}天`)
+          Text(`-${-remainingDays(m)}天`)
             .fontSize(Theme.textHeadline)
             .fontWeight(FontWeight.Bold)
             .fontColor(Theme.textWhite)
@@ -487,7 +501,7 @@ struct Index {
     .width('100%')
     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     .onClick(() => {
-      router.pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
     })
   }
 
@@ -496,10 +510,6 @@ struct Index {
    * ============================================================ */
   @Builder
   materialCard(m: Material) {
-    const lv: ExpiryLevel = levelOf(m);
-    const left = remainingDays(m);
-    const iconInfo = getCategoryIcon(m.category);
-
     Stack() {
       // 阴影层
       Column()
@@ -510,11 +520,13 @@ struct Index {
 
       // 主层
       Row() {
-        this.geoShape(lv)
-          .margin({ right: Theme.elementGap })
+        Stack() {
+          this.geoShape(levelOf(m))
+        }
+        .margin({ right: Theme.elementGap })
 
         Column() {
-          SymbolGlyph(iconInfo.symbol)
+          SymbolGlyph(getCategoryIcon(m.category).symbol)
             .fontSize(20)
             .fontColor([Theme.ink])
         }
@@ -522,7 +534,7 @@ struct Index {
         .height(36)
         .justifyContent(FlexAlign.Center)
         .border({ width: 2, color: Theme.ink })
-        .backgroundColor(iconInfo.bgColor)
+        .backgroundColor(getCategoryIcon(m.category).bgColor)
         .margin({ right: Theme.elementGap })
 
         Column({ space: Theme.tinyGap }) {
@@ -540,10 +552,10 @@ struct Index {
         .layoutWeight(1)
 
         Column({ space: 2 }) {
-          Text(lv === ExpiryLevel.NEAR ? `${left}天` : `${left}天`)
+          Text(`${remainingDays(m)}天`)
             .fontSize(Theme.textHeadline)
             .fontWeight(FontWeight.Bold)
-            .fontColor(lv === ExpiryLevel.NEAR ? Theme.near : Theme.safe)
+            .fontColor(levelOf(m) === ExpiryLevel.NEAR ? Theme.near : Theme.safe)
           Text(m.expiryDate)
             .fontSize(Theme.textTiny)
             .fontColor(Theme.textTertiary)
@@ -558,7 +570,7 @@ struct Index {
     .width('100%')
     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     .onClick(() => {
-      router.pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
     })
   }
 
