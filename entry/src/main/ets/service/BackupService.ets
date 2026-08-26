@@ -52,6 +52,8 @@ export interface ImportResult {
   success: boolean;
   importedCount: number;
   message: string;
+  /** 非致命警告（如「提醒同步失败」等），UI 可展示给用户并提示重试路径 */
+  warnings: string[];
 }
 
 export class BackupService {
@@ -255,6 +257,7 @@ export class BackupService {
     data: BackupData,
     mode: 'merge' | 'overwrite'
   ): Promise<ImportResult> {
+    const warnings: string[] = [];
     try {
       const db: MaterialDb = MaterialDb.getInstance();
       await db.init(context);
@@ -307,20 +310,22 @@ export class BackupService {
         await this.applySettings(context, data.settings);
       }
 
-      // ── 4. 同步每日提醒 ──
+      // ── 4. 同步每日提醒：失败时不中断导入，写入 warnings 给 UI 可见提示
       try {
         await ReminderService.getInstance().syncDailyReminder(context);
       } catch (e) {
         const err = e as BusinessError;
-        hilog.error(DOMAIN, TAG, `syncDailyReminder during import failed: ${err.code}, ${err.message}`);
+        const msg = `每日提醒同步失败：${err.code ?? ''} ${err.message}`;
+        hilog.error(DOMAIN, TAG, `${msg}. 用户可在设置页重新保存以重试`);
+        warnings.push(msg + '。请在「设置→每日提醒」重新保存以重试');
       }
 
-      hilog.info(DOMAIN, TAG, `Import done: mode=${mode}, imported=${importedCount}`);
-      return { success: true, importedCount, message: `已导入 ${importedCount} 件物资` };
+      hilog.info(DOMAIN, TAG, `Import done: mode=${mode}, imported=${importedCount}, warnings=${warnings.length}`);
+      return { success: true, importedCount, warnings, message: `已导入 ${importedCount} 件物资` };
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, `Execute import failed: ${e.code}, ${e.message}`);
-      return { success: false, importedCount: 0, message: '导入失败，请重试' };
+      return { success: false, importedCount: 0, warnings, message: '导入失败，请重试' };
     }
   }
 

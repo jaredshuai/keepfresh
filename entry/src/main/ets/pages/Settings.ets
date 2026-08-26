@@ -119,6 +119,14 @@ struct Settings {
       }
     } catch (e) {
       console.error(`update threshold failed: ${(e as BusinessError).message}`);
+      // 失败后回滚 UI 状态到持久化值并给出提示，避免显示为未保存值
+      try {
+        const savedDays = await this.settingsService.getNearExpiryDays();
+        this.nearExpiryDaysStr = savedDays.toString();
+      } catch (_) {
+        /* 回滚失败至少给出失败提示 */
+      }
+      this.toast('阈值保存失败，请重试');
     }
   }
 
@@ -163,6 +171,16 @@ struct Settings {
       }
     } catch (e) {
       console.error(`save reminder settings failed: ${(e as BusinessError).message}`);
+      // 失败后回滚 UI 状态到持久化值并给出提示，避免开关/时间看起来成功但未保存
+      try {
+        const saved: ReminderSettings = await this.reminderService.getSettings();
+        this.reminderEnabled = saved.enabled;
+        this.reminderHour = saved.hour;
+        this.reminderMinute = saved.minute;
+      } catch (_) {
+        /* 回滚失败至少给出失败提示 */
+      }
+      this.toast('提醒设置保存失败，请重试');
     }
   }
 
@@ -194,11 +212,18 @@ struct Settings {
       this.showImportPreview = false;
       this.importPreviewData = undefined;
       if (result.success) {
-        this.toast(result.message);
+        // 有 warnings 时拼接展示，给用户可见重试路径
+        const extra = (result.warnings && result.warnings.length > 0)
+          ? `。${result.warnings.join('；')}`
+          : '';
+        this.toast(result.message + extra);
         // 刷新设置页显示（导入可能改了阈值/提醒设置）
         await this.loadAllSettings(ctx);
       } else {
-        this.toast(result.message);
+        const extra = (result.warnings && result.warnings.length > 0)
+          ? `（${result.warnings.join('；')}）`
+          : '';
+        this.toast(result.message + extra);
       }
     } catch (e) {
       console.error(`execute import failed: ${(e as BusinessError).message}`);
