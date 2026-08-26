@@ -18,7 +18,7 @@ const rules = [
   {
     name: '硬编码色值',
     pattern: /#[0-9a-fA-F]{3,8}\b/,
-    exclude: /Theme\.|import|\/\//,
+    exclude: /Theme\.|import/,
     excludeComment: true,
   },
   {
@@ -49,19 +49,58 @@ function checkFile(filePath, rule) {
   const content = fs.readFileSync(filePath, 'utf8');
   const lines = content.split('\n');
   const violations = [];
+  let inBlockComment = false; // 多行 /* ... */ 注释状态机
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    // 跳过注释
-    if (rule.excludeComment && (line.trim().startsWith('//') || line.trim().startsWith('/*'))) {
+    let line = lines[i];
+
+    // ── 1. 处理多行注释 /* ... */（跨行状态） ──
+    if (rule.excludeComment) {
+      if (inBlockComment) {
+        const endIdx = line.indexOf('*/');
+        if (endIdx === -1) {
+          continue; // 整行在注释块内
+        }
+        line = line.slice(endIdx + 2); // 保留 */ 之后的代码
+        inBlockComment = false;
+      }
+      // 查找新的 /* 开始
+      const startIdx = line.indexOf('/*');
+      if (startIdx !== -1) {
+        const endIdx = line.indexOf('*/', startIdx + 2);
+        if (endIdx === -1) {
+          // 行内开启但未结束，后续进入 block 模式
+          line = line.slice(0, startIdx);
+          inBlockComment = true;
+        } else {
+          // 同行包含完整 /* ... */，抠掉中间段
+          line = line.slice(0, startIdx) + ' ' + line.slice(endIdx + 2);
+        }
+      }
+    }
+
+    // ── 2. 整行纯注释跳过（单行 // 已去注释后可能为空，下面 import 行也会被剥） ──
+    if (rule.excludeComment && line.trim().startsWith('//')) {
       continue;
     }
-    // 排除特定模式
-    if (rule.exclude && rule.exclude.test(line)) {
+
+    // ── 3. 先剥「从 // 开始到行尾」的行内注释，再做 exclude/pattern 检测 ──
+    //    这样行尾注释里的允许 token 不会让整行被误排除
+    let codeOnly = line.replace(/\/\/.*$/, '');
+
+    // ── 4. import 声明整行跳过（对需要 import exclude 的规则） ──
+    //    单独用 import-only 判断，避免 Theme. 在同一行被一起跳过
+    const stripped = codeOnly.trim();
+    if (rule.exclude && /^import\s/.test(stripped)) {
       continue;
     }
-    if (rule.pattern.test(line)) {
-      violations.push({ line: i + 1, content: line.trim() });
+
+    // ── 5. 排除特定模式（仅作用于 codeOnly，允许 token 在注释里但不影响代码） ──
+    if (rule.exclude && rule.exclude.test(codeOnly)) {
+      continue;
+    }
+    if (rule.pattern.test(codeOnly)) {
+      violations.push({ line: i + 1, content: lines[i].trim() });
     }
   }
   return violations;
