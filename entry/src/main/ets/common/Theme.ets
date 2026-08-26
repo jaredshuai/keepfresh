@@ -53,13 +53,6 @@ const fabShadowStyle: ShadowOptions = {
   offsetY: 4
 };
 
-// 边框配置
-const borderThin: BorderOptions = { width: 2, color: '#1a1a1a' };
-const borderBrand: BorderOptions = { width: 2, color: '#d69a00' };
-const borderExpired: BorderOptions = { width: 2, color: '#e63946' };
-const borderNear: BorderOptions = { width: 2, color: '#f4a261' };
-const borderSafe: BorderOptions = { width: 2, color: '#2a9d8f' };
-
 export class Theme {
   /* ───── 主色与强调色 ───── */
   static readonly yellowDark: string = '#d69a00';   // 主按钮底（配白字）
@@ -139,12 +132,12 @@ export class Theme {
   static readonly shadowStyle: ShadowOptions = shadowStyle;
   static readonly fabShadowStyle: ShadowOptions = fabShadowStyle;
 
-  /* ───── 边框 ───── */
-  static readonly borderThin: BorderOptions = borderThin;
-  static readonly borderBrand: BorderOptions = borderBrand;
-  static readonly borderExpired: BorderOptions = borderExpired;
-  static readonly borderNear: BorderOptions = borderNear;
-  static readonly borderSafe: BorderOptions = borderSafe;
+  /* ───── 边框：使用 Theme 类令牌字符串字面量，确保色值一致性且避免声明顺序问题 ───── */
+  static readonly borderThin: BorderOptions = { width: 2, color: '#1a1a1a' };
+  static readonly borderBrand: BorderOptions = { width: 2, color: '#d69a00' };
+  static readonly borderExpired: BorderOptions = { width: 2, color: '#e63946' };
+  static readonly borderNear: BorderOptions = { width: 2, color: '#f4a261' };
+  static readonly borderSafe: BorderOptions = { width: 2, color: '#2a9d8f' };
 
   /* ───── 几何状态形状尺寸 ───── */
   static readonly geoSize: number = 16;              // 状态几何图形尺寸
