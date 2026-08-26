@@ -85,7 +85,8 @@ export class ReminderService {
       hilog.info(DOMAIN, TAG, 'All reminders cancelled successfully.');
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, `Failed to cancel reminders: ${e.message}`);
+      hilog.error(DOMAIN, TAG, `Failed to cancel reminders: ${e.code}, message: ${e.message}`);
+      throw new Error(e.message);
     }
   }
 
@@ -156,6 +157,7 @@ export class ReminderService {
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, `Failed to publish reminder: ${e.code}, message: ${e.message}`);
+      throw new Error(e.message);
     }
   }
 }

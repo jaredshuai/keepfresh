@@ -132,12 +132,12 @@ export class Theme {
   static readonly shadowStyle: ShadowOptions = shadowStyle;
   static readonly fabShadowStyle: ShadowOptions = fabShadowStyle;
 
-  /* ───── 边框：使用 Theme 类令牌字符串字面量，确保色值一致性且避免声明顺序问题 ───── */
-  static readonly borderThin: BorderOptions = { width: 2, color: '#1a1a1a' };
-  static readonly borderBrand: BorderOptions = { width: 2, color: '#d69a00' };
-  static readonly borderExpired: BorderOptions = { width: 2, color: '#e63946' };
-  static readonly borderNear: BorderOptions = { width: 2, color: '#f4a261' };
-  static readonly borderSafe: BorderOptions = { width: 2, color: '#2a9d8f' };
+  /* ───── 边框：引用上方已声明的 Theme 令牌，改令牌即同步生效 ───── */
+  static readonly borderThin: BorderOptions = { width: 2, color: Theme.ink };
+  static readonly borderBrand: BorderOptions = { width: 2, color: Theme.yellowDark };
+  static readonly borderExpired: BorderOptions = { width: 2, color: Theme.expired };
+  static readonly borderNear: BorderOptions = { width: 2, color: Theme.near };
+  static readonly borderSafe: BorderOptions = { width: 2, color: Theme.safe };
 
   /* ───── 几何状态形状尺寸 ───── */
   static readonly geoSize: number = 16;              // 状态几何图形尺寸
