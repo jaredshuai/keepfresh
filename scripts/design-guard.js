@@ -44,6 +44,38 @@ function getEtsFiles(dir) {
   return files;
 }
 
+/**
+ * 剥离行内 `//` 注释，但跳过字符串字面量（', ", `）中的 `//`。
+ * 避免 URL 等字符串中的 `//` 被误判为注释导致后续代码漏检。
+ */
+function stripLineComment(line) {
+  let result = '';
+  let inStr = false;
+  let strChar = '';
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inStr) {
+      result += ch;
+      if (ch === '\\' && i + 1 < line.length) {
+        result += line[i + 1];
+        i++;
+      } else if (ch === strChar) {
+        inStr = false;
+      }
+    } else {
+      if (ch === '/' && line[i + 1] === '/') {
+        break;
+      }
+      result += ch;
+      if (ch === '"' || ch === "'" || ch === '`') {
+        inStr = true;
+        strChar = ch;
+      }
+    }
+  }
+  return result;
+}
+
 // 检查单个文件
 function checkFile(filePath, rule) {
   const content = fs.readFileSync(filePath, 'utf8');
@@ -84,9 +116,9 @@ function checkFile(filePath, rule) {
       continue;
     }
 
-    // ── 3. 先剥「从 // 开始到行尾」的行内注释，再做 exclude/pattern 检测 ──
-    //    这样行尾注释里的允许 token 不会让整行被误排除
-    let codeOnly = line.replace(/\/\/.*$/, '');
+    // ── 3. 字符串感知地剥行内 // 注释，再做 exclude/pattern 检测 ──
+    //    避免 URL 字符串中的 // 被误判为注释导致后续代码漏检
+    let codeOnly = stripLineComment(line);
 
     // ── 4. import 声明整行跳过（对需要 import exclude 的规则） ──
     //    单独用 import-only 判断，避免 Theme. 在同一行被一起跳过
