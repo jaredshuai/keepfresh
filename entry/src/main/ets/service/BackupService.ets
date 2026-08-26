@@ -9,7 +9,7 @@
  */
 import { picker, fileIo } from '@kit.CoreFileKit';
 import { common } from '@kit.AbilityKit';
-import { promptAction } from '@kit.ArkUI';
+import { UIContext } from '@kit.ArkUI';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
@@ -52,6 +52,8 @@ export interface ImportResult {
   success: boolean;
   importedCount: number;
   message: string;
+  /** 非致命警告（如「提醒同步失败」等），UI 可展示给用户并提示重试路径 */
+  warnings: string[];
 }
 
 export class BackupService {
@@ -68,10 +70,18 @@ export class BackupService {
     return BackupService.instance;
   }
 
+  private showToast(uiContext: UIContext, message: string): void {
+    try {
+      uiContext.getPromptAction().showToast({ message });
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, `show toast failed: ${(e as BusinessError).message}`);
+    }
+  }
+
   /**
    * 导出备份：读全量数据 → 组 JSON → DocumentViewPicker.save() → fileIo 写入。
    */
-  public async exportBackup(context: common.UIAbilityContext): Promise<void> {
+  public async exportBackup(context: common.UIAbilityContext, uiContext: UIContext): Promise<void> {
     try {
       const db: MaterialDb = MaterialDb.getInstance();
       await db.init(context);
@@ -118,7 +128,7 @@ export class BackupService {
         const file = fileIo.openSync(this.savedUri, fileIo.OpenMode.READ_WRITE);
         fd = file.fd;
         fileIo.writeSync(fd, content);
-        promptAction.showToast({ message: '已导出到所选位置' });
+        this.showToast(uiContext, '已导出到所选位置');
         hilog.info(DOMAIN, TAG, `Backup exported: ${this.savedUri}, materials=${materials.length}`);
       } finally {
         if (fd >= 0) {
@@ -128,7 +138,7 @@ export class BackupService {
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, `Export failed: ${e.code}, ${e.message}`);
-      promptAction.showToast({ message: '导出失败，请重试' });
+      this.showToast(uiContext, '导出失败，请重试');
     }
   }
 
@@ -136,7 +146,7 @@ export class BackupService {
    * 导入备份第一步：选文件 → 读内容 → 解析校验 → 返回预览数据。
    * 校验失败时 Toast 并返回 undefined。
    */
-  public async importBackup(context: common.UIAbilityContext): Promise<ImportPreview | undefined> {
+  public async importBackup(context: common.UIAbilityContext, uiContext: UIContext): Promise<ImportPreview | undefined> {
     try {
       const documentPicker = new picker.DocumentViewPicker(context);
       const selectOptions = new picker.DocumentSelectOptions();
@@ -171,23 +181,23 @@ export class BackupService {
       try {
         data = JSON.parse(content) as BackupData;
       } catch (parseErr) {
-        promptAction.showToast({ message: '备份文件格式不正确' });
+        this.showToast(uiContext, '备份文件格式不正确');
         return undefined;
       }
 
       // 结构校验
       if (data.schemaVersion === undefined || data.schemaVersion === null) {
-        promptAction.showToast({ message: '备份文件格式不正确' });
+        this.showToast(uiContext, '备份文件格式不正确');
         return undefined;
       }
       if (!data.materials || !Array.isArray(data.materials)) {
-        promptAction.showToast({ message: '备份文件格式不正确' });
+        this.showToast(uiContext, '备份文件格式不正确');
         return undefined;
       }
 
       // 版本兼容：> 1 拒绝
       if (data.schemaVersion > SCHEMA_VERSION) {
-        promptAction.showToast({ message: '备份文件版本过新，请升级应用' });
+        this.showToast(uiContext, '备份文件版本过新，请升级应用');
         return undefined;
       }
 
@@ -197,7 +207,7 @@ export class BackupService {
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, `Import failed: ${e.code}, ${e.message}`);
-      promptAction.showToast({ message: '导入失败，请重试' });
+      this.showToast(uiContext, '导入失败，请重试');
       return undefined;
     }
   }
@@ -247,6 +257,7 @@ export class BackupService {
     data: BackupData,
     mode: 'merge' | 'overwrite'
   ): Promise<ImportResult> {
+    const warnings: string[] = [];
     try {
       const db: MaterialDb = MaterialDb.getInstance();
       await db.init(context);
@@ -299,15 +310,22 @@ export class BackupService {
         await this.applySettings(context, data.settings);
       }
 
-      // ── 4. 同步每日提醒 ──
-      await ReminderService.getInstance().syncDailyReminder(context);
+      // ── 4. 同步每日提醒：失败时不中断导入，写入 warnings 给 UI 可见提示
+      try {
+        await ReminderService.getInstance().syncDailyReminder(context);
+      } catch (e) {
+        const err = e as BusinessError;
+        const msg = `每日提醒同步失败：${err.code ?? ''} ${err.message}`;
+        hilog.error(DOMAIN, TAG, `${msg}. 用户可在设置页重新保存以重试`);
+        warnings.push(msg + '。请在「设置→每日提醒」重新保存以重试');
+      }
 
-      hilog.info(DOMAIN, TAG, `Import done: mode=${mode}, imported=${importedCount}`);
-      return { success: true, importedCount, message: `已导入 ${importedCount} 件物资` };
+      hilog.info(DOMAIN, TAG, `Import done: mode=${mode}, imported=${importedCount}, warnings=${warnings.length}`);
+      return { success: true, importedCount, warnings, message: `已导入 ${importedCount} 件物资` };
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, `Execute import failed: ${e.code}, ${e.message}`);
-      return { success: false, importedCount: 0, message: '导入失败，请重试' };
+      return { success: false, importedCount: 0, warnings, message: '导入失败，请重试' };
     }
   }
 

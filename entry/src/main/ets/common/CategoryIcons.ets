@@ -13,7 +13,7 @@ export function getCategoryIcon(category: string): CategoryIconInfo {
   switch (category) {
     case '食品':
       return {
-        symbol: $r('sys.symbol.carrot'),
+        symbol: $r('sys.symbol.cart'),
         bgColor: Theme.categoryFoodBg
       };
     case '药品':
@@ -28,12 +28,12 @@ export function getCategoryIcon(category: string): CategoryIconInfo {
       };
     case '美妆护肤':
       return {
-        symbol: $r('sys.symbol.sparkles'),
+        symbol: $r('sys.symbol.star'),
         bgColor: Theme.categoryBeautyBg
       };
     default:
       return {
-        symbol: $r('sys.symbol.cube_box'),
+        symbol: $r('sys.symbol.square'),
         bgColor: Theme.inputBg
       };
   }

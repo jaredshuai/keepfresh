@@ -1,7 +1,6 @@
 /**
  * 新增 / 编辑物资页 —— 包豪斯（Bauhaus）设计风格。
  */
-import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, DEFAULT_CATEGORIES, DEFAULT_UNITS, SHELF_PRESET_DAYS } from '../model/Material';
@@ -49,8 +48,16 @@ struct AddItem {
   private editId: number = -1;
   private loadedCreatedAt: string = '';
 
+  private toast(message: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (e) {
+      console.error(`show toast failed: ${(e as BusinessError).message}`);
+    }
+  }
+
   aboutToAppear(): void {
-    const params = router.getParams() as RouteParams;
+    const params = this.getUIContext().getRouter().getParams() as RouteParams;
     if (params && params.id !== undefined) {
       this.editId = params.id;
       this.isEdit = true;
@@ -148,23 +155,28 @@ struct AddItem {
       return;
     }
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    await this.db.init(ctx);
-    const result: ScanFillResult | undefined = await scanForSuggestions(ctx, this.db);
-    if (!result) {
-      return;
+    try {
+      await this.db.init(ctx);
+      const result: ScanFillResult | undefined = await scanForSuggestions(ctx, this.db);
+      if (!result) {
+        return;
+      }
+      if (!result.ok) {
+        this.toast('扫码失败或设备不支持，请手动填写');
+        return;
+      }
+      this.barcode = result.barcode;
+      if (result.suggestions.length === 0) {
+        this.scanSuggestions = [];
+        this.toast('该条码无历史记录，请手动填写');
+        return;
+      }
+      this.scanSuggestions = result.suggestions;
+      this.showScanSheet = true;
+    } catch (e) {
+      console.error(`scan barcode failed: ${(e as BusinessError).message}`);
+      this.toast('扫码失败，请手动填写');
     }
-    if (!result.ok) {
-      promptAction.showToast({ message: '扫码失败或设备不支持，请手动填写' });
-      return;
-    }
-    this.barcode = result.barcode;
-    if (result.suggestions.length === 0) {
-      this.scanSuggestions = [];
-      promptAction.showToast({ message: '该条码无历史记录，请手动填写' });
-      return;
-    }
-    this.scanSuggestions = result.suggestions;
-    this.showScanSheet = true;
   }
 
   private applyScanSuggestion(m: Material): void {
@@ -173,12 +185,12 @@ struct AddItem {
     this.unit = m.unit;
     this.shelfLifeStr = m.shelfLifeDays.toString();
     this.showScanSheet = false;
-    promptAction.showToast({ message: '已预填，请补充生产日期和数量' });
+    this.toast('已预填，请补充生产日期和数量');
   }
 
   private discardScanSuggestions(): void {
     this.showScanSheet = false;
-    promptAction.showToast({ message: '请手动填写物资信息' });
+    this.toast('请手动填写物资信息');
   }
 
   async save(): Promise<void> {
@@ -233,9 +245,13 @@ struct AddItem {
       } else {
         await this.db.insert(material);
       }
-      ReminderService.getInstance().syncDailyReminder(ctx);
-      promptAction.showToast({ message: this.isEdit ? '已保存' : '已添加' });
-      router.back();
+      try {
+        await ReminderService.getInstance().syncDailyReminder(ctx);
+      } catch (e) {
+        console.error(`sync reminder failed: ${(e as BusinessError).message}`);
+      }
+      this.toast(this.isEdit ? '已保存' : '已添加');
+      this.getUIContext().getRouter().back();
     } catch (e) {
       const err: BusinessError = e as BusinessError;
       this.errorMsg = `保存失败：${err.message}`;
@@ -266,7 +282,7 @@ struct AddItem {
           .border(Theme.borderThin)
           .borderRadius(Theme.iconBtnRadius)
           .onClick(() => {
-            router.back();
+            this.getUIContext().getRouter().back();
           })
         }
         .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
@@ -357,7 +373,7 @@ struct AddItem {
 
           Row({ space: Theme.elementGap }) {
             this.actionCapsule(
-              $r('sys.symbol.barcode'),
+              $r('sys.symbol.barcode_viewfinder'),
               '扫码快填',
               Theme.yellowDark,
               Theme.textWhite,
@@ -403,7 +419,7 @@ struct AddItem {
                     .backgroundColor(Theme.ink)
                     .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
                   Row() {
-                    SymbolGlyph($r('sys.symbol.barcode'))
+                    SymbolGlyph($r('sys.symbol.barcode_viewfinder'))
                       .fontSize(18)
                       .fontColor([Theme.yellowDark])
                       .margin({ right: Theme.smallGap })

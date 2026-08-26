@@ -33,3 +33,6 @@ Thumbs.db
 # IDE local data
 /.arts
 /.codeartsdoer
+/.wf-tmp
+/.workbuddy
+build_warnings.txt

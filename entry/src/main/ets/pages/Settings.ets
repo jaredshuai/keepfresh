@@ -2,7 +2,6 @@
  * 设置中心页 —— 包豪斯（Bauhaus）风格。
  * 包含：临期提醒阈值配置、每日提醒时间/开关、数据备份入口、自定义字段管理入口、关于。
  */
-import { router, promptAction, TimePickerResult } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { ReminderService, ReminderSettings } from '../service/ReminderService';
@@ -10,7 +9,54 @@ import { SettingsService } from '../service/SettingsService';
 import { BackupService, ImportPreview, ImportResult } from '../service/BackupService';
 import { Theme } from '../common/Theme';
 
+interface TimePickerResult {
+  hour?: number;
+  minute?: number;
+}
+
 const PRESET_THRESHOLDS: number[] = [3, 7, 14, 30];
+
+/* ============================================================
+ * SettingsRow 独立组件：@BuilderParam 模式支持尾随闭包 UI 语法
+ * ============================================================ */
+@Builder
+function emptyTrailingBuilder(): void {}
+
+@Component
+struct SettingsRowComponent {
+  label: string = '';
+  desc: string = '';
+  handleRowClick?: () => void = undefined;
+  @BuilderParam trailing: () => void = emptyTrailingBuilder;
+
+  build() {
+    Row() {
+      Column({ space: Theme.tinyGap }) {
+        Text(this.label)
+          .fontSize(Theme.textBody)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Theme.textPrimary)
+        if (this.desc !== '') {
+          Text(this.desc)
+            .fontSize(Theme.textCaption)
+            .fontColor(Theme.textSecondary)
+        }
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      this.trailing()
+    }
+    .width('100%')
+    .padding({
+      left: Theme.cardPadding,
+      right: Theme.cardPadding,
+      top: Theme.smallGap,
+      bottom: Theme.smallGap
+    })
+    .onClick(this.handleRowClick ? this.handleRowClick : () => {})
+  }
+}
 
 @Entry
 @Component
@@ -26,6 +72,14 @@ struct Settings {
   private settingsService: SettingsService = SettingsService.getInstance();
   private reminderService: ReminderService = ReminderService.getInstance();
   private backupService: BackupService = BackupService.getInstance();
+
+  private toast(message: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (e) {
+      console.error(`show toast failed: ${(e as BusinessError).message}`);
+    }
+  }
 
   onPageShow(): void {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
@@ -56,11 +110,23 @@ struct Settings {
     }
     this.nearExpiryError = '';
     const days = parseInt(valueStr, 10);
-    const ok = await this.settingsService.updateNearExpiryDays(days);
-    if (ok) {
-      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      await this.reminderService.syncDailyReminder(ctx);
-      promptAction.showToast({ message: `已设置临期阈值为 ${days} 天` });
+    try {
+      const ok = await this.settingsService.updateNearExpiryDays(days);
+      if (ok) {
+        const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+        await this.reminderService.syncDailyReminder(ctx);
+        this.toast(`已设置临期阈值为 ${days} 天`);
+      }
+    } catch (e) {
+      console.error(`update threshold failed: ${(e as BusinessError).message}`);
+      // 失败后回滚 UI 状态到持久化值并给出提示，避免显示为未保存值
+      try {
+        const savedDays = await this.settingsService.getNearExpiryDays();
+        this.nearExpiryDaysStr = savedDays.toString();
+      } catch (_) {
+        /* 回滚失败至少给出失败提示 */
+      }
+      this.toast('阈值保存失败，请重试');
     }
   }
 
@@ -88,19 +154,33 @@ struct Settings {
 
   private async saveReminderSettings(): Promise<void> {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    await this.reminderService.init(ctx);
-    const settings: ReminderSettings = {
-      enabled: this.reminderEnabled,
-      hour: this.reminderHour,
-      minute: this.reminderMinute
-    };
-    await this.reminderService.updateSettings(settings);
-    if (this.reminderEnabled) {
-      await this.reminderService.syncDailyReminder(ctx);
-      promptAction.showToast({ message: '已更新提醒设置' });
-    } else {
-      await this.reminderService.cancelAllReminders();
-      promptAction.showToast({ message: '已关闭后台提醒' });
+    try {
+      await this.reminderService.init(ctx);
+      const settings: ReminderSettings = {
+        enabled: this.reminderEnabled,
+        hour: this.reminderHour,
+        minute: this.reminderMinute
+      };
+      await this.reminderService.updateSettings(settings);
+      if (this.reminderEnabled) {
+        await this.reminderService.syncDailyReminder(ctx);
+        this.toast('已更新提醒设置');
+      } else {
+        await this.reminderService.cancelAllReminders();
+        this.toast('已关闭后台提醒');
+      }
+    } catch (e) {
+      console.error(`save reminder settings failed: ${(e as BusinessError).message}`);
+      // 失败后回滚 UI 状态到持久化值并给出提示，避免开关/时间看起来成功但未保存
+      try {
+        const saved: ReminderSettings = await this.reminderService.getSettings();
+        this.reminderEnabled = saved.enabled;
+        this.reminderHour = saved.hour;
+        this.reminderMinute = saved.minute;
+      } catch (_) {
+        /* 回滚失败至少给出失败提示 */
+      }
+      this.toast('提醒设置保存失败，请重试');
     }
   }
 
@@ -108,12 +188,12 @@ struct Settings {
 
   private async handleExport(): Promise<void> {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    await this.backupService.exportBackup(ctx);
+    await this.backupService.exportBackup(ctx, this.getUIContext());
   }
 
   private async handleImport(): Promise<void> {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    const preview = await this.backupService.importBackup(ctx);
+    const preview = await this.backupService.importBackup(ctx, this.getUIContext());
     if (preview) {
       this.importPreviewData = preview;
       this.importOverwriteMode = false;
@@ -127,15 +207,29 @@ struct Settings {
     }
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     const mode: 'merge' | 'overwrite' = this.importOverwriteMode ? 'overwrite' : 'merge';
-    const result: ImportResult = await this.backupService.executeImport(ctx, this.importPreviewData.data, mode);
-    this.showImportPreview = false;
-    this.importPreviewData = undefined;
-    if (result.success) {
-      promptAction.showToast({ message: result.message });
-      // 刷新设置页显示（导入可能改了阈值/提醒设置）
-      await this.loadAllSettings(ctx);
-    } else {
-      promptAction.showToast({ message: result.message });
+    try {
+      const result: ImportResult = await this.backupService.executeImport(ctx, this.importPreviewData.data, mode);
+      this.showImportPreview = false;
+      this.importPreviewData = undefined;
+      if (result.success) {
+        // 有 warnings 时拼接展示，给用户可见重试路径
+        const extra = (result.warnings && result.warnings.length > 0)
+          ? `。${result.warnings.join('；')}`
+          : '';
+        this.toast(result.message + extra);
+        // 刷新设置页显示（导入可能改了阈值/提醒设置）
+        await this.loadAllSettings(ctx);
+      } else {
+        const extra = (result.warnings && result.warnings.length > 0)
+          ? `（${result.warnings.join('；')}）`
+          : '';
+        this.toast(result.message + extra);
+      }
+    } catch (e) {
+      console.error(`execute import failed: ${(e as BusinessError).message}`);
+      this.showImportPreview = false;
+      this.importPreviewData = undefined;
+      this.toast('导入失败，请重试');
     }
   }
 
@@ -143,12 +237,14 @@ struct Settings {
     Column() {
       // ─── 顶部导航：返回图标按钮 + "设置" 标题 ───
       Row() {
-        this.iconButton(
-          $r('sys.symbol.chevron_left'),
-          () => {
-            router.back();
-          }
-        )
+        Stack() {
+          this.iconButton(
+            $r('sys.symbol.chevron_left'),
+            () => {
+              this.getUIContext().getRouter().back();
+            }
+          )
+        }
         .margin({ right: Theme.smallGap })
 
         Text('设置')
@@ -174,7 +270,7 @@ struct Settings {
             // 卡片标题：左图标 + 文字
             Row({ space: Theme.smallGap }) {
               Column() {
-                SymbolGlyph($r('sys.symbol.clock_badge_exclamationmark'))
+                SymbolGlyph($r('sys.symbol.clock'))
                   .fontSize(14)
                   .fontColor([Theme.textWhite])
               }
@@ -261,19 +357,21 @@ struct Settings {
                 }
 
                 // 快捷天数预设 Chip
-                Row({ space: Theme.smallGap }) {
+                Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
                   ForEach(PRESET_THRESHOLDS, (preset: number) => {
-                    this.chipButton(
-                      `${preset}天`,
-                      this.nearExpiryDaysStr === preset.toString(),
-                      () => {
-                        this.handleThresholdChange(preset.toString());
-                      }
-                    )
+                    Stack() {
+                      this.chipButton(
+                        `${preset}天`,
+                        this.nearExpiryDaysStr === preset.toString(),
+                        () => {
+                          this.handleThresholdChange(preset.toString());
+                        }
+                      )
+                    }
+                    .margin({ right: Theme.smallGap, bottom: Theme.smallGap })
                   }, (preset: number) => preset.toString())
                 }
                 .width('100%')
-                .flexWrap(FlexWrap.Wrap)
 
                 // 说明文字
                 Text('修改后立即生效，首页与通知将按新天数自动重新分级。')
@@ -297,7 +395,7 @@ struct Settings {
           Column({ space: Theme.smallGap }) {
             Row({ space: Theme.smallGap }) {
               Column() {
-                SymbolGlyph($r('sys.symbol.bell_badge'))
+                SymbolGlyph($r('sys.symbol.bell'))
                   .fontSize(14)
                   .fontColor([Theme.textWhite])
               }
@@ -323,19 +421,25 @@ struct Settings {
                 .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
               Column() {
-                this.settingsRow('每日临期汇总提醒', '每天定时检查物资，有临期或过期物品时推送通知', () => {
+                SettingsRowComponent({
+                  label: '每日临期汇总提醒',
+                  desc: '每天定时检查物资，有临期或过期物品时推送通知'
+                }) {
                   Toggle({ type: ToggleType.Switch, isOn: this.reminderEnabled })
                     .selectedColor(Theme.yellowDark)
                     .onChange(async (isOn: boolean) => {
                       this.reminderEnabled = isOn;
                       await this.saveReminderSettings();
                     })
-                })
+                }
 
                 if (this.reminderEnabled) {
                   Divider().color(Theme.divider).strokeWidth(1)
 
-                  this.settingsRow('每日提醒时间', '设定每天触发后台提醒的时间', () => {
+                  SettingsRowComponent({
+                    label: '每日提醒时间',
+                    desc: '设定每天触发后台提醒的时间'
+                  }) {
                     Stack() {
                       Column()
                         .backgroundColor(Theme.ink)
@@ -358,7 +462,7 @@ struct Settings {
                       })
                     }
                     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-                  })
+                  }
                 }
               }
               .width('100%')
@@ -375,7 +479,7 @@ struct Settings {
           Column({ space: Theme.smallGap }) {
             Row({ space: Theme.smallGap }) {
               Column() {
-                SymbolGlyph($r('sys.symbol.arrow_up_arrow_down_square'))
+                SymbolGlyph($r('sys.symbol.line_3_horizontal'))
                   .fontSize(14)
                   .fontColor([Theme.textWhite])
               }
@@ -441,7 +545,7 @@ struct Settings {
           Column({ space: Theme.smallGap }) {
             Row({ space: Theme.smallGap }) {
               Column() {
-                SymbolGlyph($r('sys.symbol.list_bullet_rectangle'))
+                SymbolGlyph($r('sys.symbol.line_3_horizontal'))
                   .fontSize(14)
                   .fontColor([Theme.textWhite])
               }
@@ -467,13 +571,17 @@ struct Settings {
                 .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
               Column() {
-                this.settingsRow('自定义字段管理', '配置物资的扩展属性与单选选项', () => {
+                SettingsRowComponent({
+                  label: '自定义字段管理',
+                  desc: '配置物资的扩展属性与单选选项',
+                  handleRowClick: () => {
+                    this.getUIContext().getRouter().pushUrl({ url: 'pages/CustomFieldManager' });
+                  }
+                }) {
                   SymbolGlyph($r('sys.symbol.chevron_right'))
                     .fontSize(18)
                     .fontColor([Theme.textTertiary])
-                }, () => {
-                  router.pushUrl({ url: 'pages/CustomFieldManager' });
-                })
+                }
               }
               .width('100%')
               .backgroundColor(Theme.cardBg)
@@ -515,21 +623,27 @@ struct Settings {
                 .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
               Column() {
-                this.settingsRow('版本', '', () => {
+                SettingsRowComponent({
+                  label: '版本',
+                  desc: ''
+                }) {
                   Text('1.0.0')
                     .fontSize(Theme.textSubhead)
                     .fontColor(Theme.textTertiary)
                     .fontWeight(FontWeight.Medium)
-                })
+                }
 
                 Divider().color(Theme.divider).strokeWidth(1)
 
-                this.settingsRow('数据隐私', '', () => {
+                SettingsRowComponent({
+                  label: '数据隐私',
+                  desc: ''
+                }) {
                   Text('纯端侧存储 · 零云端依赖')
                     .fontSize(Theme.textCaption)
                     .fontColor(Theme.yellowDark)
                     .fontWeight(FontWeight.Bold)
-                })
+                }
               }
               .width('100%')
               .backgroundColor(Theme.cardBg)
@@ -684,38 +798,6 @@ struct Settings {
     .height(44 + Theme.hardShadowOffset)
     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     .onClick(onClick)
-  }
-
-  /* ============================================================
-   * 设置行：左文字右控件，中间分隔线（卡片内使用，无硬阴影）
-   * ============================================================ */
-  @Builder
-  settingsRow(label: string, desc: string, trailing: () => void, onClick?: () => void) {
-    Row() {
-      Column({ space: Theme.tinyGap }) {
-        Text(label)
-          .fontSize(Theme.textBody)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Theme.textPrimary)
-        if (desc !== '') {
-          Text(desc)
-            .fontSize(Theme.textCaption)
-            .fontColor(Theme.textSecondary)
-        }
-      }
-      .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
-
-      trailing()
-    }
-    .width('100%')
-    .padding({
-      left: Theme.cardPadding,
-      right: Theme.cardPadding,
-      top: Theme.smallGap,
-      bottom: Theme.smallGap
-    })
-    .onClick(onClick ? onClick : () => {})
   }
 
   /* ============================================================

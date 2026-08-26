@@ -1,0 +1,13 @@
+{
+  "name": "keepfresh",
+  "version": "1.0.0",
+  "description": "KeepFresh 物资保质期管理 App",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "build:release": "node scripts/build.js assembleHap -p buildMode=release",
+    "test": "node --experimental-loader ./test/loader.mjs --test test/*.test.ts",
+    "design:check": "node scripts/design-guard.js",
+    "ci": "npm run design:check && npm run test"
+  }
+}

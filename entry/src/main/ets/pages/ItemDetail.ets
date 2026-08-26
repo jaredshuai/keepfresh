@@ -1,10 +1,9 @@
 /**
  * 物资详情页：信息展示 + 编辑入口 + 删除 —— 包豪斯（Bauhaus）风格。
  */
-import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material } from '../model/Material';
+import { Material, ExpiryLevel } from '../model/Material';
 import { CustomField } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { levelOf, levelColor, levelSoftColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
@@ -27,7 +26,7 @@ struct ItemDetail {
 
   onPageShow(): void {
     if (this.itemId < 0) {
-      const params = router.getParams() as RouteParams;
+      const params = this.getUIContext().getRouter().getParams() as RouteParams;
       if (params && params.id !== undefined) {
         this.itemId = params.id;
       }
@@ -78,9 +77,13 @@ struct ItemDetail {
     try {
       await this.db.remove(this.itemId);
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      ReminderService.getInstance().syncDailyReminder(ctx);
-      promptAction.showToast({ message: '已删除' });
-      router.back();
+      try {
+        await ReminderService.getInstance().syncDailyReminder(ctx);
+      } catch (e) {
+        console.error(`sync reminder failed: ${(e as BusinessError).message}`);
+      }
+      this.getUIContext().getPromptAction().showToast({ message: '已删除' });
+      this.getUIContext().getRouter().back();
     } catch (e) {
       console.error(`delete failed: ${(e as BusinessError).message}`);
     }
@@ -169,7 +172,7 @@ struct ItemDetail {
       .borderRadius(Theme.iconBtnRadius)
       .border(Theme.borderThin)
       .onClick(() => {
-        router.back();
+        this.getUIContext().getRouter().back();
       })
     }
     .width(Theme.iconBtnSize + Theme.hardShadowOffset)
@@ -179,10 +182,6 @@ struct ItemDetail {
 
   @Builder
   statusBanner() {
-    const lv = levelOf(this.m!);
-    const left = remainingDays(this.m!);
-    const bgColor = levelColor(lv);
-
     Stack({ alignContent: Alignment.TopStart }) {
       Row() {
       }
@@ -193,12 +192,12 @@ struct ItemDetail {
 
       Column({ space: Theme.smallGap }) {
         Row() {
-          this.geoShape(lv)
+          this.geoShape(levelOf(this.m!))
         }
         .width('100%')
         .justifyContent(FlexAlign.Start)
 
-        Text(levelText(lv, left))
+        Text(levelText(levelOf(this.m!), remainingDays(this.m!)))
           .fontSize(Theme.statNumber)
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textWhite)
@@ -218,7 +217,7 @@ struct ItemDetail {
       })
       .borderRadius(Theme.cardRadius)
       .border(Theme.borderThin)
-      .backgroundColor(bgColor)
+      .backgroundColor(levelColor(levelOf(this.m!)))
       .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
@@ -226,21 +225,21 @@ struct ItemDetail {
   }
 
   @Builder
-  geoShape(lv: number) {
+  geoShape(lv: ExpiryLevel) {
     if (lv === ExpiryLevel.EXPIRED) {
       Circle({ width: 56, height: 56 })
         .fill(Theme.expired)
         .stroke(Theme.ink)
         .strokeWidth(2)
     } else if (lv === ExpiryLevel.NEAR) {
-      Shape() {
-        Polygon()
-          .points([['50%', '0%'], ['100%', '100%'], ['0%', '100%']])
+      Canvas() {
+        Path()
+          .commands(`M 28 0 L 56 56 L 0 56 Z`)
           .fill(Theme.near)
           .stroke(Theme.ink)
           .strokeWidth(2)
       }
-      .width(60)
+      .width(56)
       .height(56)
     } else {
       Rect({ width: 56, height: 56 })
@@ -252,8 +251,6 @@ struct ItemDetail {
 
   @Builder
   infoCard() {
-    const iconInfo = getCategoryIcon(this.m!.category);
-
     Stack({ alignContent: Alignment.TopStart }) {
       Row() {
       }
@@ -266,7 +263,7 @@ struct ItemDetail {
         // 头部：分类图标方块（2vp黑边） + 名称 + 分类/数量
         Row({ space: Theme.elementGap }) {
           Stack({ alignContent: Alignment.Center }) {
-            SymbolGlyph(iconInfo.symbol)
+            SymbolGlyph(getCategoryIcon(this.m!.category).symbol)
               .fontSize(24)
               .fontColor([Theme.textPrimary])
           }
@@ -376,7 +373,7 @@ struct ItemDetail {
     Row({ space: Theme.elementGap }) {
       // 编辑：深黄底白字 + 黑边 + 硬阴影
       this.primaryBtn('编辑', Theme.yellowDark, Theme.textWhite, () => {
-        router.pushUrl({ url: 'pages/AddItem', params: { id: this.itemId } });
+        this.getUIContext().getRouter().pushUrl({ url: 'pages/AddItem', params: { id: this.itemId } });
       })
 
       // 删除：白底红字 + 黑边 + 硬阴影

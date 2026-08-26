@@ -2,7 +2,6 @@
  * 自定义字段管理页 —— 包豪斯（Bauhaus）设计风格。
  * 支持新建、编辑（改名/选项，禁改类型）、删除（二次确认）、排序（上移/下移）。
  */
-import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import {
@@ -126,7 +125,7 @@ struct CustomFieldManager {
             createdAt: existing.createdAt
           };
           await this.db.updateCustomField(updated);
-          promptAction.showToast({ message: '已更新字段' });
+          this.getUIContext().getPromptAction().showToast({ message: '已更新字段' });
         }
       } else {
         const newField: CustomField = {
@@ -138,7 +137,7 @@ struct CustomFieldManager {
           createdAt: todayStr()
         };
         await this.db.insertCustomField(newField);
-        promptAction.showToast({ message: '已创建字段' });
+        this.getUIContext().getPromptAction().showToast({ message: '已创建字段' });
       }
       this.showEditSheet = false;
       await this.loadFields();
@@ -171,7 +170,7 @@ struct CustomFieldManager {
     try {
       await this.db.removeCustomField(id);
       await this.loadFields();
-      promptAction.showToast({ message: '已删除字段' });
+      this.getUIContext().getPromptAction().showToast({ message: '已删除字段' });
     } catch (e) {
       console.error(`delete custom field failed: ${(e as BusinessError).message}`);
     }
@@ -199,25 +198,6 @@ struct CustomFieldManager {
     list[index + 1] = temp;
     await this.db.updateCustomFieldsOrder(list);
     await this.loadFields();
-  }
-
-  @Builder
-  bauhausShadow(content: CustomBuilder) {
-    Stack() {
-      Column()
-        .width('100%')
-        .height('100%')
-        .backgroundColor(Theme.ink)
-        .margin({ left: 4, top: 4 })
-
-      Column() {
-        content()
-      }
-      .width('100%')
-      .height('100%')
-    }
-    .width('100%')
-    .padding({ right: 4, bottom: 4 })
   }
 
   @Builder
@@ -459,7 +439,7 @@ struct CustomFieldManager {
     Column() {
       Row() {
         this.bauhausIconBtn($r('sys.symbol.chevron_left'), () => {
-          router.back();
+          this.getUIContext().getRouter().back();
         }, true)
 
         Text('自定义字段管理')
@@ -531,9 +511,15 @@ struct CustomFieldManager {
           .stroke(Theme.ink)
           .strokeWidth(2)
 
-        Triangle({ width: 0, height: 0 })
-          .borderWidth({ leftWidth: 20, rightWidth: 20, bottomWidth: 36 })
-          .borderColor({ leftColor: 'transparent', rightColor: 'transparent', bottomColor: Theme.near })
+        Canvas() {
+          Path()
+            .commands(`M 18 0 L 36 36 L 0 36 Z`)
+            .fill(Theme.near)
+            .stroke(Theme.ink)
+            .strokeWidth(2)
+        }
+        .width(36)
+        .height(36)
 
         Rect({ width: 36, height: 36 })
           .fill(Theme.safe)
@@ -552,9 +538,11 @@ struct CustomFieldManager {
         .textAlign(TextAlign.Center)
         .padding({ left: 32, right: 32 })
 
-      this.bauhausPrimaryBtn('+ 新建自定义字段', 42, () => {
-        this.openCreateSheet();
-      })
+      Stack() {
+        this.bauhausPrimaryBtn('+ 新建自定义字段', 42, () => {
+          this.openCreateSheet();
+        })
+      }
       .margin({ top: 16 })
     }
     .layoutWeight(1)

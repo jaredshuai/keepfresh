@@ -3,6 +3,7 @@
  */
 import { relationalStore } from '@kit.ArkData';
 import { Context } from '@kit.AbilityKit';
+import { BusinessError } from '@kit.BasicServicesKit';
 import { Material } from '../model/Material';
 import { CustomField, CustomFieldType } from '../model/CustomField';
 
@@ -53,6 +54,27 @@ export class MaterialDb {
     return MaterialDb.instance;
   }
 
+  /**
+   * 统一异常处理：打印结构化日志 + 保留原错误 code/stack 后重新抛出。
+   * 解决 1. as BusinessError 后直接 throw err 触发 arkts-limited-throw；
+   *      2. throw new Error(message) 丢失 code/stack 的两难。
+   */
+  private rethrow(e: Object, op: string): never {
+    const be = e as BusinessError;
+    const codeStr = (be.code !== undefined && be.code !== null) ? `[${be.code}]` : '';
+    console.error(`${op} failed${codeStr}: ${be.message}`);
+    const out: Error = new Error(be.message);
+    // 用 BusinessError 接口写附加属性（code/stack），保留原错误信息给调用方
+    const beOut: BusinessError = out as BusinessError;
+    if (be.code !== undefined && be.code !== null) {
+      beOut.code = be.code;
+    }
+    if (be.stack !== undefined && be.stack !== null) {
+      beOut.stack = be.stack;
+    }
+    throw out;
+  }
+
   async init(context: Context): Promise<void> {
     if (this.store) {
       return;
@@ -61,18 +83,22 @@ export class MaterialDb {
       name: DB_NAME,
       securityLevel: relationalStore.SecurityLevel.S1
     };
-    this.store = await relationalStore.getRdbStore(context, config);
-    await this.store.executeSql(CREATE_TABLE_SQL);
-    await this.store.executeSql(CREATE_CUSTOM_FIELD_DEFS_TABLE_SQL);
     try {
-      await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN barcode TEXT;`);
+      this.store = await relationalStore.getRdbStore(context, config);
+      await this.store.executeSql(CREATE_TABLE_SQL);
+      await this.store.executeSql(CREATE_CUSTOM_FIELD_DEFS_TABLE_SQL);
+      try {
+        await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN barcode TEXT;`);
+      } catch (_) {
+        // Column might already exist, ignore error
+      }
+      try {
+        await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN custom_fields TEXT;`);
+      } catch (_) {
+        // Column might already exist, ignore error
+      }
     } catch (e) {
-      // Column might already exist, ignore error
-    }
-    try {
-      await this.store.executeSql(`ALTER TABLE ${TABLE} ADD COLUMN custom_fields TEXT;`);
-    } catch (e) {
-      // Column might already exist, ignore error
+      this.rethrow(e, 'init db');
     }
   }
 
@@ -84,42 +110,46 @@ export class MaterialDb {
   }
 
   private rowToMaterial(rs: relationalStore.ResultSet): Material {
-    const barcodeIndex: number = rs.getColumnIndex('barcode');
-    let barcode: string | undefined = undefined;
-    if (barcodeIndex >= 0 && !rs.isColumnNull(barcodeIndex)) {
-      const val: string = rs.getString(barcodeIndex);
-      if (val && val.length > 0) {
-        barcode = val;
-      }
-    }
-    const customFieldsIndex: number = rs.getColumnIndex('custom_fields');
-    let customFields: Record<string, string> | undefined = undefined;
-    if (customFieldsIndex >= 0 && !rs.isColumnNull(customFieldsIndex)) {
-      const val: string = rs.getString(customFieldsIndex);
-      if (val && val.length > 0) {
-        try {
-          customFields = JSON.parse(val) as Record<string, string>;
-        } catch (e) {
-          customFields = {};
+    try {
+      const barcodeIndex: number = rs.getColumnIndex('barcode');
+      let barcode: string | undefined = undefined;
+      if (barcodeIndex >= 0 && !rs.isColumnNull(barcodeIndex)) {
+        const val: string = rs.getString(barcodeIndex);
+        if (val && val.length > 0) {
+          barcode = val;
         }
       }
+      const customFieldsIndex: number = rs.getColumnIndex('custom_fields');
+      let customFields: Record<string, string> | undefined = undefined;
+      if (customFieldsIndex >= 0 && !rs.isColumnNull(customFieldsIndex)) {
+        const val: string = rs.getString(customFieldsIndex);
+        if (val && val.length > 0) {
+          try {
+            customFields = JSON.parse(val) as Record<string, string>;
+          } catch (e) {
+            customFields = {};
+          }
+        }
+      }
+      const m: Material = {
+        id: rs.getLong(rs.getColumnIndex('id')),
+        name: rs.getString(rs.getColumnIndex('name')),
+        category: rs.getString(rs.getColumnIndex('category')),
+        quantity: rs.getDouble(rs.getColumnIndex('quantity')),
+        unit: rs.getString(rs.getColumnIndex('unit')),
+        productionDate: rs.getString(rs.getColumnIndex('production_date')),
+        shelfLifeDays: rs.getLong(rs.getColumnIndex('shelf_life_days')),
+        expiryDate: rs.getString(rs.getColumnIndex('expiry_date')),
+        note: rs.getString(rs.getColumnIndex('note')),
+        createdAt: rs.getString(rs.getColumnIndex('created_at')),
+        updatedAt: rs.getString(rs.getColumnIndex('updated_at')),
+        barcode: barcode,
+        customFields: customFields
+      };
+      return m;
+    } catch (e) {
+      this.rethrow(e, 'rowToMaterial');
     }
-    const m: Material = {
-      id: rs.getLong(rs.getColumnIndex('id')),
-      name: rs.getString(rs.getColumnIndex('name')),
-      category: rs.getString(rs.getColumnIndex('category')),
-      quantity: rs.getDouble(rs.getColumnIndex('quantity')),
-      unit: rs.getString(rs.getColumnIndex('unit')),
-      productionDate: rs.getString(rs.getColumnIndex('production_date')),
-      shelfLifeDays: rs.getLong(rs.getColumnIndex('shelf_life_days')),
-      expiryDate: rs.getString(rs.getColumnIndex('expiry_date')),
-      note: rs.getString(rs.getColumnIndex('note')),
-      createdAt: rs.getString(rs.getColumnIndex('created_at')),
-      updatedAt: rs.getString(rs.getColumnIndex('updated_at')),
-      barcode: barcode,
-      customFields: customFields
-    };
-    return m;
   }
 
   private toRow(m: Material): relationalStore.ValuesBucket {
@@ -142,26 +172,40 @@ export class MaterialDb {
 
   /** 全量列表，按到期日升序 */
   async listAll(): Promise<Material[]> {
-    const predicates = new relationalStore.RdbPredicates(TABLE);
-    predicates.orderByAsc('expiry_date');
-    const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
     const list: Material[] = [];
-    while (rs.goToNextRow()) {
-      list.push(this.rowToMaterial(rs));
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.orderByAsc('expiry_date');
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      try {
+        while (rs.goToNextRow()) {
+          list.push(this.rowToMaterial(rs));
+        }
+      } finally {
+        rs.close();
+      }
+    } catch (e) {
+      this.rethrow(e, 'listAll');
     }
-    rs.close();
     return list;
   }
 
   async getById(id: number): Promise<Material | undefined> {
-    const predicates = new relationalStore.RdbPredicates(TABLE);
-    predicates.equalTo('id', id);
-    const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
     let m: Material | undefined = undefined;
-    if (rs.goToNextRow()) {
-      m = this.rowToMaterial(rs);
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.equalTo('id', id);
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      try {
+        if (rs.goToNextRow()) {
+          m = this.rowToMaterial(rs);
+        }
+      } finally {
+        rs.close();
+      }
+    } catch (e) {
+      this.rethrow(e, 'getById');
     }
-    rs.close();
     return m;
   }
 
@@ -172,69 +216,89 @@ export class MaterialDb {
     if (code.length === 0) {
       return list;
     }
-    const predicates = new relationalStore.RdbPredicates(TABLE);
-    predicates.equalTo('barcode', code);
-    predicates.orderByDesc('created_at');
-    predicates.orderByDesc('id');
-    const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
     try {
-      while (rs.goToNextRow()) {
-        list.push(this.rowToMaterial(rs));
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.equalTo('barcode', code);
+      predicates.orderByDesc('created_at');
+      predicates.orderByDesc('id');
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      try {
+        while (rs.goToNextRow()) {
+          list.push(this.rowToMaterial(rs));
+        }
+      } finally {
+        rs.close();
       }
-    } finally {
-      rs.close();
+    } catch (e) {
+      this.rethrow(e, 'findByBarcode');
     }
     return list;
   }
 
   /** 插入，返回新记录 rowId */
   async insert(m: Material): Promise<number> {
-    return await this.getStore().insert(TABLE, this.toRow(m));
+    try {
+      return await this.getStore().insert(TABLE, this.toRow(m));
+    } catch (e) {
+      this.rethrow(e, 'insert');
+    }
   }
 
   /** 更新，返回受影响行数 */
   async update(m: Material): Promise<number> {
-    const predicates = new relationalStore.RdbPredicates(TABLE);
-    predicates.equalTo('id', m.id);
-    return await this.getStore().update(this.toRow(m), predicates);
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.equalTo('id', m.id);
+      return await this.getStore().update(this.toRow(m), predicates);
+    } catch (e) {
+      this.rethrow(e, 'update');
+    }
   }
 
   /** 删除，返回受影响行数 */
   async remove(id: number): Promise<number> {
-    const predicates = new relationalStore.RdbPredicates(TABLE);
-    predicates.equalTo('id', id);
-    return await this.getStore().delete(predicates);
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.equalTo('id', id);
+      return await this.getStore().delete(predicates);
+    } catch (e) {
+      this.rethrow(e, 'remove');
+    }
   }
 
   private rowToCustomField(rs: relationalStore.ResultSet): CustomField {
-    const idIndex: number = rs.getColumnIndex('id');
-    const nameIndex: number = rs.getColumnIndex('name');
-    const typeIndex: number = rs.getColumnIndex('type');
-    const optionsIndex: number = rs.getColumnIndex('options');
-    const orderIndex: number = rs.getColumnIndex('sort_order');
-    const createdAtIndex: number = rs.getColumnIndex('created_at');
+    try {
+      const idIndex: number = rs.getColumnIndex('id');
+      const nameIndex: number = rs.getColumnIndex('name');
+      const typeIndex: number = rs.getColumnIndex('type');
+      const optionsIndex: number = rs.getColumnIndex('options');
+      const orderIndex: number = rs.getColumnIndex('sort_order');
+      const createdAtIndex: number = rs.getColumnIndex('created_at');
 
-    let options: string[] | undefined = undefined;
-    if (optionsIndex >= 0 && !rs.isColumnNull(optionsIndex)) {
-      const rawOptions = rs.getString(optionsIndex);
-      if (rawOptions && rawOptions.length > 0) {
-        try {
-          options = JSON.parse(rawOptions) as string[];
-        } catch (e) {
-          options = [];
+      let options: string[] | undefined = undefined;
+      if (optionsIndex >= 0 && !rs.isColumnNull(optionsIndex)) {
+        const rawOptions = rs.getString(optionsIndex);
+        if (rawOptions && rawOptions.length > 0) {
+          try {
+            options = JSON.parse(rawOptions) as string[];
+          } catch (e) {
+            options = [];
+          }
         }
       }
-    }
 
-    const f: CustomField = {
-      id: rs.getString(idIndex),
-      name: rs.getString(nameIndex),
-      type: rs.getString(typeIndex) as CustomFieldType,
-      options: options,
-      order: rs.getLong(orderIndex),
-      createdAt: rs.getString(createdAtIndex)
-    };
-    return f;
+      const f: CustomField = {
+        id: rs.getString(idIndex),
+        name: rs.getString(nameIndex),
+        type: rs.getString(typeIndex) as CustomFieldType,
+        options: options,
+        order: rs.getLong(orderIndex),
+        createdAt: rs.getString(createdAtIndex)
+      };
+      return f;
+    } catch (e) {
+      this.rethrow(e, 'rowToCustomField');
+    }
   }
 
   private customFieldToRow(field: CustomField): relationalStore.ValuesBucket {
@@ -251,54 +315,74 @@ export class MaterialDb {
 
   /** 查询全部自定义字段定义，按 sort_order 升序，同序按创建时间升序 */
   async listCustomFields(): Promise<CustomField[]> {
-    const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
-    predicates.orderByAsc('sort_order');
-    predicates.orderByAsc('created_at');
-    const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
     const list: CustomField[] = [];
     try {
-      while (rs.goToNextRow()) {
-        list.push(this.rowToCustomField(rs));
+      const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+      predicates.orderByAsc('sort_order');
+      predicates.orderByAsc('created_at');
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      try {
+        while (rs.goToNextRow()) {
+          list.push(this.rowToCustomField(rs));
+        }
+      } finally {
+        rs.close();
       }
-    } finally {
-      rs.close();
+    } catch (e) {
+      this.rethrow(e, 'listCustomFields');
     }
     return list;
   }
 
   /** 按 ID 获取单个自定义字段 */
   async getCustomFieldById(id: string): Promise<CustomField | undefined> {
-    const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
-    predicates.equalTo('id', id);
-    const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
     let field: CustomField | undefined = undefined;
     try {
-      if (rs.goToNextRow()) {
-        field = this.rowToCustomField(rs);
+      const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+      predicates.equalTo('id', id);
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      try {
+        if (rs.goToNextRow()) {
+          field = this.rowToCustomField(rs);
+        }
+      } finally {
+        rs.close();
       }
-    } finally {
-      rs.close();
+    } catch (e) {
+      this.rethrow(e, 'getCustomFieldById');
     }
     return field;
   }
 
   /** 插入自定义字段定义 */
   async insertCustomField(field: CustomField): Promise<number> {
-    return await this.getStore().insert(CUSTOM_FIELDS_TABLE, this.customFieldToRow(field));
+    try {
+      return await this.getStore().insert(CUSTOM_FIELDS_TABLE, this.customFieldToRow(field));
+    } catch (e) {
+      this.rethrow(e, 'insertCustomField');
+    }
   }
 
   /** 更新自定义字段定义（修改名称、选项、排序） */
   async updateCustomField(field: CustomField): Promise<number> {
-    const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
-    predicates.equalTo('id', field.id);
-    return await this.getStore().update(this.customFieldToRow(field), predicates);
+    try {
+      const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+      predicates.equalTo('id', field.id);
+      return await this.getStore().update(this.customFieldToRow(field), predicates);
+    } catch (e) {
+      this.rethrow(e, 'updateCustomField');
+    }
   }
 
   /** 删除自定义字段定义（已有物资里的字段值保留在 custom_fields JSON 中） */
   async removeCustomField(id: string): Promise<number> {
-    const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
-    predicates.equalTo('id', id);
-    return await this.getStore().delete(predicates);
+    try {
+      const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+      predicates.equalTo('id', id);
+      return await this.getStore().delete(predicates);
+    } catch (e) {
+      this.rethrow(e, 'removeCustomField');
+    }
   }
 
   /** 批量更新字段排序序号 */
@@ -306,12 +390,16 @@ export class MaterialDb {
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
       f.order = i;
-      const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
-      predicates.equalTo('id', f.id);
-      const row: relationalStore.ValuesBucket = {
-        'sort_order': i
-      };
-      await this.getStore().update(row, predicates);
+      try {
+        const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
+        predicates.equalTo('id', f.id);
+        const row: relationalStore.ValuesBucket = {
+          'sort_order': i
+        };
+        await this.getStore().update(row, predicates);
+      } catch (e) {
+        this.rethrow(e, `updateCustomFieldsOrder[${i}]`);
+      }
     }
   }
 }
