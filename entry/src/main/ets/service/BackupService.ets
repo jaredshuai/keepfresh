@@ -22,7 +22,7 @@ import { todayStr } from '../common/DateUtils';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'BackupService';
-/** v2：新增 nameDefs 段（自定义分类/位置定义）；v1 备份无此字段，导入时自动跳过 */
+/** v2：新增 nameDefs 段（自定义分类/位置/单位定义）；v1 备份无此字段，导入时自动跳过 */
 const SCHEMA_VERSION: number = 2;
 
 /** 备份文件 JSON 结构 */
@@ -32,13 +32,13 @@ export interface BackupData {
   settings: BackupSettings;
   customFields: CustomField[];
   materials: Material[];
-  /** v2 起：自定义分类/位置定义（含用户排序）；v1 备份无此字段 */
+  /** v2 起：自定义分类/位置/单位定义（含用户排序）；v1 备份无此字段 */
   nameDefs?: NameDefBackup[];
 }
 
 /** name_defs 表的备份形态（id 为设备本地自增，不导出；物资按文本名称关联） */
 export interface NameDefBackup {
-  kind: string;   // 'category' | 'location'
+  kind: string;   // 'category' | 'location' | 'unit'
   name: string;
   order: number;
 }
@@ -297,7 +297,7 @@ export class BackupService {
       // ── 1. 处理自定义字段定义冲突 ──
       const fieldIdMap = await this.resolveCustomFieldDefs(db, data.customFields || []);
 
-      // ── 1.5 还原自定义分类/位置定义（v2+；v1 备份无此字段自动跳过）──
+      // ── 1.5 还原自定义分类/位置/单位定义（v2+；v1 备份无此字段自动跳过）──
       // 空数组也要 restore：overwrite 语义下需清掉本地定义，不能靠 length>0 跳过
       if (data.nameDefs && Array.isArray(data.nameDefs)) {
         this.validateNameDefs(data.nameDefs);
@@ -398,7 +398,7 @@ export class BackupService {
   }
 
   /**
-   * 还原自定义分类/位置定义（v2+ 备份）。
+   * 还原自定义分类/位置/单位定义（v2+ 备份）。
    * - merge：导入名称按备份顺序在前，本地独有名称按现有顺序追加尾部；
    * - overwrite：仅保留导入定义（与物资清空语义一致）。
    * 实现：按目标顺序删除重插。name_defs.id 无外部引用（物资按文本名称关联），
