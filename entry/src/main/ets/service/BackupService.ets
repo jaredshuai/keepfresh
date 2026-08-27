@@ -373,7 +373,7 @@ export class BackupService {
     for (let i = 0; i < imported.length; i++) {
       const d = imported[i];
       const kindStr: string = `${d.kind ?? ''}`;
-      if (kindStr !== 'category' && kindStr !== 'location') {
+      if (kindStr !== 'category' && kindStr !== 'location' && kindStr !== 'unit') {
         throw new Error(`nameDefs[${i}].kind 非法: ${kindStr}`);
       }
       // 非字符串 name 一律拒绝（防篡改备份把 number/object 混进来被持久化成字符串）
@@ -403,7 +403,7 @@ export class BackupService {
     imported: NameDefBackup[],
     mode: 'merge' | 'overwrite'
   ): Promise<void> {
-    const kinds: string[] = ['category', 'location'];
+    const kinds: string[] = ['category', 'location', 'unit'];
     for (const kind of kinds) {
       const k: NameKind = kind as NameKind;
       // 导入侧目标顺序（去空去重）

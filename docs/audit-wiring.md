@@ -77,12 +77,12 @@
 
 | # | 问题 | 证据 |
 |---|---|---|
-| M1 | AppStorage `targetFilterLevel` 双向死写 | EntryAbility 写→Index 读后即清，从未驱动 activeStatusTab；且无 Want 生产者（ReminderService wantAgent 无 parameters） |
-| M2 | ExpiryService 移植函数未接 UI | Index L208 自实现比较器（注释自认"sortByExpirationAsc 语义"），sortBy*×3/buildOverview/levelSoftColor/levelBadgeTextColor 全死 |
-| M3 | BarcodeProduct.ets 死模块 | 全仓零引用；设计文档计划 ScanService 消费 findPresetBarcode 未接线 |
-| M4 | CategoryOrder.ets 整文件死 | 三导出零生产调用（仅测试） |
+| M1 | ~~AppStorage `targetFilterLevel` 双向死写~~ | **✅ 已修复：wantAgent 带 filterLevel 参数（有过期优先 expired，否则 expiring）→ EntryAbility 存 AppStorage → Index onPageShow 切对应状态 Tab 后清除** |
+| M2 | ~~ExpiryService 移植函数未接 UI~~ | **✅ 已修复：Index 分组排序接线 sortByExpirationAsc，删除自实现比较器**（sortByRiskAndExpiration/sortByCreatedDesc/buildOverview/levelSoftColor/levelBadgeTextColor 仍留白名单，待统计页决策） |
+| M3 | ~~BarcodeProduct.ets 死模块~~ | **✅ 已删除：全仓零引用（扫码建议只走历史记录，预置字典无消费方）** |
+| M4 | ~~CategoryOrder.ets 整文件死~~ | **✅ 已删除：连同 4 个专属测试用例** |
 | M5 | 自定义字段 order/createdAt 导入不还原 | resolveCustomFieldDefs 只读 name/type/options，新定义 maxOrder++ 追加尾部 → 备份往返后字段顺序打乱。**✅ 已修复：新建定义改用导入备份的 order（本 PR）** |
-| M6 | DEFAULT_UNITS 硬编码数据源 | AddItem L550 chip 直传预设；name_defs 无 unit kind（分类/位置已动态化，单位未跟上） |
+| M6 | ~~DEFAULT_UNITS 硬编码数据源~~ | **✅ 已修复：NameKind 扩展 'unit'，CategoryManager 新增「单位」Tab（CRUD+排序+重命名同步 materials.unit），AddItem 单位 chip 动态化（listEffectiveNames('unit', DEFAULT_UNITS)），备份 nameDefs 含 unit** |
 
 ### LOW（清理项，已由 wire-guard 白名单登记）
 
@@ -110,9 +110,9 @@
 |---|---|---|
 | 1 Material 字段 ⇄ toRow/rowToMaterial 双向映射 | 中途断（字段蒸发） | 19/19 通过 |
 | 2 建表列 ⊆ toRow 键 | 中途断 | 19+9 通过 |
-| 3 pages 硬编码预设数据源（仅允许 import/@State/listEffectiveNames defaults 行） | 消费端断（陈旧源） | 19 处=15 合法+4 白名单 |
-| 4 导出 API 必须有非测试外部调用者（否则白名单登记理由） | 源头断（死写） | 70 API=48 接通+22 白名单 |
-| 5 未使用 import | 冗余断链 | 171 导入=166 使用+5 白名单 |
+| 3 pages 硬编码预设数据源（仅允许 import/@State/listEffectiveNames defaults 行） | 消费端断（陈旧源） | 22 处=18 合法+4 白名单 |
+| 4 导出 API 必须有非测试外部调用者（否则白名单登记理由） | 源头断（死写） | 70 API=53 接通+17 白名单 |
+| 5 未使用 import | 冗余断链 | 173 导入=168 使用+5 白名单 |
 
 白名单哲学：**不掩盖**——每条附理由与处置状态（清理候选/预留/内部组合件），白名单项若日后获得调用者，脚本会打 ⚠️ 提醒移除登记。
 
@@ -127,4 +127,4 @@
 | H3 | applyScanSuggestion 按 shelfLifeMonths 还原月数录入模式（避免 365×n 天近似）+ location 回填 |
 | M5 | resolveCustomFieldDefs 新建定义 order 改用导入备份值（缺失/非法回退 maxOrder+1），字段显示顺序备份往返不再打乱 |
 
-M1/M2/M3/M4/M6 与 LOW 项留待后续决策（M2/M4 要么接线要么删除，避免平行实现漂移）；wire-guard 白名单持续追踪，新断链由 CI 拦截。
+M1/M2/M3/M4/M6 已全部随本 PR 修复（通知直达状态 Tab / 排序接线 sortByExpirationAsc / 死模块删除 / 单位自定义管理接入 name_defs）；LOW 项留白名单持续追踪，新断链由 CI 拦截。

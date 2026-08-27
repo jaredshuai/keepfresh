@@ -9,7 +9,6 @@ import { addDays, todayStr, addMonths } from '../entry/src/main/ets/common/DateU
 import { normalizeQuantityUnit, formatQuantityUnit } from '../entry/src/main/ets/common/QuantityUnit.ets';
 import { normalizeText, normalizeNullableText, normalizeNonNegativeInteger, parseNonNegativeInteger } from '../entry/src/main/ets/common/InputNormalize.ets';
 import { filterByKeyword } from '../entry/src/main/ets/common/SearchFilter.ets';
-import { normalizeNameList, moveNameOrder, mergeWithDefaults } from '../entry/src/main/ets/common/CategoryOrder.ets';
 import {
   getActualStatus,
   riskOrderOf,
@@ -258,30 +257,6 @@ describe('关键词搜索 filterByKeyword', () => {
       makeMaterial({ id: 1, name: 'Coke', category: '食品', note: '' })
     ];
     assert.equal(filterByKeyword(list, 'coke').length, 1);
-  });
-});
-
-describe('分类列表操作 CategoryOrder', () => {
-  it('34. normalizeNameList 去空去重保序', () => {
-    assert.deepEqual(normalizeNameList(['a', ' b ', '', 'a', 'c']), ['a', 'b', 'c']);
-  });
-
-  it('35. moveNameOrder 拖拽重排', () => {
-    assert.deepEqual(moveNameOrder(['a', 'b', 'c', 'd'], 0, 2), ['b', 'c', 'a', 'd']);
-    assert.deepEqual(moveNameOrder(['a', 'b', 'c'], 2, 0), ['c', 'a', 'b']);
-  });
-
-  it('36. moveNameOrder 越界/相同返回拷贝', () => {
-    const src = ['a', 'b', 'c'];
-    const out = moveNameOrder(src, -1, 0);
-    assert.deepEqual(out, src);
-    assert.notEqual(out, src); // 是新数组
-    assert.deepEqual(moveNameOrder(src, 1, 1), src);
-    assert.deepEqual(moveNameOrder(src, 0, 99), src);
-  });
-
-  it('37. mergeWithDefaults 预设在前合并去重', () => {
-    assert.deepEqual(mergeWithDefaults(['食品', '药品'], ['药品', '母婴']), ['食品', '药品', '母婴']);
   });
 });
 

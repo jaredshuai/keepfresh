@@ -37,6 +37,7 @@ struct AddItem {
   @State categories: string[] = DEFAULT_CATEGORIES.slice();
   @State quantityStr: string = '1';
   @State unit: string = DEFAULT_UNITS[0];
+  @State units: string[] = DEFAULT_UNITS.slice();
   @State location: string = DEFAULT_LOCATIONS[2];
   @State locations: string[] = DEFAULT_LOCATIONS.slice();
   @State productionDate: string = todayStr();
@@ -91,6 +92,14 @@ struct AddItem {
         this.locations = locs;
         if (locs.indexOf(this.location) < 0 && locs.length > 0) {
           this.location = locs[2] ?? locs[0];
+        }
+        // 单位候选：管理页自定义定义（按排序）→ 预设 → 数据中出现过的
+        return this.db.listEffectiveNames('unit', DEFAULT_UNITS);
+      })
+      .then((unitCandidates: string[]) => {
+        this.units = unitCandidates;
+        if (unitCandidates.indexOf(this.unit) < 0 && unitCandidates.length > 0) {
+          this.unit = unitCandidates[0];
         }
         return this.db.listCustomFields();
       })
@@ -558,7 +567,7 @@ struct AddItem {
                   })
               }
               .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-              this.chipGroup(DEFAULT_UNITS, this.unit, (v: string) => {
+              this.chipGroup(this.units, this.unit, (v: string) => {
                 this.unit = v;
               })
             }

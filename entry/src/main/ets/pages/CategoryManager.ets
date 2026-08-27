@@ -5,14 +5,14 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { DEFAULT_CATEGORIES, DEFAULT_LOCATIONS } from '../model/Material';
+import { DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS } from '../model/Material';
 import { MaterialDb, NameDef, NameKind } from '../db/MaterialDb';
 import { Theme } from '../common/Theme';
 
 @Entry
 @Component
 struct CategoryManager {
-  @State activeKind: string = 'category';   // 'category' | 'location'
+  @State activeKind: string = 'category';   // 'category' | 'location' | 'unit'
   @State defs: NameDef[] = [];              // 自定义定义（可编辑）
   @State effectiveNames: string[] = [];     // 有效名称（含预设与已使用）
   @State loading: boolean = true;
@@ -35,7 +35,10 @@ struct CategoryManager {
   }
 
   private kind(): NameKind {
-    return this.activeKind === 'category' ? 'category' : 'location';
+    if (this.activeKind === 'category' || this.activeKind === 'location' || this.activeKind === 'unit') {
+      return this.activeKind;
+    }
+    return 'category';
   }
 
   private toast(message: string): void {
@@ -47,11 +50,23 @@ struct CategoryManager {
   }
 
   private defaults(): string[] {
-    return this.activeKind === 'category' ? DEFAULT_CATEGORIES : DEFAULT_LOCATIONS;
+    if (this.activeKind === 'location') {
+      return DEFAULT_LOCATIONS;
+    }
+    if (this.activeKind === 'unit') {
+      return DEFAULT_UNITS;
+    }
+    return DEFAULT_CATEGORIES;
   }
 
   private kindLabel(): string {
-    return this.activeKind === 'category' ? '分类' : '位置';
+    if (this.activeKind === 'location') {
+      return '位置';
+    }
+    if (this.activeKind === 'unit') {
+      return '单位';
+    }
+    return '分类';
   }
 
   private async load(): Promise<void> {
@@ -217,10 +232,11 @@ struct CategoryManager {
         bottom: 12
       })
 
-      // 分类 / 位置切换 Chip
+      // 分类 / 位置 / 单位切换 Chip
       Row({ space: Theme.smallGap }) {
         this.kindSwitchChip('category', '分类')
         this.kindSwitchChip('location', '位置')
+        this.kindSwitchChip('unit', '单位')
       }
       .width('100%')
       .padding({

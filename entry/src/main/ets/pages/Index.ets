@@ -11,6 +11,7 @@ import {
   levelOf,
   levelColor,
   remainingDays,
+  sortByExpirationAsc,
   statsOf,
   getActualStatus
 } from '../service/ExpiryService';
@@ -71,8 +72,11 @@ struct Index {
   private db: MaterialDb = MaterialDb.getInstance();
 
   onPageShow(): void {
+    // 通知跳转：EntryAbility 已把 want.parameters.filterLevel 存入 AppStorage，
+    // 这里消费掉——切到对应状态 Tab，让用户点通知直达过期/临期列表
     const targetFilter = AppStorage.get<string>('targetFilterLevel');
-    if (targetFilter === 'NEAR' || targetFilter === 'EXPIRED') {
+    if (targetFilter === 'expired' || targetFilter === 'expiring') {
+      this.activeStatusTab = targetFilter;
       AppStorage.setOrCreate('targetFilterLevel', undefined);
     }
 
@@ -205,26 +209,13 @@ struct Index {
       else if (actual === MaterialStatus.EMPTY || actual === MaterialStatus.DISCARDED) handled.push(m);
       else safe.push(m);
     }
-    // 组内按到期日升序（无到期日靠后）——sortByExpirationAsc 语义
-    const cmp = (a: Material, b: Material): number => {
-      const ea: string = a.expiryDate ?? '';
-      const eb: string = b.expiryDate ?? '';
-      if (ea === eb) {
-        return b.id - a.id;
-      }
-      if (ea.length === 0) {
-        return 1;
-      }
-      if (eb.length === 0) {
-        return -1;
-      }
-      return ea < eb ? -1 : 1;
+    // 组内按到期日升序（无到期日靠后）——接线 ExpiryService.sortByExpirationAsc
+    const result: GroupedMaterials = {
+      expired: sortByExpirationAsc(expired),
+      near: sortByExpirationAsc(near),
+      safe: sortByExpirationAsc(safe),
+      handled: sortByExpirationAsc(handled)
     };
-    expired.sort(cmp);
-    near.sort(cmp);
-    safe.sort(cmp);
-    handled.sort(cmp);
-    const result: GroupedMaterials = { expired: expired, near: near, safe: safe, handled: handled };
     return result;
   }
 

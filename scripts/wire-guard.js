@@ -40,15 +40,10 @@ const RULE3_WHITELIST = [
     substring: 'm.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2]',
     reason: '编辑回填兜底：编辑历史记录无位置时的兜底默认',
   },
-  {
-    file: 'pages/AddItem.ets',
-    substring: 'this.chipGroup(DEFAULT_UNITS',
-    reason: '已知缺口：name_defs 无 unit kind、无单位查询 API，单位暂只能预设；待未来支持单位管理后移除',
-  },
   // 审计复核新增（任务清单外）：defaults() 提供者行，语义等价于 listEffectiveNames 的 defaults 参数
   {
     file: 'pages/CategoryManager.ets',
-    substring: "this.activeKind === 'category' ? DEFAULT_CATEGORIES : DEFAULT_LOCATIONS",
+    substring: 'return DEFAULT_',
     reason: 'defaults() 提供者：返回值仅作 listEffectiveNames 的 defaults 参数与 isPreset 只读判断，非列表数据源',
   },
 ];
@@ -68,26 +63,17 @@ const RULE4_WHITELIST = {
     riskOrderOf: 'getActualStatus/sortBy 内部组合件',
     sortByRiskAndExpiration: '预留分页/统计，测试覆盖',
     sortByCreatedDesc: '预留分页/统计，测试覆盖',
-    sortByExpirationAsc: '预留分页/统计，测试覆盖',
     buildOverview: '预留分页/统计，测试覆盖',
     levelSoftColor: '预留徽标色，清理候选',
     levelBadgeTextColor: '预留徽标色，清理候选',
   },
   common: {
-    // CategoryOrder.ets 三个导出：整文件死，清理候选
-    normalizeNameList: 'CategoryOrder.ets 整文件死，清理候选',
-    moveNameOrder: 'CategoryOrder.ets 整文件死，清理候选',
-    mergeWithDefaults: 'CategoryOrder.ets 整文件死，清理候选',
     normalizeNullableText: '预留',
     formatQuantityUnit: '预留展示拼接（AddItem 导入未用，见规则 5 白名单）',
     pad2: 'toDateStr 内部件',
     // 审计复核新增（任务清单外）：InputNormalize 内部组合件，与 softDelete/pad2 同性质
     normalizeText: 'InputNormalize 内部组合件（被 normalizeNullableText/parseNonNegativeInteger 复用）',
     normalizeNonNegativeInteger: 'InputNormalize 内部组合件（被 parseNonNegativeInteger 复用）',
-  },
-  'model/BarcodeProduct': {
-    // 规则 4 扩为全树枚举后新纳入：预置条码字典未接线（扫码建议只走历史记录），清理候选
-    findPresetBarcode: '预置条码字典未接线（扫码建议只走历史记录），清理候选',
   },
 };
 

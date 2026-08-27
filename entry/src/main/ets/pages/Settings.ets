@@ -586,8 +586,8 @@ struct Settings {
                 Divider().color(Theme.divider).strokeWidth(1)
 
                 SettingsRowComponent({
-                  label: '分类与位置管理',
-                  desc: '新增 / 重命名 / 排序自定义分类和存放位置',
+                  label: '分类 / 位置 / 单位管理',
+                  desc: '新增 / 重命名 / 排序自定义分类、存放位置和数量单位',
                   handleRowClick: () => {
                     this.getUIContext().getRouter().pushUrl({ url: 'pages/CategoryManager' });
                   }

@@ -62,7 +62,7 @@ export interface MaterialFilter {
 }
 
 /** 自定义名称定义（分类/位置共用，kind 区分） */
-export type NameKind = 'category' | 'location';
+export type NameKind = 'category' | 'location' | 'unit';
 
 export interface NameDef {
   id: number;
@@ -822,21 +822,11 @@ export class MaterialDb {
       const affected: number = await this.getStore().update(updateRow, predicates);
       // 同步物资引用（软删除项也一并改，保持一致）
       if (oldName !== trimmed) {
-        if (kind === 'category') {
-          const matPredicates = new relationalStore.RdbPredicates(TABLE);
-          matPredicates.equalTo('category', oldName);
-          const matRow: relationalStore.ValuesBucket = {
-            'category': trimmed
-          };
-          await this.getStore().update(matRow, matPredicates);
-        } else {
-          const matPredicates = new relationalStore.RdbPredicates(TABLE);
-          matPredicates.equalTo('location', oldName);
-          const matRow: relationalStore.ValuesBucket = {
-            'location': trimmed
-          };
-          await this.getStore().update(matRow, matPredicates);
-        }
+        const matPredicates = new relationalStore.RdbPredicates(TABLE);
+        matPredicates.equalTo(kind, oldName);
+        const matRow: relationalStore.ValuesBucket = {};
+        matRow[kind] = trimmed;
+        await this.getStore().update(matRow, matPredicates);
       }
       return affected;
     } catch (e) {
@@ -879,14 +869,13 @@ export class MaterialDb {
     return defs;
   }
 
-  /** 统计某名称在物资中的使用量（category 或 location 维度，排除软删除） */
+  /** 统计某名称在物资中的使用量（category/location/unit 维度，排除软删除） */
   async countNameUsage(kind: NameKind, name: string): Promise<number> {
-    const column: string = kind === 'category' ? 'category' : 'location';
     let count: number = 0;
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE);
       predicates.equalTo('is_deleted', 0);
-      predicates.equalTo(column, name.trim());
+      predicates.equalTo(kind, name.trim());
       const rs: relationalStore.ResultSet = await this.getStore().query(predicates, ['id']);
       try {
         while (rs.goToNextRow()) {
