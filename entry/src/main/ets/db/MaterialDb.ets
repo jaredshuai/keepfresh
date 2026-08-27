@@ -5,7 +5,7 @@ import { relationalStore } from '@kit.ArkData';
 import { Context } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, MaterialStatus } from '../model/Material';
-import { CustomField, CustomFieldType } from '../model/CustomField';
+import { CustomField, CustomFieldType, decodeCustomFieldsJson, encodeCustomFields } from '../model/CustomField';
 
 const DB_NAME: string = 'keepfresh.db';
 const TABLE: string = 'materials';
@@ -217,11 +217,7 @@ export class MaterialDb {
       if (customFieldsIndex >= 0 && !rs.isColumnNull(customFieldsIndex)) {
         const val: string = rs.getString(customFieldsIndex);
         if (val && val.length > 0) {
-          try {
-            customFields = JSON.parse(val) as Record<string, string>;
-          } catch (e) {
-            customFields = {};
-          }
+          customFields = decodeCustomFieldsJson(val);
         }
       }
       // quantity：迁移库优先 quantity_text，否则列值转字符串
@@ -305,7 +301,7 @@ export class MaterialDb {
       'created_at': m.createdAt,
       'updated_at': m.updatedAt,
       'barcode': m.barcode ?? '',
-      'custom_fields': m.customFields ? JSON.stringify(m.customFields) : '{}'
+      'custom_fields': encodeCustomFields(m.customFields)
     };
     return row;
   }

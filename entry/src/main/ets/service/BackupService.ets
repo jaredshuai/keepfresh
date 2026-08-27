@@ -15,7 +15,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
 import { MaterialDb, MaterialFilter, NameDef, NameKind } from '../db/MaterialDb';
 import { Material, MaterialStatus } from '../model/Material';
-import { CustomField, generateCustomFieldId } from '../model/CustomField';
+import { CustomField, generateCustomFieldId, BackupDefNameIndex, buildBackupDefNameIndex, remapCustomFieldKeys } from '../model/CustomField';
 import { SettingsService } from './SettingsService';
 import { ReminderService, ReminderSettings } from './ReminderService';
 import { todayStr } from '../common/DateUtils';
@@ -296,6 +296,9 @@ export class BackupService {
 
       // ── 1. 处理自定义字段定义冲突 ──
       const fieldIdMap = await this.resolveCustomFieldDefs(db, data.customFields || []);
+      // 值键桥接索引：备份值键（备份 def id）→ 备份 def 名 → 本地 def id（ticket #14）
+      const defNameIndex: BackupDefNameIndex = buildBackupDefNameIndex(data.customFields || []);
+      const unmappedKeySet = new Set<string>();
 
       // ── 1.5 还原自定义分类/位置/单位定义（v2+；v1 备份无此字段自动跳过）──
       // 空数组也要 restore：overwrite 语义下需清掉本地定义，不能靠 length>0 跳过
@@ -318,7 +321,7 @@ export class BackupService {
         }
         // 全部作为新增插入
         for (const m of data.materials) {
-          const mapped = this.mapImportedMaterial(m, fieldIdMap);
+          const mapped = this.mapImportedMaterial(m, fieldIdMap, defNameIndex, unmappedKeySet);
           await db.insert(mapped);
           importedCount++;
         }
@@ -332,7 +335,7 @@ export class BackupService {
 
         for (const m of data.materials) {
           const key = this.businessKey(m);
-          const mapped = this.mapImportedMaterial(m, fieldIdMap);
+          const mapped = this.mapImportedMaterial(m, fieldIdMap, defNameIndex, unmappedKeySet);
           const existingMatch = existingByKey.get(key);
           if (existingMatch) {
             // 冲突：按导入数据覆盖（保留现有 id）
@@ -346,6 +349,11 @@ export class BackupService {
           importedCount++;
         }
       }
+
+      // ── 2.5 值键无法桥接的字段：聚合为 warnings 上浮 UI（ticket #14）──
+      unmappedKeySet.forEach((key: string) => {
+        warnings.push(`部分物资的自定义字段值无法匹配字段定义（原键 ${key}），已按原样保留`);
+      });
 
       // ── 3. 导入设置 ──
       if (data.settings) {
@@ -531,21 +539,21 @@ export class BackupService {
   /**
    * 将导入的 Material 映射为可写入数据库的对象：
    * - 不保留原 id（由数据库自增或覆盖时保留现有 id）
-   * - customFields 按字段名映射到现有定义 ID
+   * - customFields 值键经 id→name→id 二次映射对齐本地定义 ID（ticket #14）
    */
-  private mapImportedMaterial(m: Material, fieldIdMap: Map<string, string>): Material {
-    // 映射自定义字段：导入数据中 key 是字段名，需转为字段 ID
+  private mapImportedMaterial(
+    m: Material,
+    nameToLocalId: Map<string, string>,
+    defNameIndex: BackupDefNameIndex,
+    unmappedKeyCollector: Set<string>
+  ): Material {
+    // 值键重映射走契约函数；双跳落空的键保留原键并收集为 warnings
     let mappedCustomFields: Record<string, string> | undefined = undefined;
     if (m.customFields) {
-      mappedCustomFields = {};
-      for (const key of Object.keys(m.customFields)) {
-        const targetId = fieldIdMap.get(key);
-        if (targetId) {
-          mappedCustomFields[targetId] = m.customFields[key];
-        } else {
-          // 字段名不在映射表中（可能备份中无对应定义），保留原 key
-          mappedCustomFields[key] = m.customFields[key];
-        }
+      const remap = remapCustomFieldKeys(m.customFields, defNameIndex, nameToLocalId);
+      mappedCustomFields = remap.values;
+      for (let i = 0; i < remap.unmappedKeys.length; i++) {
+        unmappedKeyCollector.add(remap.unmappedKeys[i]);
       }
     }
 

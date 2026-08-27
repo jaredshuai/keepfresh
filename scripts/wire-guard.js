@@ -550,6 +550,32 @@ function runRule5(allFiles) {
   return { violations, whitelistHits, stat };
 }
 
+// 规则 6：custom_fields 键语义裸操作检测（ticket #14 / #18）
+// pages/ 与 service/ 禁止裸下标访问 customFields[...] 及同行 JSON.parse/stringify；
+// 键语义统一走 model/CustomField.ets 契约函数；db/ 存储层整列编解码豁免。
+// 用字符串剥离后的 code 侧扫描：注释与字符串字面量不参与匹配。
+function runRule6(allFiles) {
+  const violations = [];
+  let scanned = 0;
+  const bareBracket = /customFields\s*\[/;
+  const jsonOp = /JSON\.(?:parse|stringify)[^\n]*(?:customFields|custom_fields)|(?:customFields|custom_fields)[^\n]*JSON\.(?:parse|stringify)/;
+  for (const fi of allFiles) {
+    const rel = relPath(fi.file);
+    if (!(rel.startsWith('pages/') || rel.startsWith('service/'))) continue;
+    scanned++;
+    const lines = fi.stripped.code.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (bareBracket.test(lines[i])) {
+        violations.push(`${rel}:${i + 1} 裸下标访问 customFields[...]（应走 model/CustomField.ets 契约函数）`);
+      } else if (jsonOp.test(lines[i])) {
+        violations.push(`${rel}:${i + 1} 对 custom_fields 裸 JSON 编解码（应走 model/CustomField.ets 契约函数）`);
+      }
+    }
+  }
+  const stat = `pages/+service/ 共扫 ${scanned} 个文件，键语义裸操作 ${violations.length} 处`;
+  return { violations, whitelistHits: [], stat };
+}
+
 // ─────────────────────────── 主逻辑 ───────────────────────────
 
 console.log('🔍 跨层接线守护检查（固化接线审计不变量）...\n');
@@ -562,6 +588,7 @@ const results = [
   { title: '规则 3 · pages 硬编码预设数据源检测', ...runRule3() },
   { title: '规则 4 · 导出 API 必须有非测试外部调用者', ...runRule4(allFiles) },
   { title: '规则 5 · 未使用 import 检测', ...runRule5(allFiles) },
+  { title: '规则 6 · custom_fields 键语义裸操作检测', ...runRule6(allFiles) },
 ];
 
 let hasError = false;

@@ -4,7 +4,7 @@
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, ExpiryLevel, MaterialStatus } from '../model/Material';
-import { CustomField } from '../model/CustomField';
+import { CustomField, readCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { levelOf, levelColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
 import { ReminderService } from '../service/ReminderService';
@@ -497,11 +497,10 @@ struct ItemDetail {
   }
 
   private hasCustomFieldValue(fieldId: string): boolean {
-    if (!this.m || !this.m.customFields) {
+    if (!this.m) {
       return false;
     }
-    const val = this.m.customFields[fieldId];
-    return val !== undefined && val.trim().length > 0;
+    return readCustomFieldValue(this.m.customFields, fieldId).trim().length > 0;
   }
 
   /** 保质期显示：月数优先展示（保留原始录入口径） */
@@ -513,10 +512,10 @@ struct ItemDetail {
   }
 
   private getCustomFieldValue(fieldId: string): string {
-    if (!this.m || !this.m.customFields) {
+    if (!this.m) {
       return '';
     }
-    return this.m.customFields[fieldId] || '';
+    return readCustomFieldValue(this.m.customFields, fieldId);
   }
 
   @Builder
