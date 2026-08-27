@@ -99,7 +99,8 @@ export class BackupService {
       const allFilter: MaterialFilter = { includeDeleted: true };
       const materials: Material[] = await db.listAll(allFilter);
       const customFields: CustomField[] = await db.listCustomFields();
-      // 自定义分类/位置定义（v2 新增段）
+      // 自定义分类/位置/单位定义（v2 新增段；restore 侧三种 kind 都会还原，
+      // 导出必须齐备，否则 overwrite 导入会删掉未导出的 kind 定义）
       const nameDefs: NameDefBackup[] = [];
       const categoryDefs: NameDef[] = await db.listNameDefs('category');
       for (const d of categoryDefs) {
@@ -109,6 +110,11 @@ export class BackupService {
       const locationDefs: NameDef[] = await db.listNameDefs('location');
       for (const d of locationDefs) {
         const row: NameDefBackup = { kind: 'location', name: d.name, order: d.order };
+        nameDefs.push(row);
+      }
+      const unitDefs: NameDef[] = await db.listNameDefs('unit');
+      for (const d of unitDefs) {
+        const row: NameDefBackup = { kind: 'unit', name: d.name, order: d.order };
         nameDefs.push(row);
       }
 

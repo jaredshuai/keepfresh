@@ -712,7 +712,8 @@ export class MaterialDb {
    */
   async listEffectiveNames(kind: NameKind, defaults: string[]): Promise<string[]> {
     const defs: NameDef[] = await this.listNameDefs(kind);
-    const column: string = kind === 'category' ? 'category' : 'location';
+    // kind 即 materials 表列名（category / location / unit 三者同名）
+    const column: string = kind;
     const used: Set<string> = new Set<string>();
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE);
