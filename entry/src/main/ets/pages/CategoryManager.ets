@@ -8,6 +8,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS } from '../model/Material';
 import { MaterialDb, NameDef, NameKind } from '../db/MaterialDb';
 import { Theme } from '../common/Theme';
+import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 
 @Entry
 @Component
@@ -294,13 +295,7 @@ struct CategoryManager {
 
   @Builder
   backButton() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Row() {
-      }
-      .width(Theme.iconBtnSize)
-      .height(Theme.iconBtnSize)
-      .backgroundColor(Theme.ink)
-      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize, topStart: true}) {
 
       Button({ type: ButtonType.Normal, stateEffect: true }) {
         SymbolGlyph($r('sys.symbol.chevron_left'))
@@ -316,9 +311,6 @@ struct CategoryManager {
         this.getUIContext().getRouter().back();
       })
     }
-    .width(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .height(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   /** 顶部新建小按钮：深黄底白字 */
@@ -366,13 +358,7 @@ struct CategoryManager {
   /** 名称行卡片：预设只读 / 自定义可编辑（上下移+重命名+删除） */
   @Builder
   nameRow(name: string, idx: number) {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Row() {
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(Theme.ink)
-      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: -1, topStart: true}) {
 
       Row() {
         Column({ space: Theme.tinyGap }) {
@@ -430,8 +416,6 @@ struct CategoryManager {
       .backgroundColor(Theme.cardBg)
       .border(Theme.borderThin)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   /** 上移是否可用（该名称的自定义定义不在首位） */
@@ -509,12 +493,7 @@ struct CategoryManager {
       .width('100%')
       .padding({ top: 8, bottom: 4 })
 
-      Stack() {
-        Column()
-          .width('100%')
-          .height(48)
-          .backgroundColor(Theme.ink)
-          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+      HardShadowCard({shadowMode: 48}) {
         TextInput({ text: this.inputName, placeholder: `输入${this.kindLabel()}名称（最多 20 字）` })
           .fontSize(Theme.textBody)
           .fontColor(Theme.textPrimary)
@@ -528,8 +507,6 @@ struct CategoryManager {
             this.inputName = v;
           })
       }
-      .width('100%')
-      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
       if (this.editingId >= 0) {
         Text('重命名会同步更新所有引用此名称的物资')

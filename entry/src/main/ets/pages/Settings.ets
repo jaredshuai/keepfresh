@@ -8,6 +8,7 @@ import { ReminderService, ReminderSettings } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
 import { BackupService, ImportPreview, ImportResult } from '../service/BackupService';
 import { Theme } from '../common/Theme';
+import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 
 interface TimePickerResult {
   hour?: number;
@@ -290,11 +291,7 @@ struct Settings {
             .padding({ left: 4 })
 
             // 卡片主体：硬阴影 + 黑边
-            Stack() {
-              Column()
-                .width('100%')
-                .backgroundColor(Theme.ink)
-                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+            HardShadowCard({shadowMode: 0}) {
 
               Column({ space: Theme.elementGap }) {
                 // 阈值输入行
@@ -313,12 +310,7 @@ struct Settings {
                   .layoutWeight(1)
 
                   Row({ space: Theme.smallGap }) {
-                    Stack() {
-                      Column()
-                        .width(60)
-                        .height(36)
-                        .backgroundColor(Theme.ink)
-                        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                    HardShadowBox({boxWidth: 60, boxHeight: 36}) {
 
                       TextInput({ text: this.nearExpiryDaysStr, placeholder: '7' })
                         .type(InputType.Number)
@@ -335,9 +327,6 @@ struct Settings {
                           this.handleThresholdChange(v.trim());
                         })
                     }
-                    .width(60 + Theme.hardShadowOffset)
-                    .height(36 + Theme.hardShadowOffset)
-                    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
                     Text('天')
                       .fontSize(Theme.textCaption)
@@ -385,8 +374,6 @@ struct Settings {
               .border(Theme.borderThin)
               .alignItems(HorizontalAlign.Start)
             }
-            .width('100%')
-            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
@@ -414,11 +401,7 @@ struct Settings {
             .width('100%')
             .padding({ left: 4 })
 
-            Stack() {
-              Column()
-                .width('100%')
-                .backgroundColor(Theme.ink)
-                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+            HardShadowCard({shadowMode: 0}) {
 
               Column() {
                 SettingsRowComponent({
@@ -469,8 +452,6 @@ struct Settings {
               .backgroundColor(Theme.cardBg)
               .border(Theme.borderThin)
             }
-            .width('100%')
-            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
@@ -498,11 +479,7 @@ struct Settings {
             .width('100%')
             .padding({ left: 4 })
 
-            Stack() {
-              Column()
-                .width('100%')
-                .backgroundColor(Theme.ink)
-                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+            HardShadowCard({shadowMode: 0}) {
 
               Column({ space: Theme.elementGap }) {
                 Column({ space: Theme.tinyGap }) {
@@ -535,8 +512,6 @@ struct Settings {
               .border(Theme.borderThin)
               .alignItems(HorizontalAlign.Start)
             }
-            .width('100%')
-            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
@@ -564,11 +539,7 @@ struct Settings {
             .width('100%')
             .padding({ left: 4 })
 
-            Stack() {
-              Column()
-                .width('100%')
-                .backgroundColor(Theme.ink)
-                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+            HardShadowCard({shadowMode: 0}) {
 
               Column() {
                 SettingsRowComponent({
@@ -601,8 +572,6 @@ struct Settings {
               .backgroundColor(Theme.cardBg)
               .border(Theme.borderThin)
             }
-            .width('100%')
-            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
@@ -630,11 +599,7 @@ struct Settings {
             .width('100%')
             .padding({ left: 4 })
 
-            Stack() {
-              Column()
-                .width('100%')
-                .backgroundColor(Theme.ink)
-                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+            HardShadowCard({shadowMode: 0}) {
 
               Column() {
                 SettingsRowComponent({
@@ -653,8 +618,6 @@ struct Settings {
               .backgroundColor(Theme.cardBg)
               .border(Theme.borderThin)
             }
-            .width('100%')
-            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
@@ -682,11 +645,7 @@ struct Settings {
             .width('100%')
             .padding({ left: 4 })
 
-            Stack() {
-              Column()
-                .width('100%')
-                .backgroundColor(Theme.ink)
-                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+            HardShadowCard({shadowMode: 0}) {
 
               Column() {
                 SettingsRowComponent({
@@ -715,8 +674,6 @@ struct Settings {
               .backgroundColor(Theme.cardBg)
               .border(Theme.borderThin)
             }
-            .width('100%')
-            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
@@ -754,12 +711,7 @@ struct Settings {
    * ============================================================ */
   @Builder
   iconButton(symbol: Resource, onClick: () => void) {
-    Stack() {
-      Column()
-        .width(Theme.iconBtnSize)
-        .height(Theme.iconBtnSize)
-        .backgroundColor(Theme.ink)
-        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize}) {
 
       Column() {
         SymbolGlyph(symbol)
@@ -772,10 +724,6 @@ struct Settings {
       .border(Theme.borderThin)
       .justifyContent(FlexAlign.Center)
     }
-    .width(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .height(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-    .onClick(onClick)
   }
 
   /* ============================================================
@@ -884,11 +832,7 @@ struct Settings {
 
       if (this.importPreviewData) {
         // 预览卡片
-        Stack() {
-          Column()
-            .width('100%')
-            .backgroundColor(Theme.ink)
-            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+        HardShadowCard({shadowMode: 0}) {
 
           Column({ space: Theme.elementGap }) {
             this.previewRow('备份文件包含', `${this.importPreviewData.data.materials.length} 件物资`, Theme.textPrimary)
@@ -900,15 +844,9 @@ struct Settings {
           .backgroundColor(Theme.cardBg)
           .border(Theme.borderThin)
         }
-        .width('100%')
-        .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
         // 清空后导入选项卡片
-        Stack() {
-          Column()
-            .width('100%')
-            .backgroundColor(Theme.ink)
-            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+        HardShadowCard({shadowMode: 0}) {
 
           Row() {
             Column({ space: Theme.tinyGap }) {
@@ -934,8 +872,6 @@ struct Settings {
           .backgroundColor(Theme.cardBg)
           .border(Theme.borderThin)
         }
-        .width('100%')
-        .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
         if (this.importOverwriteMode) {
           Text('⚠️ 开启后将删除所有现有物资，此操作不可撤销')
