@@ -243,7 +243,8 @@ export class BackupService {
   private async buildPreview(context: common.UIAbilityContext, data: BackupData): Promise<ImportPreview> {
     const db: MaterialDb = MaterialDb.getInstance();
     await db.init(context);
-    const existing: Material[] = await db.listAll();
+    // 与 executeImport 同口径：冲突判定含回收站行（回收站里的同名同到期日物资同样会被覆盖）
+    const existing: Material[] = await db.listAll({ includeDeleted: true });
 
     // 现有物资业务键集合
     const existingKeys = new Set<string>();
@@ -375,7 +376,11 @@ export class BackupService {
       if (kindStr !== 'category' && kindStr !== 'location') {
         throw new Error(`nameDefs[${i}].kind 非法: ${kindStr}`);
       }
-      const n: string = `${d.name ?? ''}`.trim();
+      // 非字符串 name 一律拒绝（防篡改备份把 number/object 混进来被持久化成字符串）
+      if (typeof d.name !== 'string') {
+        throw new Error(`nameDefs[${i}].name 非法（须为字符串）`);
+      }
+      const n: string = d.name.trim();
       if (n.length === 0 || n.length > 20) {
         throw new Error(`nameDefs[${i}].name 非法（空或超 20 字）`);
       }

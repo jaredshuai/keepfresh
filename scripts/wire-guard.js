@@ -117,6 +117,10 @@ function stripSource(content) {
   let code = '';
   let state = 'code'; // 'code' | 'str' | 'line' | 'block'
   let strChar = '';
+  // 模板插值栈（字符串恢复用）：栈底记录「当前未闭合模板串的恢复信息」。
+  // 语义：${ 进入插值（按代码处理）；插值内 { } 计数嵌套（对象字面量/嵌套插值）；
+  // 配平的 } 结束插值、回到模板文本态。
+  const tmplStack = [];
   for (let i = 0; i < content.length; i++) {
     const ch = content[i];
     const next = i + 1 < content.length ? content[i + 1] : '';
@@ -136,6 +140,24 @@ function stripSource(content) {
         strChar = ch;
         raw += ch;
         code += ch;
+      } else if (ch === '{') {
+        // 插值内嵌套对象字面量：计数
+        if (tmplStack.length > 0) {
+          tmplStack[tmplStack.length - 1].depth++;
+        }
+        raw += ch;
+        code += ch;
+      } else if (ch === '}' && tmplStack.length > 0) {
+        // 可能是插值闭合：配平判断（栈顶 depth 归零 → 回模板文本态）
+        const top = tmplStack[tmplStack.length - 1];
+        top.depth--;
+        raw += ch;
+        code += ch;
+        if (top.depth === 0) {
+          tmplStack.pop();
+          strChar = tmplStack.length > 0 ? tmplStack[tmplStack.length - 1].quote : top.quote;
+          state = 'str';
+        }
       } else {
         raw += ch;
         code += ch;
@@ -144,6 +166,13 @@ function stripSource(content) {
       if (ch === '\\' && next !== '') {
         raw += ch + next;
         code += '  ';
+        i++;
+      } else if (strChar === '`' && ch === '$' && next === '{') {
+        // 进入模板插值：${ 后按代码处理（插值里的标识符是真实使用）
+        state = 'code';
+        tmplStack.push({ depth: 1, quote: strChar });
+        raw += ch + next;
+        code += ch + next;
         i++;
       } else if (ch === strChar) {
         state = 'code';
@@ -374,7 +403,15 @@ function runRule2() {
       violations.push(`migrate() ALTER 列 ${col} 不在 toRow 写入键中（且不在白名单）`);
     }
   }
-  const stat = `V2 建表列 ${createCols.length} 个 + migrate() ALTER 列 ${alterCols.length} 条 ⊆ toRow 写入键 ${toRowKeys.size} 个 ∪ 白名单`;
+  // 反向校验：toRow 的每个写入键必须对应真实建表列（CREATE ∪ ALTER ∪ 白名单），
+  // 防止多写/拼错的键静默通过（写入不存在的列会在运行期才爆）
+  const schemaCols = new Set([...createCols, ...alterCols, ...Object.keys(RULE2_WHITELIST)]);
+  for (const key of toRowKeys) {
+    if (!schemaCols.has(key)) {
+      violations.push(`toRow 写入键 ${key} 无对应建表列（CREATE/ALTER 均无，且不在白名单）`);
+    }
+  }
+  const stat = `V2 建表列 ${createCols.length} 个 + migrate() ALTER 列 ${alterCols.length} 条 ⊆ toRow 写入键 ${toRowKeys.size} 个 ∪ 白名单（反向校验通过）`;
   return { violations, whitelistHits, stat };
 }
 
@@ -450,7 +487,8 @@ function collectApis(allFiles) {
     const group = rel === 'service/ExpiryService.ets' ? 'ExpiryService'
       : rel.startsWith('common/') ? 'common'
         : rel.replace(/\.ets$/, '');
-    for (const m of fi.stripped.code.matchAll(/(?:^|\n)export\s+function\s+(\w+)\s*\(/g)) {
+    // 含 export async function（可选 async 修饰符），防止异步导出 API 漏检
+    for (const m of fi.stripped.code.matchAll(/(?:^|\n)export\s+(?:async\s+)?function\s+(\w+)\s*\(/g)) {
       add(m[1], group, rel, fi.file);
     }
   }
@@ -471,7 +509,8 @@ function runRule4(allFiles) {
       if (path.resolve(fi.file) === path.resolve(api.defFile)) {
         continue; // 定义文件内部互调不算外部调用者
       }
-      callers += countOutsideImports(fi.stripped.raw, fi.imports, api.name);
+      // code 侧统计调用者：字符串字面量里的同名文本不算调用（与规则 5 同口径）
+      callers += countOutsideImports(fi.stripped.code, fi.imports, api.name);
     }
     if (callers > 0) {
       withCallers++;
@@ -513,7 +552,8 @@ function runRule5(allFiles) {
     for (const imp of fi.imports) {
       for (const name of imp.names) {
         importedCount++;
-        const uses = countOutsideImports(fi.stripped.raw, fi.imports, name);
+        // 用字符串剥离后的 code 侧统计：字符串字面量里的同名文本不算使用
+        const uses = countOutsideImports(fi.stripped.code, fi.imports, name);
         if (uses > 0) {
           usedCount++;
           continue;
