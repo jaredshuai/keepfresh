@@ -8,6 +8,7 @@
     "build:release": "node scripts/build.js assembleHap -p buildMode=release",
     "test": "node --experimental-strip-types --experimental-loader ./test/loader.mjs --test test/*.test.ts",
     "design:check": "node scripts/design-guard.js",
-    "ci": "npm run design:check && npm run test"
+    "wire:check": "node scripts/wire-guard.js",
+    "ci": "npm run design:check && npm run wire:check && npm run test"
   }
 }

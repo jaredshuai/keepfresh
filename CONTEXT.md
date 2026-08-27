@@ -67,3 +67,21 @@ AddItem 表单页的扫码入口：ScanKit 扫码后按条形码匹配历史，�
 | 6 | 测试 | **纯函数单测** | node --test 复用 test/ 目录现有模式，还 issue #9 的 ExpiryService 测试债 |
 
 **关键不变量**：旧数据兼容（新列全部可空/有默认值）；月数与天数并存时月数优先；终态（已用完/已丢弃）不被过期状态覆盖；软删除不进入任何统计与列表。
+
+## 新字段必改清单（Wiring Checklist）
+
+新增 Material 字段（或新 DB 表）时**必改**的接线点，漏任何一处即产生断链（背景见 `docs/audit-wiring.md`；规则 1/2/5 由 `npm run wire:check` 机器拦截，其余靠本清单）：
+
+1. `model/Material.ets` 接口字段
+2. `db/MaterialDb.ets`：建表 SQL / migrate() ALTER + `toRow` 写入键 + `rowToMaterial` 读取列
+3. 写入方：`pages/AddItem.ets` 表单（含编辑回填 + 扫码预填 `applyScanSuggestion`）
+4. 渲染消费：`pages/Index.ets` 卡片 / `pages/ItemDetail.ets` 信息行
+5. 派生计算：`service/ExpiryService.ets`（若参与分级/排序/统计）
+6. 提醒链路：`service/ReminderService.ets`（若影响提醒口径）
+7. 备份闭环：`service/BackupService.ets` 导出序列化（注意 JSON.stringify 丢弃 undefined 可选字段）**+** 导入还原 `mapImportedMaterial`
+8. 测试：`test/PantryLogic.test.ts` 或对应测试文件
+9. 新表另需：管理页 CRUD + 数据消费方改走查询 API（禁硬编码 DEFAULT_* 数据源，wire-guard 规则 3 拦截）
+
+## Guards（CI 守护链）
+
+`npm run ci` = design-guard（包豪斯视觉不变量）+ **wire-guard**（接线不变量，五规则+理由白名单）+ node --test。白名单每条附处置状态，登记项获得调用者后脚本提醒移除。
