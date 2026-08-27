@@ -65,13 +65,13 @@
 
 ## 四、发现清单（两 agent 交叉验证去重，按严重度）
 
-### HIGH（数据丢失/错误行为，待修复）
+### HIGH（数据丢失/错误行为，已修复见下表）
 
-| # | 问题 | 证据 | 影响 |
-|---|---|---|---|
-| H1 | **name_defs 整表不进备份** | BackupService grep `nameDefs\|name_def` 零命中；BackupData 仅 5 字段 | 自定义分类/位置名称+排序在备份往返后丢失（listEffectiveNames 只能靠物资数据兜底捡回名字，定义与排序永久丢） |
-| H2 | **回收站数据不进备份** | exportBackup 用无参 `listAll()`（默认 `is_deleted=0`）；导入侧 `isDeleted` 还原分支因此恒不可达 | 软删除物资静默蒸发；导入还原代码成死分支（两处矛盾，倾向缺陷） |
-| H3 | **扫码预填丢失月数/位置** | applyScanSuggestion 仅回填 name/category/unit/shelfLifeStr 4 字段 | 月数口径历史记录预填成"365×n 天"，到期日与原记录不一致；location 不回填 |
+| # | 问题 | 证据 | 影响 | 状态 |
+|---|---|---|---|---|
+| H1 | **name_defs 整表不进备份** | BackupService grep `nameDefs\|name_def` 零命中；BackupData 仅 5 字段 | 自定义分类/位置名称+排序在备份往返后丢失 | ✅ 已修复：schema v2 新增 nameDefs 段 + restoreNameDefs 还原（merge 导入序在前/overwrite 仅导入序） |
+| H2 | **回收站数据不进备份** | exportBackup 用无参 `listAll()`（默认 `is_deleted=0`）；导入侧 `isDeleted` 还原分支因此恒不可达 | 软删除物资静默蒸发 | ✅ 已修复：导出改 `listAll({includeDeleted:true})`，导入还原分支激活；决策=备份是完整快照 |
+| H3 | **扫码预填丢失月数/位置** | applyScanSuggestion 仅回填 name/category/unit/shelfLifeStr 4 字段 | 月数口径历史记录预填成"365×n 天"；location 不回填 | ✅ 已修复：按 shelfLifeMonths 还原月数模式 + 位置回填 |
 
 ### MED（断链/平行实现，待决策）
 
@@ -81,7 +81,7 @@
 | M2 | ExpiryService 移植函数未接 UI | Index L208 自实现比较器（注释自认"sortByExpirationAsc 语义"），sortBy*×3/buildOverview/levelSoftColor/levelBadgeTextColor 全死 |
 | M3 | BarcodeProduct.ets 死模块 | 全仓零引用；设计文档计划 ScanService 消费 findPresetBarcode 未接线 |
 | M4 | CategoryOrder.ets 整文件死 | 三导出零生产调用（仅测试） |
-| M5 | 自定义字段 order/createdAt 导入不还原 | resolveCustomFieldDefs 只读 name/type/options，新定义 maxOrder++ 追加尾部 → 备份往返后字段顺序打乱 |
+| M5 | 自定义字段 order/createdAt 导入不还原 | resolveCustomFieldDefs 只读 name/type/options，新定义 maxOrder++ 追加尾部 → 备份往返后字段顺序打乱。**✅ 已修复：新建定义改用导入备份的 order（本 PR）** |
 | M6 | DEFAULT_UNITS 硬编码数据源 | AddItem L550 chip 直传预设；name_defs 无 unit kind（分类/位置已动态化，单位未跟上） |
 
 ### LOW（清理项，已由 wire-guard 白名单登记）
@@ -96,7 +96,7 @@
 
 ### 待产品决策（证据矛盾格）
 
-- isDeleted 导出缺失：有意（"回收站不进备份"）vs 缺陷（导入还原分支存在表明原意支持）→ 建议 H2 修复时一并定夺
+- ~~isDeleted 导出缺失~~ → 已随 H2 修复定为「备份是完整快照，回收站数据进备份」
 - updatedAt 导入强制 todayStr 与 createdAt 保留原值不对称 → 建议：非关键，保持现状并记录
 - quantity/quantity_text 双写（迁移兼容）→ 长期版本可清理
 
@@ -118,6 +118,13 @@
 
 ---
 
-## 六、修复建议（未执行，待批准）
+## 六、修复记录（已随本 PR 落地）
 
-H1-H3 为真实缺陷建议修复；M 级需决策（M2/M4 要么接线要么删除，避免平行实现漂移）。wire-guard 已把"新增断链"挡在 CI，存量清理由白名单追踪。
+| 项 | 修复内容 |
+|---|---|
+| H1 | 备份 schema v2：BackupData 新增 nameDefs 段 + restoreNameDefs 还原（merge=导入序在前+本地独有追加尾部；overwrite=仅导入序；实现为按目标序删除重插，name_defs.id 无外部引用故无损）。v1 备份无此字段自动跳过 |
+| H2 | 导出改 `listAll({includeDeleted:true})` 含回收站快照；导入侧 isDeleted 还原分支随之激活。决策：备份是完整快照 |
+| H3 | applyScanSuggestion 按 shelfLifeMonths 还原月数录入模式（避免 365×n 天近似）+ location 回填 |
+| M5 | resolveCustomFieldDefs 新建定义 order 改用导入备份值（缺失/非法回退 maxOrder+1），字段显示顺序备份往返不再打乱 |
+
+M1/M2/M3/M4/M6 与 LOW 项留待后续决策（M2/M4 要么接线要么删除，避免平行实现漂移）；wire-guard 白名单持续追踪，新断链由 CI 拦截。

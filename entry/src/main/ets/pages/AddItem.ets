@@ -233,7 +233,18 @@ struct AddItem {
     this.name = m.name;
     this.category = m.category;
     this.unit = m.unit;
-    this.shelfLifeStr = m.shelfLifeDays.toString();
+    // 保质期口径还原：历史记录若按月数录入则保持月数模式（避免 365×n 天的错误近似）
+    if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
+      this.shelfLifeMode = 'months';
+      this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+    } else {
+      this.shelfLifeMode = 'days';
+      this.shelfLifeStr = m.shelfLifeDays.toString();
+    }
+    // 位置回填（历史记录有位置则带上；其位置已在 listEffectiveNames 合并结果内）
+    if (m.location && m.location.length > 0) {
+      this.location = m.location;
+    }
     this.showScanSheet = false;
     this.toast('已预填，请补充生产日期和数量');
   }

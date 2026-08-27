@@ -13,7 +13,7 @@ import { UIContext } from '@kit.ArkUI';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
-import { MaterialDb } from '../db/MaterialDb';
+import { MaterialDb, MaterialFilter, NameDef, NameKind } from '../db/MaterialDb';
 import { Material, MaterialStatus } from '../model/Material';
 import { CustomField, generateCustomFieldId } from '../model/CustomField';
 import { SettingsService } from './SettingsService';
@@ -22,7 +22,8 @@ import { todayStr } from '../common/DateUtils';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'BackupService';
-const SCHEMA_VERSION: number = 1;
+/** v2：新增 nameDefs 段（自定义分类/位置定义）；v1 备份无此字段，导入时自动跳过 */
+const SCHEMA_VERSION: number = 2;
 
 /** 备份文件 JSON 结构 */
 export interface BackupData {
@@ -31,6 +32,15 @@ export interface BackupData {
   settings: BackupSettings;
   customFields: CustomField[];
   materials: Material[];
+  /** v2 起：自定义分类/位置定义（含用户排序）；v1 备份无此字段 */
+  nameDefs?: NameDefBackup[];
+}
+
+/** name_defs 表的备份形态（id 为设备本地自增，不导出；物资按文本名称关联） */
+export interface NameDefBackup {
+  kind: string;   // 'category' | 'location'
+  name: string;
+  order: number;
 }
 
 export interface BackupSettings {
@@ -85,8 +95,22 @@ export class BackupService {
     try {
       const db: MaterialDb = MaterialDb.getInstance();
       await db.init(context);
-      const materials: Material[] = await db.listAll();
+      // 含软删除（回收站）物资：备份应是完整快照，回收站数据可随备份恢复
+      const allFilter: MaterialFilter = { includeDeleted: true };
+      const materials: Material[] = await db.listAll(allFilter);
       const customFields: CustomField[] = await db.listCustomFields();
+      // 自定义分类/位置定义（v2 新增段）
+      const nameDefs: NameDefBackup[] = [];
+      const categoryDefs: NameDef[] = await db.listNameDefs('category');
+      for (const d of categoryDefs) {
+        const row: NameDefBackup = { kind: 'category', name: d.name, order: d.order };
+        nameDefs.push(row);
+      }
+      const locationDefs: NameDef[] = await db.listNameDefs('location');
+      for (const d of locationDefs) {
+        const row: NameDefBackup = { kind: 'location', name: d.name, order: d.order };
+        nameDefs.push(row);
+      }
 
       const settingsService: SettingsService = SettingsService.getInstance();
       await settingsService.init(context);
@@ -103,7 +127,8 @@ export class BackupService {
           reminderMinute: reminder.minute
         },
         customFields: customFields,
-        materials: materials
+        materials: materials,
+        nameDefs: nameDefs
       };
       const content: string = JSON.stringify(backup, null, 2);
 
@@ -265,6 +290,11 @@ export class BackupService {
       // ── 1. 处理自定义字段定义冲突 ──
       const fieldIdMap = await this.resolveCustomFieldDefs(db, data.customFields || []);
 
+      // ── 1.5 还原自定义分类/位置定义（v2+；v1 备份无此字段自动跳过）──
+      if (data.nameDefs && Array.isArray(data.nameDefs) && data.nameDefs.length > 0) {
+        await this.restoreNameDefs(db, data.nameDefs, mode);
+      }
+
       // ── 2. 处理物资 ──
       let importedCount: number = 0;
 
@@ -330,12 +360,64 @@ export class BackupService {
   }
 
   /**
+   * 还原自定义分类/位置定义（v2+ 备份）。
+   * - merge：导入名称按备份顺序在前，本地独有名称按现有顺序追加尾部；
+   * - overwrite：仅保留导入定义（与物资清空语义一致）。
+   * 实现：按目标顺序删除重插。name_defs.id 无外部引用（物资按文本名称关联），
+   * 删除重插只损失本地自增 id，不损失数据。
+   */
+  private async restoreNameDefs(
+    db: MaterialDb,
+    imported: NameDefBackup[],
+    mode: 'merge' | 'overwrite'
+  ): Promise<void> {
+    const kinds: string[] = ['category', 'location'];
+    for (const kind of kinds) {
+      const k: NameKind = kind as NameKind;
+      // 导入侧目标顺序（去空去重）
+      const importedNames: string[] = [];
+      const seen: Set<string> = new Set<string>();
+      for (const d of imported) {
+        if (d.kind !== kind) {
+          continue;
+        }
+        const n: string = (d.name ?? '').trim();
+        if (n.length > 0 && !seen.has(n)) {
+          seen.add(n);
+          importedNames.push(n);
+        }
+      }
+      // 本地现有定义
+      const existing: NameDef[] = await db.listNameDefs(k);
+      // 目标序列：导入在前；merge 时本地独有追加尾部
+      const target: string[] = importedNames.slice();
+      if (mode === 'merge') {
+        for (const def of existing) {
+          if (!seen.has(def.name)) {
+            seen.add(def.name);
+            target.push(def.name);
+          }
+        }
+      }
+      // 删除现有全部，按目标顺序重插
+      for (const def of existing) {
+        await db.removeNameDef(def.id);
+      }
+      for (let i = 0; i < target.length; i++) {
+        await db.insertNameDef(k, target[i]);
+      }
+    }
+  }
+
+  /**
    * 处理自定义字段定义冲突，返回「导入字段名 → 现有字段 ID」映射。
    *
    * 规则（ticket #6）：
    * - 同名同类型：保留现有定义，导入物资按字段名映射到现有定义 ID。
    * - 同名不同类型：重命名导入字段为「原名_导入」，新建定义。
    * - 不存在：直接新建定义。
+   * 新建定义的排序使用导入备份中的 order（还原用户排序），
+   * 与现有定义 order 冲突时按 (sort_order, created_at) 稳定排序，可接受。
    */
   private async resolveCustomFieldDefs(
     db: MaterialDb,
@@ -359,6 +441,12 @@ export class BackupService {
       : -1;
 
     for (const imported of importedDefs) {
+      // 新建定义排序：优先还原备份中的 order（M5 修复：避免全部追加尾部打乱顺序）；
+      // 备份 order 缺失/非法时回退 maxOrder+1
+      const restoredOrder: number = (imported.order !== undefined && imported.order !== null && imported.order >= 0)
+        ? imported.order
+        : maxOrder + 1;
+      maxOrder = Math.max(maxOrder, restoredOrder);
       const existing = existingByName.get(imported.name);
       if (existing) {
         if (existing.type === imported.type) {
@@ -368,13 +456,12 @@ export class BackupService {
           // 同名不同类型：重命名导入字段为「原名_导入」
           const renamedName = `${imported.name}_导入`;
           const newId = generateCustomFieldId();
-          maxOrder++;
           const newDef: CustomField = {
             id: newId,
             name: renamedName,
             type: imported.type,
             options: imported.options,
-            order: maxOrder,
+            order: restoredOrder,
             createdAt: todayStr()
           };
           await db.insertCustomField(newDef);
@@ -386,13 +473,12 @@ export class BackupService {
       } else {
         // 不存在：新建定义
         const newId = generateCustomFieldId();
-        maxOrder++;
         const newDef: CustomField = {
           id: newId,
           name: imported.name,
           type: imported.type,
           options: imported.options,
-          order: maxOrder,
+          order: restoredOrder,
           createdAt: todayStr()
         };
         await db.insertCustomField(newDef);
