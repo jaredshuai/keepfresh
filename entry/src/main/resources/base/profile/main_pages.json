@@ -4,6 +4,8 @@
     "pages/AddItem",
     "pages/ItemDetail",
     "pages/Settings",
-    "pages/CustomFieldManager"
+    "pages/CustomFieldManager",
+    "pages/CategoryManager",
+    "pages/RecycleBin"
   ]
 }

@@ -3,10 +3,10 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, ExpiryLevel } from '../model/Material';
+import { Material, ExpiryLevel, MaterialStatus, DerivedStatus } from '../model/Material';
 import { CustomField } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
-import { levelOf, levelColor, levelSoftColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
+import { levelOf, levelColor, levelSoftColor, levelText, remainingDays, remainingText, getActualStatus } from '../service/ExpiryService';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
 import { getCategoryIcon } from '../common/CategoryIcons';
@@ -21,8 +21,17 @@ struct ItemDetail {
   @State m: Material | undefined = undefined;
   @State customFieldsDefs: CustomField[] = [];
   @State loading: boolean = true;
+  @State updatingStatus: boolean = false;
   private db: MaterialDb = MaterialDb.getInstance();
   private itemId: number = -1;
+
+  private toast(message: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (e) {
+      console.error(`show toast failed: ${(e as BusinessError).message}`);
+    }
+  }
 
   onPageShow(): void {
     if (this.itemId < 0) {
@@ -57,7 +66,7 @@ struct ItemDetail {
   private confirmDelete(): void {
     this.getUIContext().showAlertDialog({
       title: '删除物资',
-      message: `确定删除「${this.m?.name}」吗？删除后不可恢复。`,
+      message: `确定删除「${this.m?.name}」吗？删除后将进入回收站，可在设置中恢复。`,
       primaryButton: {
         value: '取消',
         action: () => {
@@ -82,11 +91,42 @@ struct ItemDetail {
       } catch (e) {
         console.error(`sync reminder failed: ${(e as BusinessError).message}`);
       }
-      this.getUIContext().getPromptAction().showToast({ message: '已删除' });
+      this.toast('已移入回收站');
       this.getUIContext().getRouter().back();
     } catch (e) {
       console.error(`delete failed: ${(e as BusinessError).message}`);
     }
+  }
+
+  /** 标记生命周期状态（开封/用完/丢弃/恢复在库），更新后刷新视图 */
+  private async applyStatus(status: string, toastMsg: string, handledType?: string): Promise<void> {
+    if (this.updatingStatus || this.itemId < 0) {
+      return;
+    }
+    this.updatingStatus = true;
+    try {
+      await this.db.updateStatus(this.itemId, status, handledType);
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      try {
+        await ReminderService.getInstance().syncDailyReminder(ctx);
+      } catch (e) {
+        console.error(`sync reminder failed: ${(e as BusinessError).message}`);
+      }
+      this.toast(toastMsg);
+      const fresh: Material | undefined = await this.db.getById(this.itemId);
+      this.m = fresh;
+    } catch (e) {
+      console.error(`update status failed: ${(e as BusinessError).message}`);
+      this.toast('操作失败，请重试');
+    } finally {
+      this.updatingStatus = false;
+    }
+  }
+
+  /** 当前持久化状态是否终态（用完/丢弃） */
+  private isTerminal(): boolean {
+    const persisted: string = this.m?.status ?? MaterialStatus.ACTIVE;
+    return persisted === MaterialStatus.EMPTY || persisted === MaterialStatus.DISCARDED;
   }
 
   build() {
@@ -122,6 +162,7 @@ struct ItemDetail {
           Column({ space: Theme.cardGap }) {
             this.statusBanner()
             this.infoCard()
+            this.statusActions()
           }
           .width('100%')
           .padding({
@@ -197,13 +238,13 @@ struct ItemDetail {
         .width('100%')
         .justifyContent(FlexAlign.Start)
 
-        Text(levelText(levelOf(this.m!), remainingDays(this.m!)))
+        Text(this.bannerHeadline())
           .fontSize(Theme.statNumber)
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textWhite)
           .margin({ top: Theme.smallGap })
 
-        Text(`${this.m!.expiryDate} 到期`)
+        Text(this.bannerSubtitle())
           .fontSize(Theme.textBody)
           .fontColor(Theme.textWhite)
           .opacity(0.95)
@@ -217,11 +258,127 @@ struct ItemDetail {
       })
       .borderRadius(Theme.cardRadius)
       .border(Theme.borderThin)
-      .backgroundColor(levelColor(levelOf(this.m!)))
+      .backgroundColor(this.bannerColor())
       .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+  }
+
+  /** 终态时 Banner 主文案切换为处理结果 */
+  private bannerHeadline(): string {
+    if (this.m!.status === MaterialStatus.EMPTY) {
+      return '已用完';
+    }
+    if (this.m!.status === MaterialStatus.DISCARDED) {
+      return '已丢弃';
+    }
+    return levelText(levelOf(this.m!), remainingDays(this.m!));
+  }
+
+  private bannerSubtitle(): string {
+    if (this.isTerminal()) {
+      return this.m!.handledAt ? `处理于 ${this.m!.handledAt}` : `${this.m!.expiryDate} 到期`;
+    }
+    return `${this.m!.expiryDate} 到期`;
+  }
+
+  private bannerColor(): string {
+    if (this.isTerminal()) {
+      return Theme.textSecondary;
+    }
+    return levelColor(levelOf(this.m!));
+  }
+
+  /* ============================================================
+   * 生命周期状态操作区：开封 / 用完 / 丢弃（终态可恢复在库）
+   * ============================================================ */
+  @Builder
+  statusActions() {
+    Stack({ alignContent: Alignment.TopStart }) {
+      Row() {
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(Theme.ink)
+      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+      Column({ space: Theme.elementGap }) {
+        Row({ space: Theme.tinyGap }) {
+          Text('生命周期')
+            .fontSize(Theme.textBody)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Theme.textPrimary)
+        }
+        .width('100%')
+
+        if (!this.isTerminal()) {
+          Row({ space: Theme.smallGap }) {
+            this.statusActionChip('开封', MaterialStatus.OPENED, undefined, Theme.near)
+            this.statusActionChip('用完', MaterialStatus.EMPTY, MaterialStatus.EMPTY, Theme.safe)
+            this.statusActionChip('丢弃', MaterialStatus.DISCARDED, MaterialStatus.DISCARDED, Theme.danger)
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.Start)
+
+          if (this.m!.status === MaterialStatus.OPENED) {
+            this.statusActionChip('恢复为未开封', MaterialStatus.ACTIVE, undefined, Theme.textSecondary)
+          }
+        } else {
+          Row({ space: Theme.smallGap }) {
+            Text(this.m!.status === MaterialStatus.DISCARDED ? '已丢弃' : '已用完')
+              .fontSize(Theme.textSmall)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Theme.textWhite)
+              .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+              .backgroundColor(Theme.textSecondary)
+              .border(Theme.borderThin)
+            Text('重新放回在库')
+              .fontSize(Theme.textSmall)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Theme.yellowDark)
+              .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+              .backgroundColor(Theme.cardBg)
+              .border(Theme.borderThin)
+              .onClick(() => {
+                this.applyStatus(MaterialStatus.ACTIVE, '已恢复为在库');
+              })
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.Start)
+        }
+      }
+      .width('100%')
+      .padding(Theme.cardPadding)
+      .backgroundColor(Theme.cardBg)
+      .border(Theme.borderThin)
+      .alignItems(HorizontalAlign.Start)
+    }
+    .width('100%')
+    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+  }
+
+  /** 状态操作小按钮：白底彩字黑边（非当前状态才可点） */
+  @Builder
+  statusActionChip(label: string, status: string, handledType: string | undefined, color: string) {
+    Text(label)
+      .fontSize(Theme.textSmall)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(this.m!.status === status ? Theme.textTertiary : color)
+      .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+      .backgroundColor(Theme.cardBg)
+      .border(Theme.borderThin)
+      .opacity(this.m!.status === status ? 0.5 : 1)
+      .onClick(() => {
+        if (this.m!.status === status) {
+          return;
+        }
+        const toast: string = label === '开封' ? '已标记为已开封'
+          : label === '用完' ? '已标记为已用完'
+            : label === '丢弃' ? '已标记为已丢弃'
+              : '已恢复为未开封';
+        this.applyStatus(status, toast, handledType);
+      })
   }
 
   @Builder
@@ -279,7 +436,9 @@ struct ItemDetail {
               .fontColor(Theme.textPrimary)
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
-            Text(`${this.m!.category} · ${this.m!.quantity} ${this.m!.unit}`)
+            Text(this.m!.location && this.m!.location.length > 0
+              ? `${this.m!.category} · ${this.m!.location} · ${this.m!.quantity} ${this.m!.unit}`
+              : `${this.m!.category} · ${this.m!.quantity} ${this.m!.unit}`)
               .fontSize(Theme.textCaption)
               .fontColor(Theme.textSecondary)
           }
@@ -292,7 +451,7 @@ struct ItemDetail {
         Divider().color(Theme.divider).strokeWidth(1)
 
         this.infoRow('生产日期', this.m!.productionDate)
-        this.infoRow('保质期', `${this.m!.shelfLifeDays} 天`)
+        this.infoRow('保质期', this.shelfLifeText())
         this.infoRow('到期日期', this.m!.expiryDate)
         this.infoRow('距到期', remainingText(this.m!))
 
@@ -343,6 +502,14 @@ struct ItemDetail {
     }
     const val = this.m.customFields[fieldId];
     return val !== undefined && val.trim().length > 0;
+  }
+
+  /** 保质期显示：月数优先展示（保留原始录入口径） */
+  private shelfLifeText(): string {
+    if (this.m!.shelfLifeMonths !== undefined && this.m!.shelfLifeMonths !== null && this.m!.shelfLifeMonths > 0) {
+      return `${this.m!.shelfLifeMonths} 个月`;
+    }
+    return `${this.m!.shelfLifeDays} 天`;
   }
 
   private getCustomFieldValue(fieldId: string): string {

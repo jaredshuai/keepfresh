@@ -3,11 +3,13 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, DEFAULT_CATEGORIES, DEFAULT_UNITS, SHELF_PRESET_DAYS } from '../model/Material';
+import { Material, MaterialStatus, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS } from '../model/Material';
 import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
+import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUnit';
+import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
@@ -32,10 +34,16 @@ struct AddItem {
   @State isEdit: boolean = false;
   @State name: string = '';
   @State category: string = DEFAULT_CATEGORIES[0];
+  @State categories: string[] = DEFAULT_CATEGORIES.slice();
   @State quantityStr: string = '1';
   @State unit: string = DEFAULT_UNITS[0];
+  @State units: string[] = DEFAULT_UNITS.slice();
+  @State location: string = DEFAULT_LOCATIONS[2];
+  @State locations: string[] = DEFAULT_LOCATIONS.slice();
   @State productionDate: string = todayStr();
   @State shelfLifeStr: string = '30';
+  @State shelfLifeMode: string = 'days';       // 'days' | 'months'
+  @State shelfLifeMonthsStr: string = '';
   @State note: string = '';
   @State barcode: string = '';
   @State showScanSheet: boolean = false;
@@ -47,6 +55,9 @@ struct AddItem {
   private db: MaterialDb = MaterialDb.getInstance();
   private editId: number = -1;
   private loadedCreatedAt: string = '';
+  private loadedStatus: string = MaterialStatus.ACTIVE;
+  private loadedHandledType: string | undefined = undefined;
+  private loadedHandledAt: string | undefined = undefined;
 
   private toast(message: string): void {
     try {
@@ -66,6 +77,30 @@ struct AddItem {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     this.db.init(ctx)
       .then(() => {
+        // 分类候选：管理页自定义定义（按排序）→ 预设 → 数据中出现过的
+        return this.db.listEffectiveNames('category', DEFAULT_CATEGORIES);
+      })
+      .then((cats: string[]) => {
+        this.categories = cats;
+        if (cats.indexOf(this.category) < 0 && cats.length > 0) {
+          this.category = cats[0];
+        }
+        // 位置候选：同一合并口径
+        return this.db.listEffectiveNames('location', DEFAULT_LOCATIONS);
+      })
+      .then((locs: string[]) => {
+        this.locations = locs;
+        if (locs.indexOf(this.location) < 0 && locs.length > 0) {
+          this.location = locs[2] ?? locs[0];
+        }
+        // 单位候选：管理页自定义定义（按排序）→ 预设 → 数据中出现过的
+        return this.db.listEffectiveNames('unit', DEFAULT_UNITS);
+      })
+      .then((unitCandidates: string[]) => {
+        this.units = unitCandidates;
+        if (unitCandidates.indexOf(this.unit) < 0 && unitCandidates.length > 0) {
+          this.unit = unitCandidates[0];
+        }
         return this.db.listCustomFields();
       })
       .then((defs: CustomField[]) => {
@@ -79,12 +114,25 @@ struct AddItem {
         if (m) {
           this.name = m.name;
           this.category = m.category;
-          this.quantityStr = m.quantity.toString();
-          this.unit = m.unit;
+          const normalized = normalizeQuantityUnit(m.quantity, m.unit);
+          this.quantityStr = normalized.quantity;
+          if (normalized.unit.length > 0) {
+            this.unit = normalized.unit;
+          }
+          this.location = m.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2];
           this.productionDate = m.productionDate;
-          this.shelfLifeStr = m.shelfLifeDays.toString();
+          if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
+            this.shelfLifeMode = 'months';
+            this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+          } else {
+            this.shelfLifeMode = 'days';
+            this.shelfLifeStr = m.shelfLifeDays.toString();
+          }
           this.note = m.note;
           this.loadedCreatedAt = m.createdAt;
+          this.loadedStatus = m.status ?? MaterialStatus.ACTIVE;
+          this.loadedHandledType = m.handledType;
+          this.loadedHandledAt = m.handledAt;
           this.barcode = m.barcode || '';
           if (m.customFields) {
             this.customFieldValues = copyStringRecord(m.customFields);
@@ -108,6 +156,13 @@ struct AddItem {
   }
 
   private expiryPreview(): string {
+    if (this.shelfLifeMode === 'months') {
+      const months = parseNonNegativeInteger(this.shelfLifeMonthsStr);
+      if (months === null || months < 1) {
+        return '—';
+      }
+      return calcExpiryDate(this.productionDate, 0, months);
+    }
     const days = Number(this.shelfLifeStr);
     if (this.shelfLifeStr === '' || Number.isNaN(days) || days < 1) {
       return '—';
@@ -117,6 +172,10 @@ struct AddItem {
 
   private presetLabels(): string[] {
     return SHELF_PRESET_DAYS.map((d: number): string => `${d}天`);
+  }
+
+  private presetMonthLabels(): string[] {
+    return SHELF_PRESET_MONTHS.map((m: number): string => `${m}个月`);
   }
 
   private pickCustomFieldDate(fieldId: string): void {
@@ -183,7 +242,18 @@ struct AddItem {
     this.name = m.name;
     this.category = m.category;
     this.unit = m.unit;
-    this.shelfLifeStr = m.shelfLifeDays.toString();
+    // 保质期口径还原：历史记录若按月数录入则保持月数模式（避免 365×n 天的错误近似）
+    if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
+      this.shelfLifeMode = 'months';
+      this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+    } else {
+      this.shelfLifeMode = 'days';
+      this.shelfLifeStr = m.shelfLifeDays.toString();
+    }
+    // 位置回填（历史记录有位置则带上；其位置已在 listEffectiveNames 合并结果内）
+    if (m.location && m.location.length > 0) {
+      this.location = m.location;
+    }
     this.showScanSheet = false;
     this.toast('已预填，请补充生产日期和数量');
   }
@@ -197,19 +267,31 @@ struct AddItem {
     if (this.saving) {
       return;
     }
-    const qty = Number(this.quantityStr);
-    const days = Number(this.shelfLifeStr);
+    // 数量归一化：支持 "500g" 混合输入自动拆分
+    const normalizedQty = normalizeQuantityUnit(this.quantityStr, this.unit);
+    const qtyNumber = Number(normalizedQty.quantity);
+    // 保质期：月数模式或天数模式
+    const months = this.shelfLifeMode === 'months' ? parseNonNegativeInteger(this.shelfLifeMonthsStr) : null;
+    const days = this.shelfLifeMode === 'months' ? 365 * (months ?? 1) : Number(this.shelfLifeStr);
+
     if (this.name.trim().length === 0) {
       this.errorMsg = '请输入物资名称';
       return;
     }
-    if (this.quantityStr === '' || Number.isNaN(qty) || qty <= 0) {
+    if (normalizedQty.quantity === '' || Number.isNaN(qtyNumber) || qtyNumber <= 0) {
       this.errorMsg = '数量需大于 0';
       return;
     }
-    if (this.shelfLifeStr === '' || Number.isNaN(days) || days < 1) {
-      this.errorMsg = '保质期需至少 1 天';
-      return;
+    if (this.shelfLifeMode === 'months') {
+      if (months === null || months < 1) {
+        this.errorMsg = '保质期需至少 1 个月';
+        return;
+      }
+    } else {
+      if (this.shelfLifeStr === '' || Number.isNaN(days) || days < 1) {
+        this.errorMsg = '保质期需至少 1 天';
+        return;
+      }
     }
     for (const def of this.customFieldsDefs) {
       const val = this.customFieldValues[def.id] || '';
@@ -226,12 +308,20 @@ struct AddItem {
       id: this.editId,
       name: this.name.trim(),
       category: this.category,
-      quantity: qty,
-      unit: this.unit,
+      quantity: normalizedQty.quantity,
+      unit: normalizedQty.unit.length > 0 ? normalizedQty.unit : this.unit,
+      location: this.location,
       productionDate: this.productionDate,
       shelfLifeDays: Math.floor(days),
-      expiryDate: calcExpiryDate(this.productionDate, Math.floor(days)),
+      shelfLifeMonths: months ?? undefined,
+      expiryDate: months !== null && months >= 1
+        ? calcExpiryDate(this.productionDate, 0, months)
+        : calcExpiryDate(this.productionDate, Math.floor(days)),
       note: this.note.trim(),
+      status: this.isEdit ? this.loadedStatus : MaterialStatus.ACTIVE,
+      handledType: this.isEdit ? this.loadedHandledType : undefined,
+      handledAt: this.isEdit ? this.loadedHandledAt : undefined,
+      isDeleted: false,
       createdAt: this.isEdit ? this.loadedCreatedAt : now,
       updatedAt: now,
       barcode: this.barcode.trim().length > 0 ? this.barcode.trim() : undefined,
@@ -449,18 +539,22 @@ struct AddItem {
               }
 
               this.fieldLabel('分类')
-              this.chipGroup(DEFAULT_CATEGORIES, this.category, (v: string) => {
+              this.chipGroup(this.categories, this.category, (v: string) => {
                 this.category = v;
               })
 
-              this.fieldLabel('数量 *')
+              this.fieldLabel('存放位置')
+              this.chipGroup(this.locations, this.location, (v: string) => {
+                this.location = v;
+              })
+
+              this.fieldLabel('数量 *（支持 500g 混合输入）')
               Stack() {
                 Row()
                   .width('100%')
                   .backgroundColor(Theme.ink)
                   .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
-                TextInput({ text: this.quantityStr, placeholder: '数量' })
-                  .type(InputType.Number)
+                TextInput({ text: this.quantityStr, placeholder: '如：2 或 500g' })
                   .fontSize(Theme.textBody)
                   .fontColor(Theme.textPrimary)
                   .placeholderColor(Theme.textTertiary)
@@ -473,7 +567,7 @@ struct AddItem {
                   })
               }
               .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-              this.chipGroup(DEFAULT_UNITS, this.unit, (v: string) => {
+              this.chipGroup(this.units, this.unit, (v: string) => {
                 this.unit = v;
               })
             }
@@ -524,29 +618,102 @@ struct AddItem {
               }
               .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
-              this.fieldLabel('保质期（天）*')
-              Stack() {
-                Row()
-                  .width('100%')
-                  .backgroundColor(Theme.ink)
-                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
-                TextInput({ text: this.shelfLifeStr, placeholder: '天数' })
-                  .type(InputType.Number)
-                  .fontSize(Theme.textBody)
-                  .fontColor(Theme.textPrimary)
-                  .placeholderColor(Theme.textTertiary)
-                  .backgroundColor(Theme.inputBg)
-                  .border(Theme.borderThin)
-                  .borderRadius(Theme.inputRadius)
-                  .height(48)
-                  .onChange((v: string) => {
-                    this.shelfLifeStr = v;
-                  })
+              // ── 保质期模式切换：天数 / 月数（包装常标月数，月末自动 clamp）──
+              Row({ space: Theme.smallGap }) {
+                Stack() {
+                  Column()
+                    .height(34)
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: 3, top: 3 })
+                  Text('按天数')
+                    .fontSize(Theme.textSmall)
+                    .fontWeight(this.shelfLifeMode === 'days' ? FontWeight.Bold : FontWeight.Medium)
+                    .fontColor(this.shelfLifeMode === 'days' ? Theme.textWhite : Theme.textPrimary)
+                    .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+                    .backgroundColor(this.shelfLifeMode === 'days' ? Theme.yellowDark : Theme.cardBg)
+                    .border(Theme.borderThin)
+                    .onClick(() => {
+                      this.shelfLifeMode = 'days';
+                    })
+                }
+                .padding({ right: 3, bottom: 3 })
+
+                Stack() {
+                  Column()
+                    .height(34)
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: 3, top: 3 })
+                  Text('按月数')
+                    .fontSize(Theme.textSmall)
+                    .fontWeight(this.shelfLifeMode === 'months' ? FontWeight.Bold : FontWeight.Medium)
+                    .fontColor(this.shelfLifeMode === 'months' ? Theme.textWhite : Theme.textPrimary)
+                    .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+                    .backgroundColor(this.shelfLifeMode === 'months' ? Theme.yellowDark : Theme.cardBg)
+                    .border(Theme.borderThin)
+                    .onClick(() => {
+                      this.shelfLifeMode = 'months';
+                      if (this.shelfLifeMonthsStr.length === 0) {
+                        this.shelfLifeMonthsStr = '1';
+                      }
+                    })
+                }
+                .padding({ right: 3, bottom: 3 })
               }
-              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-              this.chipGroup(this.presetLabels(), `${this.shelfLifeStr}天`, (v: string) => {
-                this.shelfLifeStr = v.replace('天', '');
-              })
+              .width('100%')
+              .justifyContent(FlexAlign.Start)
+
+              if (this.shelfLifeMode === 'days') {
+                this.fieldLabel('保质期（天）*')
+                Stack() {
+                  Row()
+                    .width('100%')
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                  TextInput({ text: this.shelfLifeStr, placeholder: '天数' })
+                    .type(InputType.Number)
+                    .fontSize(Theme.textBody)
+                    .fontColor(Theme.textPrimary)
+                    .placeholderColor(Theme.textTertiary)
+                    .backgroundColor(Theme.inputBg)
+                    .border(Theme.borderThin)
+                    .borderRadius(Theme.inputRadius)
+                    .height(48)
+                    .onChange((v: string) => {
+                      this.shelfLifeStr = v;
+                    })
+                }
+                .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+                this.chipGroup(this.presetLabels(), `${this.shelfLifeStr}天`, (v: string) => {
+                  this.shelfLifeStr = v.replace('天', '');
+                })
+              } else {
+                this.fieldLabel('保质期（月）*')
+                Stack() {
+                  Row()
+                    .width('100%')
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                  TextInput({ text: this.shelfLifeMonthsStr, placeholder: '月数（如 12）' })
+                    .type(InputType.Number)
+                    .fontSize(Theme.textBody)
+                    .fontColor(Theme.textPrimary)
+                    .placeholderColor(Theme.textTertiary)
+                    .backgroundColor(Theme.inputBg)
+                    .border(Theme.borderThin)
+                    .borderRadius(Theme.inputRadius)
+                    .height(48)
+                    .onChange((v: string) => {
+                      this.shelfLifeMonthsStr = v;
+                    })
+                }
+                .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+                this.chipGroup(this.presetMonthLabels(), `${this.shelfLifeMonthsStr}个月`, (v: string) => {
+                  this.shelfLifeMonthsStr = v.replace('个月', '');
+                })
+                Text('按月加法自动处理月末（1/31 + 1个月 = 2/28 或 2/29）')
+                  .fontSize(Theme.textCaption)
+                  .fontColor(Theme.textTertiary)
+              }
 
               Stack() {
                 Row()

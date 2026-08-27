@@ -13,8 +13,8 @@ import { UIContext } from '@kit.ArkUI';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
-import { MaterialDb } from '../db/MaterialDb';
-import { Material } from '../model/Material';
+import { MaterialDb, MaterialFilter, NameDef, NameKind } from '../db/MaterialDb';
+import { Material, MaterialStatus } from '../model/Material';
 import { CustomField, generateCustomFieldId } from '../model/CustomField';
 import { SettingsService } from './SettingsService';
 import { ReminderService, ReminderSettings } from './ReminderService';
@@ -22,7 +22,8 @@ import { todayStr } from '../common/DateUtils';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'BackupService';
-const SCHEMA_VERSION: number = 1;
+/** v2：新增 nameDefs 段（自定义分类/位置/单位定义）；v1 备份无此字段，导入时自动跳过 */
+const SCHEMA_VERSION: number = 2;
 
 /** 备份文件 JSON 结构 */
 export interface BackupData {
@@ -31,6 +32,15 @@ export interface BackupData {
   settings: BackupSettings;
   customFields: CustomField[];
   materials: Material[];
+  /** v2 起：自定义分类/位置/单位定义（含用户排序）；v1 备份无此字段 */
+  nameDefs?: NameDefBackup[];
+}
+
+/** name_defs 表的备份形态（id 为设备本地自增，不导出；物资按文本名称关联） */
+export interface NameDefBackup {
+  kind: string;   // 'category' | 'location' | 'unit'
+  name: string;
+  order: number;
 }
 
 export interface BackupSettings {
@@ -85,8 +95,28 @@ export class BackupService {
     try {
       const db: MaterialDb = MaterialDb.getInstance();
       await db.init(context);
-      const materials: Material[] = await db.listAll();
+      // 含软删除（回收站）物资：备份应是完整快照，回收站数据可随备份恢复
+      const allFilter: MaterialFilter = { includeDeleted: true };
+      const materials: Material[] = await db.listAll(allFilter);
       const customFields: CustomField[] = await db.listCustomFields();
+      // 自定义分类/位置/单位定义（v2 新增段；restore 侧三种 kind 都会还原，
+      // 导出必须齐备，否则 overwrite 导入会删掉未导出的 kind 定义）
+      const nameDefs: NameDefBackup[] = [];
+      const categoryDefs: NameDef[] = await db.listNameDefs('category');
+      for (const d of categoryDefs) {
+        const row: NameDefBackup = { kind: 'category', name: d.name, order: d.order };
+        nameDefs.push(row);
+      }
+      const locationDefs: NameDef[] = await db.listNameDefs('location');
+      for (const d of locationDefs) {
+        const row: NameDefBackup = { kind: 'location', name: d.name, order: d.order };
+        nameDefs.push(row);
+      }
+      const unitDefs: NameDef[] = await db.listNameDefs('unit');
+      for (const d of unitDefs) {
+        const row: NameDefBackup = { kind: 'unit', name: d.name, order: d.order };
+        nameDefs.push(row);
+      }
 
       const settingsService: SettingsService = SettingsService.getInstance();
       await settingsService.init(context);
@@ -103,7 +133,8 @@ export class BackupService {
           reminderMinute: reminder.minute
         },
         customFields: customFields,
-        materials: materials
+        materials: materials,
+        nameDefs: nameDefs
       };
       const content: string = JSON.stringify(backup, null, 2);
 
@@ -218,7 +249,8 @@ export class BackupService {
   private async buildPreview(context: common.UIAbilityContext, data: BackupData): Promise<ImportPreview> {
     const db: MaterialDb = MaterialDb.getInstance();
     await db.init(context);
-    const existing: Material[] = await db.listAll();
+    // 与 executeImport 同口径：冲突判定含回收站行（回收站里的同名同到期日物资同样会被覆盖）
+    const existing: Material[] = await db.listAll({ includeDeleted: true });
 
     // 现有物资业务键集合
     const existingKeys = new Set<string>();
@@ -265,14 +297,24 @@ export class BackupService {
       // ── 1. 处理自定义字段定义冲突 ──
       const fieldIdMap = await this.resolveCustomFieldDefs(db, data.customFields || []);
 
+      // ── 1.5 还原自定义分类/位置/单位定义（v2+；v1 备份无此字段自动跳过）──
+      // 空数组也要 restore：overwrite 语义下需清掉本地定义，不能靠 length>0 跳过
+      if (data.nameDefs && Array.isArray(data.nameDefs)) {
+        this.validateNameDefs(data.nameDefs);
+        await this.restoreNameDefs(db, data.nameDefs, mode);
+      }
+
       // ── 2. 处理物资 ──
       let importedCount: number = 0;
+      // 冲突判定/清空范围须含回收站（软删除）行，否则 merge 会给回收站物品插重复业务键、
+      // overwrite 会残留旧回收站行 —— 快照语义要求全集对齐
+      const allFilter: MaterialFilter = { includeDeleted: true };
 
       if (mode === 'overwrite') {
-        // 清空后导入：删除所有现有物资
-        const existing: Material[] = await db.listAll();
+        // 清空后导入：物理清除所有现有物资（含回收站），保证真正的快照替换
+        const existing: Material[] = await db.listAll(allFilter);
         for (const m of existing) {
-          await db.remove(m.id);
+          await db.purge(m.id);
         }
         // 全部作为新增插入
         for (const m of data.materials) {
@@ -281,8 +323,8 @@ export class BackupService {
           importedCount++;
         }
       } else {
-        // 增量合并：冲突覆盖、不冲突新增
-        const existing: Material[] = await db.listAll();
+        // 增量合并：冲突覆盖、不冲突新增（冲突集含回收站行，避免重复业务键）
+        const existing: Material[] = await db.listAll(allFilter);
         const existingByKey = new Map<string, Material>();
         for (const m of existing) {
           existingByKey.set(this.businessKey(m), m);
@@ -330,12 +372,90 @@ export class BackupService {
   }
 
   /**
+   * 校验备份中的 nameDefs：kind 合法、name 非空字符串、order 为非负整数。
+   * 全量校验通过后才允许落库（restoreNameDefs 会先删后插），避免中途失败留下半成品。
+   */
+  private validateNameDefs(imported: NameDefBackup[]): void {
+    for (let i = 0; i < imported.length; i++) {
+      const d = imported[i];
+      const kindStr: string = `${d.kind ?? ''}`;
+      if (kindStr !== 'category' && kindStr !== 'location' && kindStr !== 'unit') {
+        throw new Error(`nameDefs[${i}].kind 非法: ${kindStr}`);
+      }
+      // 非字符串 name 一律拒绝（防篡改备份把 number/object 混进来被持久化成字符串）
+      if (typeof d.name !== 'string') {
+        throw new Error(`nameDefs[${i}].name 非法（须为字符串）`);
+      }
+      const n: string = d.name.trim();
+      if (n.length === 0 || n.length > 20) {
+        throw new Error(`nameDefs[${i}].name 非法（空或超 20 字）`);
+      }
+      const o = d.order;
+      if (o !== undefined && o !== null && (typeof o !== 'number' || o < 0 || !Number.isInteger(o))) {
+        throw new Error(`nameDefs[${i}].order 非法: ${o}`);
+      }
+    }
+  }
+
+  /**
+   * 还原自定义分类/位置/单位定义（v2+ 备份）。
+   * - merge：导入名称按备份顺序在前，本地独有名称按现有顺序追加尾部；
+   * - overwrite：仅保留导入定义（与物资清空语义一致）。
+   * 实现：按目标顺序删除重插。name_defs.id 无外部引用（物资按文本名称关联），
+   * 删除重插只损失本地自增 id，不损失数据。
+   */
+  private async restoreNameDefs(
+    db: MaterialDb,
+    imported: NameDefBackup[],
+    mode: 'merge' | 'overwrite'
+  ): Promise<void> {
+    const kinds: string[] = ['category', 'location', 'unit'];
+    for (const kind of kinds) {
+      const k: NameKind = kind as NameKind;
+      // 导入侧目标顺序（去空去重）
+      const importedNames: string[] = [];
+      const seen: Set<string> = new Set<string>();
+      for (const d of imported) {
+        if (d.kind !== kind) {
+          continue;
+        }
+        const n: string = (d.name ?? '').trim();
+        if (n.length > 0 && !seen.has(n)) {
+          seen.add(n);
+          importedNames.push(n);
+        }
+      }
+      // 本地现有定义
+      const existing: NameDef[] = await db.listNameDefs(k);
+      // 目标序列：导入在前；merge 时本地独有追加尾部
+      const target: string[] = importedNames.slice();
+      if (mode === 'merge') {
+        for (const def of existing) {
+          if (!seen.has(def.name)) {
+            seen.add(def.name);
+            target.push(def.name);
+          }
+        }
+      }
+      // 删除现有全部，按目标顺序重插
+      for (const def of existing) {
+        await db.removeNameDef(def.id);
+      }
+      for (let i = 0; i < target.length; i++) {
+        await db.insertNameDef(k, target[i]);
+      }
+    }
+  }
+
+  /**
    * 处理自定义字段定义冲突，返回「导入字段名 → 现有字段 ID」映射。
    *
    * 规则（ticket #6）：
    * - 同名同类型：保留现有定义，导入物资按字段名映射到现有定义 ID。
    * - 同名不同类型：重命名导入字段为「原名_导入」，新建定义。
    * - 不存在：直接新建定义。
+   * 新建定义的排序使用导入备份中的 order（还原用户排序），
+   * 与现有定义 order 冲突时按 (sort_order, created_at) 稳定排序，可接受。
    */
   private async resolveCustomFieldDefs(
     db: MaterialDb,
@@ -359,6 +479,12 @@ export class BackupService {
       : -1;
 
     for (const imported of importedDefs) {
+      // 新建定义排序：优先还原备份中的 order（M5 修复：避免全部追加尾部打乱顺序）；
+      // 备份 order 缺失/非法时回退 maxOrder+1
+      const restoredOrder: number = (imported.order !== undefined && imported.order !== null && imported.order >= 0)
+        ? imported.order
+        : maxOrder + 1;
+      maxOrder = Math.max(maxOrder, restoredOrder);
       const existing = existingByName.get(imported.name);
       if (existing) {
         if (existing.type === imported.type) {
@@ -368,13 +494,12 @@ export class BackupService {
           // 同名不同类型：重命名导入字段为「原名_导入」
           const renamedName = `${imported.name}_导入`;
           const newId = generateCustomFieldId();
-          maxOrder++;
           const newDef: CustomField = {
             id: newId,
             name: renamedName,
             type: imported.type,
             options: imported.options,
-            order: maxOrder,
+            order: restoredOrder,
             createdAt: todayStr()
           };
           await db.insertCustomField(newDef);
@@ -386,13 +511,12 @@ export class BackupService {
       } else {
         // 不存在：新建定义
         const newId = generateCustomFieldId();
-        maxOrder++;
         const newDef: CustomField = {
           id: newId,
           name: imported.name,
           type: imported.type,
           options: imported.options,
-          order: maxOrder,
+          order: restoredOrder,
           createdAt: todayStr()
         };
         await db.insertCustomField(newDef);
@@ -429,12 +553,18 @@ export class BackupService {
       id: -1, // 默认新增，覆盖时由调用方设为现有 id
       name: m.name,
       category: m.category,
-      quantity: m.quantity,
+      quantity: typeof m.quantity === 'number' ? `${m.quantity}` : (m.quantity || '0'),
       unit: m.unit,
+      location: m.location || '',
       productionDate: m.productionDate,
       shelfLifeDays: m.shelfLifeDays,
+      shelfLifeMonths: m.shelfLifeMonths,
       expiryDate: m.expiryDate,
       note: m.note || '',
+      status: m.status || MaterialStatus.ACTIVE,
+      handledType: m.handledType,
+      handledAt: m.handledAt,
+      isDeleted: m.isDeleted === true,
       createdAt: m.createdAt || todayStr(),
       updatedAt: todayStr(),
       barcode: m.barcode,

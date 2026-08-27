@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getEtsFiles } from './lib/ets-files.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
@@ -28,21 +29,6 @@ const rules = [
     excludeComment: true,
   },
 ];
-
-// 递归读取目录下所有 .ets 文件
-function getEtsFiles(dir) {
-  const files = [];
-  const items = fs.readdirSync(dir, { withFileTypes: true });
-  for (const item of items) {
-    const fullPath = path.join(dir, item.name);
-    if (item.isDirectory()) {
-      files.push(...getEtsFiles(fullPath));
-    } else if (item.name.endsWith('.ets')) {
-      files.push(fullPath);
-    }
-  }
-  return files;
-}
 
 /**
  * 剥离行内 `//` 注释，但跳过字符串字面量（', ", `）中的 `//`。

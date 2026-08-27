@@ -30,6 +30,28 @@ function validateNearExpiryDays(input: string | number): string | null {
   return null;
 }
 
+/** 构造测试物资（新接口：quantity 字符串 + status + isDeleted） */
+function makeMaterial(overrides: Partial<Material> & Pick<Material, 'id' | 'name' | 'expiryDate'>): Material {
+  const today = todayStr();
+  return {
+    id: overrides.id,
+    name: overrides.name,
+    category: '食品',
+    quantity: '1',
+    unit: '盒',
+    location: '',
+    productionDate: today,
+    shelfLifeDays: 30,
+    expiryDate: overrides.expiryDate,
+    note: '',
+    status: 'active',
+    isDeleted: false,
+    createdAt: today,
+    updatedAt: today,
+    ...overrides
+  };
+}
+
 describe('Settings & ExpiryThreshold Test Suite', () => {
   it('1. 默认临期天数阈值为 7', () => {
     setNearExpiryThreshold(DEFAULT_NEAR_EXPIRY_DAYS);
@@ -52,19 +74,12 @@ describe('Settings & ExpiryThreshold Test Suite', () => {
   it('3. 动态阈值对单个物资分级（levelOf）的影响', () => {
     const today = todayStr();
     // 剩余 5 天到期
-    const m5Days: Material = {
+    const m5Days: Material = makeMaterial({
       id: 1,
       name: '酸奶',
-      category: '食品',
-      quantity: 1,
-      unit: '盒',
-      productionDate: today,
-      shelfLifeDays: 5,
       expiryDate: addDays(today, 5),
-      note: '',
-      createdAt: today,
-      updatedAt: today
-    };
+      shelfLifeDays: 5
+    });
 
     // 当阈值 = 7 天时，剩余 5 天属于 NEAR (临期)
     setNearExpiryThreshold(7);
@@ -86,61 +101,13 @@ describe('Settings & ExpiryThreshold Test Suite', () => {
     const today = todayStr();
     const list: Material[] = [
       // 已过期 2 天 (left = -2)
-      {
-        id: 1,
-        name: '过期面包',
-        category: '食品',
-        quantity: 1,
-        unit: '袋',
-        productionDate: addDays(today, -10),
-        shelfLifeDays: 8,
-        expiryDate: addDays(today, -2),
-        note: '',
-        createdAt: today,
-        updatedAt: today
-      },
+      makeMaterial({ id: 1, name: '过期面包', expiryDate: addDays(today, -2), shelfLifeDays: 8 }),
       // 剩 2 天 (left = 2)
-      {
-        id: 2,
-        name: '鲜牛奶',
-        category: '食品',
-        quantity: 1,
-        unit: '盒',
-        productionDate: today,
-        shelfLifeDays: 2,
-        expiryDate: addDays(today, 2),
-        note: '',
-        createdAt: today,
-        updatedAt: today
-      },
+      makeMaterial({ id: 2, name: '鲜牛奶', expiryDate: addDays(today, 2), shelfLifeDays: 2 }),
       // 剩 5 天 (left = 5)
-      {
-        id: 3,
-        name: '火腿肠',
-        category: '食品',
-        quantity: 1,
-        unit: '包',
-        productionDate: today,
-        shelfLifeDays: 5,
-        expiryDate: addDays(today, 5),
-        note: '',
-        createdAt: today,
-        updatedAt: today
-      },
+      makeMaterial({ id: 3, name: '火腿肠', expiryDate: addDays(today, 5), shelfLifeDays: 5 }),
       // 剩 10 天 (left = 10)
-      {
-        id: 4,
-        name: '罐头',
-        category: '食品',
-        quantity: 1,
-        unit: '罐',
-        productionDate: today,
-        shelfLifeDays: 10,
-        expiryDate: addDays(today, 10),
-        note: '',
-        createdAt: today,
-        updatedAt: today
-      }
+      makeMaterial({ id: 4, name: '罐头', expiryDate: addDays(today, 10), shelfLifeDays: 10 })
     ];
 
     // 口径 1：阈值 = 7

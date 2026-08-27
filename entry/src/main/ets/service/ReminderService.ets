@@ -8,7 +8,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { reminderAgentManager } from '@kit.BackgroundTasksKit';
 import { MaterialDb } from '../db/MaterialDb';
 import { levelOf } from './ExpiryService';
-import { Material, ExpiryLevel } from '../model/Material';
+import { Material, ExpiryLevel, MaterialStatus } from '../model/Material';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'ReminderService';
@@ -105,6 +105,11 @@ export class ReminderService {
     let expiredCount: number = 0;
     let nearCount: number = 0;
     for (const m of materials) {
+      // 终态（已用完/已丢弃）物资不再触发临期提醒
+      const persisted: string = m.status ?? MaterialStatus.ACTIVE;
+      if (persisted === MaterialStatus.EMPTY || persisted === MaterialStatus.DISCARDED) {
+        continue;
+      }
       const level: ExpiryLevel = levelOf(m);
       if (level === ExpiryLevel.EXPIRED) {
         expiredCount++;
@@ -128,6 +133,9 @@ export class ReminderService {
       parts.push(`${nearCount} 件即将过期`);
     }
     const textContent: string = `${parts.join('，')}，请及时处理`;
+    // 点通知直达对应状态列表：有过期优先「已过期」，否则「临期」。
+    // EntryAbility 会把该参数存入 AppStorage，Index onPageShow 读取后切 Tab。
+    const filterLevel: string = expiredCount > 0 ? 'expired' : 'expiring';
 
     try {
       const alarmReq: reminderAgentManager.ReminderRequestAlarm = {
@@ -139,7 +147,10 @@ export class ReminderService {
         content: textContent,
         wantAgent: {
           pkgName: 'com.jaredshuai.keepfresh',
-          abilityName: 'EntryAbility'
+          abilityName: 'EntryAbility',
+          parameters: {
+            filterLevel: filterLevel
+          }
         },
         ringDuration: 5,
         snoozeTimes: 0,
