@@ -10,7 +10,6 @@ import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
 import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUnit';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
-import { mergeWithDefaults } from '../common/CategoryOrder';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
@@ -35,6 +34,7 @@ struct AddItem {
   @State isEdit: boolean = false;
   @State name: string = '';
   @State category: string = DEFAULT_CATEGORIES[0];
+  @State categories: string[] = DEFAULT_CATEGORIES.slice();
   @State quantityStr: string = '1';
   @State unit: string = DEFAULT_UNITS[0];
   @State location: string = DEFAULT_LOCATIONS[2];
@@ -76,11 +76,22 @@ struct AddItem {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     this.db.init(ctx)
       .then(() => {
-        // 位置候选：预设 + 已有物资出现过的位置合并去重
-        return this.db.listLocations();
+        // 分类候选：管理页自定义定义（按排序）→ 预设 → 数据中出现过的
+        return this.db.listEffectiveNames('category', DEFAULT_CATEGORIES);
+      })
+      .then((cats: string[]) => {
+        this.categories = cats;
+        if (cats.indexOf(this.category) < 0 && cats.length > 0) {
+          this.category = cats[0];
+        }
+        // 位置候选：同一合并口径
+        return this.db.listEffectiveNames('location', DEFAULT_LOCATIONS);
       })
       .then((locs: string[]) => {
-        this.locations = mergeWithDefaults(DEFAULT_LOCATIONS, locs);
+        this.locations = locs;
+        if (locs.indexOf(this.location) < 0 && locs.length > 0) {
+          this.location = locs[2] ?? locs[0];
+        }
         return this.db.listCustomFields();
       })
       .then((defs: CustomField[]) => {
@@ -508,7 +519,7 @@ struct AddItem {
               }
 
               this.fieldLabel('分类')
-              this.chipGroup(DEFAULT_CATEGORIES, this.category, (v: string) => {
+              this.chipGroup(this.categories, this.category, (v: string) => {
                 this.category = v;
               })
 

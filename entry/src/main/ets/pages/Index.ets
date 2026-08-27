@@ -20,7 +20,6 @@ import { SettingsService } from '../service/SettingsService';
 import { Theme } from '../common/Theme';
 import { getCategoryIcon } from '../common/CategoryIcons';
 import { filterByKeyword } from '../common/SearchFilter';
-import { mergeWithDefaults } from '../common/CategoryOrder';
 
 interface TimePickerResult {
   hour?: number;
@@ -165,12 +164,8 @@ struct Index {
       const list: Material[] = await this.db.listAll();
       this.materials = list;
       this.stats = statsOf(list);
-      // 分类列表：预设 + 物资中出现过的分类合并去重
-      const catsInData: string[] = [];
-      for (let i = 0; i < list.length; i++) {
-        catsInData.push(list[i].category);
-      }
-      this.categories = mergeWithDefaults(DEFAULT_CATEGORIES, catsInData);
+      // 分类列表：管理页自定义定义（按排序）→ 预设 → 数据中出现过的
+      this.categories = await this.db.listEffectiveNames('category', DEFAULT_CATEGORIES);
       this.applyFilters();
       if (!notifiedThisSession && this.stats.near + this.stats.expired > 0) {
         notifiedThisSession = true;
