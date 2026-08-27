@@ -9,7 +9,6 @@ import { MaterialDb } from '../db/MaterialDb';
 import {
   ExpiryStats,
   levelOf,
-  levelColor,
   remainingDays,
   sortByExpirationAsc,
   statsOf,

@@ -8,7 +8,7 @@ import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
-import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUnit';
+import { normalizeQuantityUnit } from '../common/QuantityUnit';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
 import { ReminderService } from '../service/ReminderService';

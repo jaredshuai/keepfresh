@@ -69,7 +69,7 @@ const RULE4_WHITELIST = {
   },
   common: {
     normalizeNullableText: '预留',
-    formatQuantityUnit: '预留展示拼接（AddItem 导入未用，见规则 5 白名单）',
+    formatQuantityUnit: '清理候选：无外部调用方（原 AddItem 死导入已删，ticket #18）',
     pad2: 'toDateStr 内部件',
     // 审计复核新增（任务清单外）：InputNormalize 内部组合件，与 softDelete/pad2 同性质
     normalizeText: 'InputNormalize 内部组合件（被 normalizeNullableText/parseNonNegativeInteger 复用）',
@@ -78,15 +78,8 @@ const RULE4_WHITELIST = {
 };
 
 // 规则 5：未使用 import 豁免（file 为相对 entry/src/main/ets 的路径）
-// 存量未使用导入：先修会改 .ets（接线守护任务禁改），故进白名单标注待清理。
-const RULE5_WHITELIST = [
-  { file: 'pages/Index.ets', identifier: 'levelColor', reason: '审计发现存量，待清理' },
-  { file: 'pages/ItemDetail.ets', identifier: 'levelSoftColor', reason: '审计发现存量，待清理' },
-  { file: 'pages/AddItem.ets', identifier: 'formatQuantityUnit', reason: '审计发现存量，待清理' },
-  // 审计复核新增（任务说 3 处，实测 ItemDetail 另有 2 处存量，共 5 处）：
-  { file: 'pages/ItemDetail.ets', identifier: 'getActualStatus', reason: '审计发现存量（任务清单外，Index 在用同名 API，此处为冗余导入），待清理' },
-  { file: 'pages/ItemDetail.ets', identifier: 'DerivedStatus', reason: '审计发现存量（任务清单外，状态机判断改用了 MaterialStatus 直接比较），待清理' },
-];
+// 存量 5 条已于 ticket #18 任务 1 清理（删 import → wire:check 绿 → 移除白名单），当前清零。
+const RULE5_WHITELIST = [];
 
 // ─────────────────────────── 通用解析工具 ───────────────────────────
 

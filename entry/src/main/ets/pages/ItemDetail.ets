@@ -3,10 +3,10 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, ExpiryLevel, MaterialStatus, DerivedStatus } from '../model/Material';
+import { Material, ExpiryLevel, MaterialStatus } from '../model/Material';
 import { CustomField } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
-import { levelOf, levelColor, levelSoftColor, levelText, remainingDays, remainingText, getActualStatus } from '../service/ExpiryService';
+import { levelOf, levelColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
 import { getCategoryIcon } from '../common/CategoryIcons';
