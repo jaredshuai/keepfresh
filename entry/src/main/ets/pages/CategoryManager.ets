@@ -342,10 +342,6 @@ struct CategoryManager {
   /** 名称行卡片：预设只读 / 自定义可编辑（上下移+重命名+删除） */
   @Builder
   nameRow(name: string, idx: number) {
-    const def: NameDef | undefined = this.findDef(name);
-    const preset: boolean = this.isPreset(name);
-    const count: number = this.usageCounts[name] ?? 0;
-
     Stack({ alignContent: Alignment.TopStart }) {
       Row() {
       }
@@ -360,20 +356,21 @@ struct CategoryManager {
             .fontSize(Theme.textBody)
             .fontWeight(FontWeight.Bold)
             .fontColor(Theme.textPrimary)
-          Text(preset ? '预设（不可编辑）' : `${count} 件物资使用中`)
+          Text(this.isPreset(name) ? '预设（不可编辑）' : `${this.usageCounts[name] ?? 0} 件物资使用中`)
             .fontSize(Theme.textCaption)
-            .fontColor(preset ? Theme.textTertiary : Theme.textSecondary)
+            .fontColor(this.isPreset(name) ? Theme.textTertiary : Theme.textSecondary)
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
 
-        if (!preset && def !== undefined) {
+        if (!this.isPreset(name) && this.findDef(name) !== undefined) {
           Row({ space: Theme.tinyGap }) {
             // 上移/下移（沿用 CustomFieldManager 的紧凑按钮模式）
             this.smallIconBtn(
               $r('sys.symbol.chevron_up'),
-              idx > 0 && def !== undefined && this.defs.indexOf(def) > 0,
+              this.moveUpEnabled(name),
               () => {
+                const def: NameDef | undefined = this.findDef(name);
                 if (def !== undefined) {
                   this.move(def, -1);
                 }
@@ -381,19 +378,22 @@ struct CategoryManager {
             )
             this.smallIconBtn(
               $r('sys.symbol.chevron_down'),
-              def !== undefined && this.defs.indexOf(def) < this.defs.length - 1,
+              this.moveDownEnabled(name),
               () => {
+                const def: NameDef | undefined = this.findDef(name);
                 if (def !== undefined) {
                   this.move(def, 1);
                 }
               }
             )
             this.smallTextBtn('重命名', () => {
+              const def: NameDef | undefined = this.findDef(name);
               if (def !== undefined) {
                 this.openRenameSheet(def);
               }
             })
             this.smallDangerBtn('删除', () => {
+              const def: NameDef | undefined = this.findDef(name);
               if (def !== undefined) {
                 this.confirmDelete(def);
               }
@@ -408,6 +408,24 @@ struct CategoryManager {
     }
     .width('100%')
     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+  }
+
+  /** 上移是否可用（该名称的自定义定义不在首位） */
+  private moveUpEnabled(name: string): boolean {
+    const def: NameDef | undefined = this.findDef(name);
+    if (def === undefined) {
+      return false;
+    }
+    return this.defs.indexOf(def) > 0;
+  }
+
+  /** 下移是否可用（该名称的自定义定义不在末位） */
+  private moveDownEnabled(name: string): boolean {
+    const def: NameDef | undefined = this.findDef(name);
+    if (def === undefined) {
+      return false;
+    }
+    return this.defs.indexOf(def) < this.defs.length - 1;
   }
 
   /** 上移/下移 32x32 白底黑边 */

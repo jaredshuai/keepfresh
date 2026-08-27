@@ -91,7 +91,7 @@ struct ItemDetail {
   }
 
   /** 标记生命周期状态（开封/用完/丢弃/恢复在库），更新后刷新视图 */
-  private async applyStatus(status: string, handledType?: string, toastMsg: string): Promise<void> {
+  private async applyStatus(status: string, toastMsg: string, handledType?: string): Promise<void> {
     if (this.updatingStatus || this.itemId < 0) {
       return;
     }
@@ -333,7 +333,7 @@ struct ItemDetail {
               .backgroundColor(Theme.cardBg)
               .border(Theme.borderThin)
               .onClick(() => {
-                this.applyStatus(MaterialStatus.ACTIVE, undefined, '已恢复为在库');
+                this.applyStatus(MaterialStatus.ACTIVE, '已恢复为在库');
               })
           }
           .width('100%')
@@ -369,7 +369,7 @@ struct ItemDetail {
           : label === '用完' ? '已标记为已用完'
             : label === '丢弃' ? '已标记为已丢弃'
               : '已恢复为未开封';
-        this.applyStatus(status, handledType, toast);
+        this.applyStatus(status, toast, handledType);
       })
   }
 
