@@ -291,18 +291,23 @@ export class BackupService {
       const fieldIdMap = await this.resolveCustomFieldDefs(db, data.customFields || []);
 
       // ── 1.5 还原自定义分类/位置定义（v2+；v1 备份无此字段自动跳过）──
-      if (data.nameDefs && Array.isArray(data.nameDefs) && data.nameDefs.length > 0) {
+      // 空数组也要 restore：overwrite 语义下需清掉本地定义，不能靠 length>0 跳过
+      if (data.nameDefs && Array.isArray(data.nameDefs)) {
+        this.validateNameDefs(data.nameDefs);
         await this.restoreNameDefs(db, data.nameDefs, mode);
       }
 
       // ── 2. 处理物资 ──
       let importedCount: number = 0;
+      // 冲突判定/清空范围须含回收站（软删除）行，否则 merge 会给回收站物品插重复业务键、
+      // overwrite 会残留旧回收站行 —— 快照语义要求全集对齐
+      const allFilter: MaterialFilter = { includeDeleted: true };
 
       if (mode === 'overwrite') {
-        // 清空后导入：删除所有现有物资
-        const existing: Material[] = await db.listAll();
+        // 清空后导入：物理清除所有现有物资（含回收站），保证真正的快照替换
+        const existing: Material[] = await db.listAll(allFilter);
         for (const m of existing) {
-          await db.remove(m.id);
+          await db.purge(m.id);
         }
         // 全部作为新增插入
         for (const m of data.materials) {
@@ -311,8 +316,8 @@ export class BackupService {
           importedCount++;
         }
       } else {
-        // 增量合并：冲突覆盖、不冲突新增
-        const existing: Material[] = await db.listAll();
+        // 增量合并：冲突覆盖、不冲突新增（冲突集含回收站行，避免重复业务键）
+        const existing: Material[] = await db.listAll(allFilter);
         const existingByKey = new Map<string, Material>();
         for (const m of existing) {
           existingByKey.set(this.businessKey(m), m);
@@ -356,6 +361,28 @@ export class BackupService {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, `Execute import failed: ${e.code}, ${e.message}`);
       return { success: false, importedCount: 0, warnings, message: '导入失败，请重试' };
+    }
+  }
+
+  /**
+   * 校验备份中的 nameDefs：kind 合法、name 非空字符串、order 为非负整数。
+   * 全量校验通过后才允许落库（restoreNameDefs 会先删后插），避免中途失败留下半成品。
+   */
+  private validateNameDefs(imported: NameDefBackup[]): void {
+    for (let i = 0; i < imported.length; i++) {
+      const d = imported[i];
+      const kindStr: string = `${d.kind ?? ''}`;
+      if (kindStr !== 'category' && kindStr !== 'location') {
+        throw new Error(`nameDefs[${i}].kind 非法: ${kindStr}`);
+      }
+      const n: string = `${d.name ?? ''}`.trim();
+      if (n.length === 0 || n.length > 20) {
+        throw new Error(`nameDefs[${i}].name 非法（空或超 20 字）`);
+      }
+      const o = d.order;
+      if (o !== undefined && o !== null && (typeof o !== 'number' || o < 0 || !Number.isInteger(o))) {
+        throw new Error(`nameDefs[${i}].order 非法: ${o}`);
+      }
     }
   }
 

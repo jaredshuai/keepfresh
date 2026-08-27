@@ -9,6 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getEtsFiles } from './lib/ets-files.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
@@ -18,7 +19,6 @@ const pagesDir = path.join(etsRoot, 'pages');
 const DB_FILE = path.join(etsRoot, 'db', 'MaterialDb.ets');
 const MODEL_FILE = path.join(etsRoot, 'model', 'Material.ets');
 const EXPIRY_FILE = path.join(etsRoot, 'service', 'ExpiryService.ets');
-const COMMON_API_FILES = ['QuantityUnit.ets', 'InputNormalize.ets', 'SearchFilter.ets', 'CategoryOrder.ets', 'DateUtils.ets'];
 
 // ─────────────────────────── 白名单（每条附理由） ───────────────────────────
 
@@ -85,6 +85,10 @@ const RULE4_WHITELIST = {
     normalizeText: 'InputNormalize 内部组合件（被 normalizeNullableText/parseNonNegativeInteger 复用）',
     normalizeNonNegativeInteger: 'InputNormalize 内部组合件（被 parseNonNegativeInteger 复用）',
   },
+  'model/BarcodeProduct': {
+    // 规则 4 扩为全树枚举后新纳入：预置条码字典未接线（扫码建议只走历史记录），清理候选
+    findPresetBarcode: '预置条码字典未接线（扫码建议只走历史记录），清理候选',
+  },
 };
 
 // 规则 5：未使用 import 豁免（file 为相对 entry/src/main/ets 的路径）
@@ -99,21 +103,6 @@ const RULE5_WHITELIST = [
 ];
 
 // ─────────────────────────── 通用解析工具 ───────────────────────────
-
-// 递归读取目录下所有 .ets 文件（同 design-guard.js）
-function getEtsFiles(dir) {
-  const files = [];
-  const items = fs.readdirSync(dir, { withFileTypes: true });
-  for (const item of items) {
-    const fullPath = path.join(dir, item.name);
-    if (item.isDirectory()) {
-      files.push(...getEtsFiles(fullPath));
-    } else if (item.name.endsWith('.ets')) {
-      files.push(fullPath);
-    }
-  }
-  return files;
-}
 
 /**
  * 字符串/注释感知的全文剥离器（复用 design-guard.js stripLineComment 的字符串感知思路，
@@ -306,17 +295,24 @@ function runRule1() {
     violations.push('未能在 db/MaterialDb.ets 定位 rowToMaterial 方法体');
   }
   for (const field of fields) {
-    // 驼峰 → 下划线（quantity 例外：迁移库读取列 quantity_text）
+    // 驼峰 → 下划线（quantity 例外：写入要求双列，读取兼容历史 quantity_text）
     const snake = field.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
-    const candidates = field === 'quantity' ? [snake, 'quantity_text'] : [snake];
     const reason = RULE1_WHITELIST[field];
     if (reason) {
       whitelistHits.push(`Material.${field} —— ${reason}`);
-    } else if (!candidates.some(k => toRowKeys.has(k))) {
-      violations.push(`Material.${field} 缺 toRow 写入键（期望：${candidates.join(' / ')}）`);
+    } else if (field === 'quantity') {
+      // 写入侧：quantity 与 quantity_text 必须双列齐写（迁移期 REAL→TEXT 双写不变量，
+      // 只写其一会导致 REAL/TEXT 两列漂移，历史行读取口径不一致）
+      if (!toRowKeys.has('quantity') || !toRowKeys.has('quantity_text')) {
+        violations.push('Material.quantity 缺 toRow 写入键（写入要求 quantity + quantity_text 双列齐写）');
+      }
+    } else if (!toRowKeys.has(snake)) {
+      violations.push(`Material.${field} 缺 toRow 写入键（期望：${snake}）`);
     }
-    if (!candidates.some(k => rtmCols.has(k))) {
-      violations.push(`Material.${field} 缺 rowToMaterial 读取列（期望：${candidates.join(' / ')}）`);
+    // 读取侧：兼容历史库（老迁移行可能只填了其中一列，二选一即可）
+    const readCandidates = field === 'quantity' ? [snake, 'quantity_text'] : [snake];
+    if (!readCandidates.some(k => rtmCols.has(k))) {
+      violations.push(`Material.${field} 缺 rowToMaterial 读取列（期望：${readCandidates.join(' / ')}）`);
     }
   }
   const stat = `Material 字段 ${fields.length} 个 / toRow 写入键 ${toRowKeys.size} 个 / rowToMaterial 读取列 ${rtmCols.size} 个`;
@@ -329,8 +325,16 @@ function runRule2() {
 
   // CREATE_TABLE_V2_SQL 模板字符串（raw 侧字符串保留，可取到列定义）
   const sqlMatch = db.stripped.raw.match(/const\s+CREATE_TABLE_V2_SQL[^\n`]*`([\s\S]*?)`/);
+  // 列名解析不依赖类型名（不再硬编码 INTEGER/TEXT/REAL）：行首标识符 + 任意类型词即视为列声明，
+  // 用 SQL 声明关键字排除 PRIMARY KEY / UNIQUE / CHECK 等约束行，防止漏检非三种类型的新列
+  const SQL_DECL_KEYWORDS = new Set([
+    'primary', 'foreign', 'unique', 'check', 'constraint', 'index',
+    'key', 'create', 'table', 'on', 'default', 'not', 'null', 'and',
+  ]);
   const createCols = sqlMatch
-    ? [...sqlMatch[1].matchAll(/(?:^|\n)\s*([a-z_]\w*)\s+(?:INTEGER|TEXT|REAL)\b/g)].map(m => m[1])
+    ? [...sqlMatch[1].matchAll(/(?:^|\n)\s*([a-z_]\w*)\s+[A-Za-z]/g)]
+        .filter(m => !SQL_DECL_KEYWORDS.has(m[1].toLowerCase()))
+        .map(m => m[1])
     : [];
   // migrate() 中每条 ALTER TABLE materials ADD COLUMN xxx
   const alterCols = [...db.stripped.raw.matchAll(/ALTER TABLE \$\{TABLE\} ADD COLUMN (\w+)/g)].map(m => m[1]);
@@ -416,8 +420,17 @@ function runRule3() {
 }
 
 // 规则 4 · 导出 API 必须有非测试外部调用者
-function collectApis() {
+function collectApis(allFiles) {
   const apis = [];
+  const seen = new Set();
+  const add = (name, group, module, defFile) => {
+    const key = `${group}|${name}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    apis.push({ name, group, module, defFile });
+  };
   // MaterialDb public 方法：async xxx(...)（private async 不算）+ static getInstance
   const db = readEts(DB_FILE);
   const dbMethods = [...db.stripped.code.matchAll(/(?:^|\n)\s*async\s+(\w+)\s*\(/g)].map(m => m[1]);
@@ -425,26 +438,27 @@ function collectApis() {
     dbMethods.push('getInstance');
   }
   for (const name of dbMethods) {
-    apis.push({ name, group: 'MaterialDb', module: 'db/MaterialDb.ets', defFile: DB_FILE });
+    add(name, 'MaterialDb', 'db/MaterialDb.ets', DB_FILE);
   }
-  // ExpiryService 的 export function
-  const expiry = readEts(EXPIRY_FILE);
-  for (const m of expiry.stripped.code.matchAll(/(?:^|\n)export\s+function\s+(\w+)\s*\(/g)) {
-    apis.push({ name: m[1], group: 'ExpiryService', module: 'service/ExpiryService.ets', defFile: EXPIRY_FILE });
-  }
-  // common 五文件的 export function
-  for (const f of COMMON_API_FILES) {
-    const p = path.join(etsRoot, 'common', f);
-    const s = readEts(p);
-    for (const m of s.stripped.code.matchAll(/(?:^|\n)export\s+function\s+(\w+)\s*\(/g)) {
-      apis.push({ name: m[1], group: 'common', module: `common/${f}`, defFile: p });
+  // 其余：枚举 ETS 全树的 export function（不依赖硬编码文件清单，新增文件自动纳入）。
+  // 分组沿用审计口径：ExpiryService / common 保留；其余按模块相对路径（如 model/CustomField）
+  for (const fi of allFiles) {
+    if (path.resolve(fi.file) === path.resolve(DB_FILE)) {
+      continue; // MaterialDb 的 class 方法已在上面单独处理
+    }
+    const rel = relPath(fi.file);
+    const group = rel === 'service/ExpiryService.ets' ? 'ExpiryService'
+      : rel.startsWith('common/') ? 'common'
+        : rel.replace(/\.ets$/, '');
+    for (const m of fi.stripped.code.matchAll(/(?:^|\n)export\s+function\s+(\w+)\s*\(/g)) {
+      add(m[1], group, rel, fi.file);
     }
   }
   return apis;
 }
 
 function runRule4(allFiles) {
-  const apis = collectApis();
+  const apis = collectApis(allFiles);
   const violations = [];
   const whitelistHits = [];
   const notes = [];

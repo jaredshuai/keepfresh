@@ -82,7 +82,7 @@ export async function scanForSuggestions(
  * 搜索建议去重：预填字段组合（名称/分类/单位/保质期天数）相同的历史记录只保留最近入库的一条。
  * 入参须已按最近入库倒序。
  */
-export function buildScanSuggestions(history: Material[]): Material[] {
+function buildScanSuggestions(history: Material[]): Material[] {
   const seen: Set<string> = new Set<string>();
   const suggestions: Material[] = [];
   for (let i = 0; i < history.length; i++) {
