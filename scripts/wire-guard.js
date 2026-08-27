@@ -576,6 +576,27 @@ function runRule6(allFiles) {
   return { violations, whitelistHits: [], stat };
 }
 
+// 规则 7：AGENTS.md 引用的 .ets 路径必须真实存在（ticket #17，文档→代码单向）
+// 只校验存在性，不要求「代码文件必须写进文档」——反向会劝退小改动。
+function runRule7() {
+  const violations = [];
+  const agentsPath = path.join(rootDir, 'AGENTS.md');
+  const content = fs.readFileSync(agentsPath, 'utf8');
+  const re = /`([^`\n]*\.ets)`/g;
+  let m;
+  let count = 0;
+  while ((m = re.exec(content)) !== null) {
+    const p = m[1];
+    if (p.includes('*') || p.includes('**')) continue;
+    count++;
+    if (!fs.existsSync(path.join(rootDir, p))) {
+      violations.push(`AGENTS.md 引用的 ${p} 不存在（文件已删/移？请同步更新文档）`);
+    }
+  }
+  const stat = `校验 AGENTS.md 中 ${count} 个 .ets 引用路径（单向：文档→代码）`;
+  return { violations, whitelistHits: [], stat };
+}
+
 // ─────────────────────────── 主逻辑 ───────────────────────────
 
 console.log('🔍 跨层接线守护检查（固化接线审计不变量）...\n');
@@ -589,6 +610,7 @@ const results = [
   { title: '规则 4 · 导出 API 必须有非测试外部调用者', ...runRule4(allFiles) },
   { title: '规则 5 · 未使用 import 检测', ...runRule5(allFiles) },
   { title: '规则 6 · custom_fields 键语义裸操作检测', ...runRule6(allFiles) },
+  { title: '规则 7 · AGENTS.md 路径存在性（文档→代码单向）', ...runRule7() },
 ];
 
 let hasError = false;
