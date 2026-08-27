@@ -10,6 +10,7 @@ import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
 import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUnit';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
+import { mergeWithDefaults } from '../common/CategoryOrder';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
@@ -37,6 +38,7 @@ struct AddItem {
   @State quantityStr: string = '1';
   @State unit: string = DEFAULT_UNITS[0];
   @State location: string = DEFAULT_LOCATIONS[2];
+  @State locations: string[] = DEFAULT_LOCATIONS.slice();
   @State productionDate: string = todayStr();
   @State shelfLifeStr: string = '30';
   @State shelfLifeMode: string = 'days';       // 'days' | 'months'
@@ -74,6 +76,11 @@ struct AddItem {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     this.db.init(ctx)
       .then(() => {
+        // 位置候选：预设 + 已有物资出现过的位置合并去重
+        return this.db.listLocations();
+      })
+      .then((locs: string[]) => {
+        this.locations = mergeWithDefaults(DEFAULT_LOCATIONS, locs);
         return this.db.listCustomFields();
       })
       .then((defs: CustomField[]) => {
@@ -145,6 +152,10 @@ struct AddItem {
 
   private presetLabels(): string[] {
     return SHELF_PRESET_DAYS.map((d: number): string => `${d}天`);
+  }
+
+  private presetMonthLabels(): string[] {
+    return SHELF_PRESET_MONTHS.map((m: number): string => `${m}个月`);
   }
 
   private pickCustomFieldDate(fieldId: string): void {
@@ -501,14 +512,18 @@ struct AddItem {
                 this.category = v;
               })
 
-              this.fieldLabel('数量 *')
+              this.fieldLabel('存放位置')
+              this.chipGroup(this.locations, this.location, (v: string) => {
+                this.location = v;
+              })
+
+              this.fieldLabel('数量 *（支持 500g 混合输入）')
               Stack() {
                 Row()
                   .width('100%')
                   .backgroundColor(Theme.ink)
                   .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
-                TextInput({ text: this.quantityStr, placeholder: '数量' })
-                  .type(InputType.Number)
+                TextInput({ text: this.quantityStr, placeholder: '如：2 或 500g' })
                   .fontSize(Theme.textBody)
                   .fontColor(Theme.textPrimary)
                   .placeholderColor(Theme.textTertiary)
@@ -572,29 +587,102 @@ struct AddItem {
               }
               .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
-              this.fieldLabel('保质期（天）*')
-              Stack() {
-                Row()
-                  .width('100%')
-                  .backgroundColor(Theme.ink)
-                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
-                TextInput({ text: this.shelfLifeStr, placeholder: '天数' })
-                  .type(InputType.Number)
-                  .fontSize(Theme.textBody)
-                  .fontColor(Theme.textPrimary)
-                  .placeholderColor(Theme.textTertiary)
-                  .backgroundColor(Theme.inputBg)
-                  .border(Theme.borderThin)
-                  .borderRadius(Theme.inputRadius)
-                  .height(48)
-                  .onChange((v: string) => {
-                    this.shelfLifeStr = v;
-                  })
+              // ── 保质期模式切换：天数 / 月数（包装常标月数，月末自动 clamp）──
+              Row({ space: Theme.smallGap }) {
+                Stack() {
+                  Column()
+                    .height(34)
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: 3, top: 3 })
+                  Text('按天数')
+                    .fontSize(Theme.textSmall)
+                    .fontWeight(this.shelfLifeMode === 'days' ? FontWeight.Bold : FontWeight.Medium)
+                    .fontColor(this.shelfLifeMode === 'days' ? Theme.textWhite : Theme.textPrimary)
+                    .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+                    .backgroundColor(this.shelfLifeMode === 'days' ? Theme.yellowDark : Theme.cardBg)
+                    .border(Theme.borderThin)
+                    .onClick(() => {
+                      this.shelfLifeMode = 'days';
+                    })
+                }
+                .padding({ right: 3, bottom: 3 })
+
+                Stack() {
+                  Column()
+                    .height(34)
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: 3, top: 3 })
+                  Text('按月数')
+                    .fontSize(Theme.textSmall)
+                    .fontWeight(this.shelfLifeMode === 'months' ? FontWeight.Bold : FontWeight.Medium)
+                    .fontColor(this.shelfLifeMode === 'months' ? Theme.textWhite : Theme.textPrimary)
+                    .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+                    .backgroundColor(this.shelfLifeMode === 'months' ? Theme.yellowDark : Theme.cardBg)
+                    .border(Theme.borderThin)
+                    .onClick(() => {
+                      this.shelfLifeMode = 'months';
+                      if (this.shelfLifeMonthsStr.length === 0) {
+                        this.shelfLifeMonthsStr = '1';
+                      }
+                    })
+                }
+                .padding({ right: 3, bottom: 3 })
               }
-              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-              this.chipGroup(this.presetLabels(), `${this.shelfLifeStr}天`, (v: string) => {
-                this.shelfLifeStr = v.replace('天', '');
-              })
+              .width('100%')
+              .justifyContent(FlexAlign.Start)
+
+              if (this.shelfLifeMode === 'days') {
+                this.fieldLabel('保质期（天）*')
+                Stack() {
+                  Row()
+                    .width('100%')
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                  TextInput({ text: this.shelfLifeStr, placeholder: '天数' })
+                    .type(InputType.Number)
+                    .fontSize(Theme.textBody)
+                    .fontColor(Theme.textPrimary)
+                    .placeholderColor(Theme.textTertiary)
+                    .backgroundColor(Theme.inputBg)
+                    .border(Theme.borderThin)
+                    .borderRadius(Theme.inputRadius)
+                    .height(48)
+                    .onChange((v: string) => {
+                      this.shelfLifeStr = v;
+                    })
+                }
+                .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+                this.chipGroup(this.presetLabels(), `${this.shelfLifeStr}天`, (v: string) => {
+                  this.shelfLifeStr = v.replace('天', '');
+                })
+              } else {
+                this.fieldLabel('保质期（月）*')
+                Stack() {
+                  Row()
+                    .width('100%')
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                  TextInput({ text: this.shelfLifeMonthsStr, placeholder: '月数（如 12）' })
+                    .type(InputType.Number)
+                    .fontSize(Theme.textBody)
+                    .fontColor(Theme.textPrimary)
+                    .placeholderColor(Theme.textTertiary)
+                    .backgroundColor(Theme.inputBg)
+                    .border(Theme.borderThin)
+                    .borderRadius(Theme.inputRadius)
+                    .height(48)
+                    .onChange((v: string) => {
+                      this.shelfLifeMonthsStr = v;
+                    })
+                }
+                .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+                this.chipGroup(this.presetMonthLabels(), `${this.shelfLifeMonthsStr}个月`, (v: string) => {
+                  this.shelfLifeMonthsStr = v.replace('个月', '');
+                })
+                Text('按月加法自动处理月末（1/31 + 1个月 = 2/28 或 2/29）')
+                  .fontSize(Theme.textCaption)
+                  .fontColor(Theme.textTertiary)
+              }
 
               Stack() {
                 Row()

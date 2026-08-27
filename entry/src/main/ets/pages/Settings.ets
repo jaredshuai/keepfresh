@@ -541,7 +541,7 @@ struct Settings {
           .width('100%')
           .alignItems(HorizontalAlign.Start)
 
-          // ─── 4. 自定义字段管理 ───
+          // ─── 4. 物资扩展与分类管理 ───
           Column({ space: Theme.smallGap }) {
             Row({ space: Theme.smallGap }) {
               Column() {
@@ -555,7 +555,7 @@ struct Settings {
               .border(Theme.borderThin)
               .justifyContent(FlexAlign.Center)
 
-              Text('物资扩展')
+              Text('物资扩展与组织')
                 .fontSize(Theme.textCaption)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(Theme.textPrimary)
@@ -582,6 +582,20 @@ struct Settings {
                     .fontSize(18)
                     .fontColor([Theme.textTertiary])
                 }
+
+                Divider().color(Theme.divider).strokeWidth(1)
+
+                SettingsRowComponent({
+                  label: '分类与位置管理',
+                  desc: '新增 / 重命名 / 排序自定义分类和存放位置',
+                  handleRowClick: () => {
+                    this.getUIContext().getRouter().pushUrl({ url: 'pages/CategoryManager' });
+                  }
+                }) {
+                  SymbolGlyph($r('sys.symbol.chevron_right'))
+                    .fontSize(18)
+                    .fontColor([Theme.textTertiary])
+                }
               }
               .width('100%')
               .backgroundColor(Theme.cardBg)
@@ -593,7 +607,59 @@ struct Settings {
           .width('100%')
           .alignItems(HorizontalAlign.Start)
 
-          // ─── 5. 关于 ───
+          // ─── 5. 数据安全（回收站） ───
+          Column({ space: Theme.smallGap }) {
+            Row({ space: Theme.smallGap }) {
+              Column() {
+                SymbolGlyph($r('sys.symbol.trash'))
+                  .fontSize(14)
+                  .fontColor([Theme.textWhite])
+              }
+              .width(20)
+              .height(20)
+              .backgroundColor(Theme.textSecondary)
+              .border(Theme.borderThin)
+              .justifyContent(FlexAlign.Center)
+
+              Text('数据安全')
+                .fontSize(Theme.textCaption)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(Theme.textPrimary)
+                .letterSpacing(0.5)
+            }
+            .width('100%')
+            .padding({ left: 4 })
+
+            Stack() {
+              Column()
+                .width('100%')
+                .backgroundColor(Theme.ink)
+                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+              Column() {
+                SettingsRowComponent({
+                  label: '回收站',
+                  desc: '查看已删除的物资，恢复或彻底删除',
+                  handleRowClick: () => {
+                    this.getUIContext().getRouter().pushUrl({ url: 'pages/RecycleBin' });
+                  }
+                }) {
+                  SymbolGlyph($r('sys.symbol.chevron_right'))
+                    .fontSize(18)
+                    .fontColor([Theme.textTertiary])
+                }
+              }
+              .width('100%')
+              .backgroundColor(Theme.cardBg)
+              .border(Theme.borderThin)
+            }
+            .width('100%')
+            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start)
+
+          // ─── 6. 关于 ───
           Column({ space: Theme.smallGap }) {
             Row({ space: Theme.smallGap }) {
               Column() {

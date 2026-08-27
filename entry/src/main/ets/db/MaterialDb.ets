@@ -61,6 +61,30 @@ export interface MaterialFilter {
   includeDeleted?: boolean; // 默认 false：软删除项不返回
 }
 
+/** 自定义名称定义（分类/位置共用，kind 区分） */
+export type NameKind = 'category' | 'location';
+
+export interface NameDef {
+  id: number;
+  kind: string;
+  name: string;
+  order: number;
+  createdAt: string;
+}
+
+const NAME_DEFS_TABLE: string = 'name_defs';
+
+const CREATE_NAME_DEFS_TABLE_SQL: string = `
+CREATE TABLE IF NOT EXISTS ${NAME_DEFS_TABLE} (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  sort_order INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(kind, name)
+)
+`;
+
 export class MaterialDb {
   private store?: relationalStore.RdbStore;
   private static instance?: MaterialDb;
@@ -108,6 +132,7 @@ export class MaterialDb {
       this.store = await relationalStore.getRdbStore(context, config);
       await this.migrate();
       await this.store.executeSql(CREATE_CUSTOM_FIELD_DEFS_TABLE_SQL);
+      await this.store.executeSql(CREATE_NAME_DEFS_TABLE_SQL);
     } catch (e) {
       this.rethrow(e, 'init db');
     }
@@ -634,5 +659,237 @@ export class MaterialDb {
         this.rethrow(e, `updateCustomFieldsOrder[${i}]`);
       }
     }
+  }
+
+  /* ============================================================
+   * name_defs：分类 / 位置自定义名称（完整 CRUD）
+   * ============================================================ */
+
+  private rowToNameDef(rs: relationalStore.ResultSet): NameDef {
+    const def: NameDef = {
+      id: rs.getLong(rs.getColumnIndex('id')),
+      kind: rs.getString(rs.getColumnIndex('kind')),
+      name: rs.getString(rs.getColumnIndex('name')),
+      order: rs.getLong(rs.getColumnIndex('sort_order')),
+      createdAt: rs.getString(rs.getColumnIndex('created_at'))
+    };
+    return def;
+  }
+
+  /** 查询某 kind 的全部自定义名称，按 sort_order 升序 */
+  async listNameDefs(kind: NameKind): Promise<NameDef[]> {
+    const list: NameDef[] = [];
+    try {
+      const predicates = new relationalStore.RdbPredicates(NAME_DEFS_TABLE);
+      predicates.equalTo('kind', kind);
+      predicates.orderByAsc('sort_order');
+      predicates.orderByAsc('id');
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      try {
+        while (rs.goToNextRow()) {
+          list.push(this.rowToNameDef(rs));
+        }
+      } finally {
+        rs.close();
+      }
+    } catch (e) {
+      this.rethrow(e, 'listNameDefs');
+    }
+    return list;
+  }
+
+  /**
+   * 有效名称列表（合并）：自定义定义（按排序）→ 预设（去重）→ 物资中已使用但未定义的（去重，追加尾部）。
+   * 用于表单 Chip 与首页筛选。
+   */
+  async listEffectiveNames(kind: NameKind, defaults: string[]): Promise<string[]> {
+    const defs: NameDef[] = await this.listNameDefs(kind);
+    const column: string = kind === 'category' ? 'category' : 'location';
+    const used: Set<string> = new Set<string>();
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.equalTo('is_deleted', 0);
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates, [column]);
+      try {
+        while (rs.goToNextRow()) {
+          const idx: number = rs.getColumnIndex(column);
+          if (idx >= 0 && !rs.isColumnNull(idx)) {
+            const v: string = rs.getString(idx).trim();
+            if (v.length > 0) {
+              used.add(v);
+            }
+          }
+        }
+      } finally {
+        rs.close();
+      }
+    } catch (e) {
+      this.rethrow(e, 'listEffectiveNames');
+    }
+    const result: string[] = [];
+    const seen: Set<string> = new Set<string>();
+    for (let i = 0; i < defs.length; i++) {
+      const n: string = defs[i].name.trim();
+      if (n.length > 0 && !seen.has(n)) {
+        seen.add(n);
+        result.push(n);
+      }
+    }
+    for (let i = 0; i < defaults.length; i++) {
+      const n: string = defaults[i].trim();
+      if (n.length > 0 && !seen.has(n)) {
+        seen.add(n);
+        result.push(n);
+      }
+    }
+    Array.from(used).forEach((n: string): void => {
+      if (!seen.has(n)) {
+        seen.add(n);
+        result.push(n);
+      }
+    });
+    return result;
+  }
+
+  /** 新增名称（重名返回 -1） */
+  async insertNameDef(kind: NameKind, name: string): Promise<number> {
+    const trimmed: string = name.trim();
+    if (trimmed.length === 0) {
+      return -1;
+    }
+    try {
+      const existing: NameDef[] = await this.listNameDefs(kind);
+      for (let i = 0; i < existing.length; i++) {
+        if (existing[i].name === trimmed) {
+          return -1;
+        }
+      }
+      const row: relationalStore.ValuesBucket = {
+        'kind': kind,
+        'name': trimmed,
+        'sort_order': existing.length,
+        'created_at': new Date().toISOString().slice(0, 10)
+      };
+      return await this.getStore().insert(NAME_DEFS_TABLE, row);
+    } catch (e) {
+      this.rethrow(e, 'insertNameDef');
+    }
+  }
+
+  /** 重命名：更新定义 + 同步所有引用该名称的物资文本字段 */
+  async renameNameDef(id: number, newName: string): Promise<number> {
+    const trimmed: string = newName.trim();
+    if (trimmed.length === 0) {
+      return -1;
+    }
+    try {
+      // 取原定义
+      const predicates = new relationalStore.RdbPredicates(NAME_DEFS_TABLE);
+      predicates.equalTo('id', id);
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      let kind: string = '';
+      let oldName: string = '';
+      try {
+        if (rs.goToNextRow()) {
+          kind = rs.getString(rs.getColumnIndex('kind'));
+          oldName = rs.getString(rs.getColumnIndex('name'));
+        }
+      } finally {
+        rs.close();
+      }
+      if (kind.length === 0 || oldName.length === 0) {
+        return -1;
+      }
+      // 同 kind 重名检查
+      const siblings: NameDef[] = await this.listNameDefs(kind as NameKind);
+      for (let i = 0; i < siblings.length; i++) {
+        if (siblings[i].id !== id && siblings[i].name === trimmed) {
+          return -1;
+        }
+      }
+      // 更新定义
+      const updateRow: relationalStore.ValuesBucket = {
+        'name': trimmed
+      };
+      const affected: number = await this.getStore().update(updateRow, predicates);
+      // 同步物资引用（软删除项也一并改，保持一致）
+      if (oldName !== trimmed) {
+        if (kind === 'category') {
+          const matPredicates = new relationalStore.RdbPredicates(TABLE);
+          matPredicates.equalTo('category', oldName);
+          const matRow: relationalStore.ValuesBucket = {
+            'category': trimmed
+          };
+          await this.getStore().update(matRow, matPredicates);
+        } else {
+          const matPredicates = new relationalStore.RdbPredicates(TABLE);
+          matPredicates.equalTo('location', oldName);
+          const matRow: relationalStore.ValuesBucket = {
+            'location': trimmed
+          };
+          await this.getStore().update(matRow, matPredicates);
+        }
+      }
+      return affected;
+    } catch (e) {
+      this.rethrow(e, 'renameNameDef');
+    }
+  }
+
+  /** 删除名称定义（不影响物资文本）；返回受影响行数 */
+  async removeNameDef(id: number): Promise<number> {
+    try {
+      const predicates = new relationalStore.RdbPredicates(NAME_DEFS_TABLE);
+      predicates.equalTo('id', id);
+      return await this.getStore().delete(predicates);
+    } catch (e) {
+      this.rethrow(e, 'removeNameDef');
+    }
+  }
+
+  /** 重排：把 fromIndex 移到 toIndex 后按新顺序批量写 sort_order */
+  async moveNameDef(kind: NameKind, fromIndex: number, toIndex: number): Promise<NameDef[]> {
+    const defs: NameDef[] = await this.listNameDefs(kind);
+    if (fromIndex < 0 || fromIndex >= defs.length || toIndex < 0 || toIndex >= defs.length || fromIndex === toIndex) {
+      return defs;
+    }
+    const moved: NameDef = defs.splice(fromIndex, 1)[0];
+    defs.splice(toIndex, 0, moved);
+    for (let i = 0; i < defs.length; i++) {
+      try {
+        const predicates = new relationalStore.RdbPredicates(NAME_DEFS_TABLE);
+        predicates.equalTo('id', defs[i].id);
+        const row: relationalStore.ValuesBucket = {
+          'sort_order': i
+        };
+        await this.getStore().update(row, predicates);
+        defs[i].order = i;
+      } catch (e) {
+        this.rethrow(e, `moveNameDef[${i}]`);
+      }
+    }
+    return defs;
+  }
+
+  /** 统计某名称在物资中的使用量（category 或 location 维度，排除软删除） */
+  async countNameUsage(kind: NameKind, name: string): Promise<number> {
+    const column: string = kind === 'category' ? 'category' : 'location';
+    let count: number = 0;
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.equalTo('is_deleted', 0);
+      predicates.equalTo(column, name.trim());
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates, ['id']);
+      try {
+        while (rs.goToNextRow()) {
+          count++;
+        }
+      } finally {
+        rs.close();
+      }
+    } catch (e) {
+      this.rethrow(e, 'countNameUsage');
+    }
+    return count;
   }
 }
