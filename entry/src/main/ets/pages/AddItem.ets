@@ -3,11 +3,13 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, DEFAULT_CATEGORIES, DEFAULT_UNITS, SHELF_PRESET_DAYS } from '../model/Material';
+import { Material, MaterialStatus, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS } from '../model/Material';
 import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
+import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUnit';
+import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
@@ -34,8 +36,11 @@ struct AddItem {
   @State category: string = DEFAULT_CATEGORIES[0];
   @State quantityStr: string = '1';
   @State unit: string = DEFAULT_UNITS[0];
+  @State location: string = DEFAULT_LOCATIONS[2];
   @State productionDate: string = todayStr();
   @State shelfLifeStr: string = '30';
+  @State shelfLifeMode: string = 'days';       // 'days' | 'months'
+  @State shelfLifeMonthsStr: string = '';
   @State note: string = '';
   @State barcode: string = '';
   @State showScanSheet: boolean = false;
@@ -47,6 +52,9 @@ struct AddItem {
   private db: MaterialDb = MaterialDb.getInstance();
   private editId: number = -1;
   private loadedCreatedAt: string = '';
+  private loadedStatus: string = MaterialStatus.ACTIVE;
+  private loadedHandledType: string | undefined = undefined;
+  private loadedHandledAt: string | undefined = undefined;
 
   private toast(message: string): void {
     try {
@@ -79,12 +87,25 @@ struct AddItem {
         if (m) {
           this.name = m.name;
           this.category = m.category;
-          this.quantityStr = m.quantity.toString();
-          this.unit = m.unit;
+          const normalized = normalizeQuantityUnit(m.quantity, m.unit);
+          this.quantityStr = normalized.quantity;
+          if (normalized.unit.length > 0) {
+            this.unit = normalized.unit;
+          }
+          this.location = m.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2];
           this.productionDate = m.productionDate;
-          this.shelfLifeStr = m.shelfLifeDays.toString();
+          if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
+            this.shelfLifeMode = 'months';
+            this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+          } else {
+            this.shelfLifeMode = 'days';
+            this.shelfLifeStr = m.shelfLifeDays.toString();
+          }
           this.note = m.note;
           this.loadedCreatedAt = m.createdAt;
+          this.loadedStatus = m.status ?? MaterialStatus.ACTIVE;
+          this.loadedHandledType = m.handledType;
+          this.loadedHandledAt = m.handledAt;
           this.barcode = m.barcode || '';
           if (m.customFields) {
             this.customFieldValues = copyStringRecord(m.customFields);
@@ -108,6 +129,13 @@ struct AddItem {
   }
 
   private expiryPreview(): string {
+    if (this.shelfLifeMode === 'months') {
+      const months = parseNonNegativeInteger(this.shelfLifeMonthsStr);
+      if (months === null || months < 1) {
+        return '—';
+      }
+      return calcExpiryDate(this.productionDate, 0, months);
+    }
     const days = Number(this.shelfLifeStr);
     if (this.shelfLifeStr === '' || Number.isNaN(days) || days < 1) {
       return '—';
@@ -197,19 +225,31 @@ struct AddItem {
     if (this.saving) {
       return;
     }
-    const qty = Number(this.quantityStr);
-    const days = Number(this.shelfLifeStr);
+    // 数量归一化：支持 "500g" 混合输入自动拆分
+    const normalizedQty = normalizeQuantityUnit(this.quantityStr, this.unit);
+    const qtyNumber = Number(normalizedQty.quantity);
+    // 保质期：月数模式或天数模式
+    const months = this.shelfLifeMode === 'months' ? parseNonNegativeInteger(this.shelfLifeMonthsStr) : null;
+    const days = this.shelfLifeMode === 'months' ? 365 * (months ?? 1) : Number(this.shelfLifeStr);
+
     if (this.name.trim().length === 0) {
       this.errorMsg = '请输入物资名称';
       return;
     }
-    if (this.quantityStr === '' || Number.isNaN(qty) || qty <= 0) {
+    if (normalizedQty.quantity === '' || Number.isNaN(qtyNumber) || qtyNumber <= 0) {
       this.errorMsg = '数量需大于 0';
       return;
     }
-    if (this.shelfLifeStr === '' || Number.isNaN(days) || days < 1) {
-      this.errorMsg = '保质期需至少 1 天';
-      return;
+    if (this.shelfLifeMode === 'months') {
+      if (months === null || months < 1) {
+        this.errorMsg = '保质期需至少 1 个月';
+        return;
+      }
+    } else {
+      if (this.shelfLifeStr === '' || Number.isNaN(days) || days < 1) {
+        this.errorMsg = '保质期需至少 1 天';
+        return;
+      }
     }
     for (const def of this.customFieldsDefs) {
       const val = this.customFieldValues[def.id] || '';
@@ -226,12 +266,20 @@ struct AddItem {
       id: this.editId,
       name: this.name.trim(),
       category: this.category,
-      quantity: qty,
-      unit: this.unit,
+      quantity: normalizedQty.quantity,
+      unit: normalizedQty.unit.length > 0 ? normalizedQty.unit : this.unit,
+      location: this.location,
       productionDate: this.productionDate,
       shelfLifeDays: Math.floor(days),
-      expiryDate: calcExpiryDate(this.productionDate, Math.floor(days)),
+      shelfLifeMonths: months ?? undefined,
+      expiryDate: months !== null && months >= 1
+        ? calcExpiryDate(this.productionDate, 0, months)
+        : calcExpiryDate(this.productionDate, Math.floor(days)),
       note: this.note.trim(),
+      status: this.isEdit ? this.loadedStatus : MaterialStatus.ACTIVE,
+      handledType: this.isEdit ? this.loadedHandledType : undefined,
+      handledAt: this.isEdit ? this.loadedHandledAt : undefined,
+      isDeleted: false,
       createdAt: this.isEdit ? this.loadedCreatedAt : now,
       updatedAt: now,
       barcode: this.barcode.trim().length > 0 ? this.barcode.trim() : undefined,

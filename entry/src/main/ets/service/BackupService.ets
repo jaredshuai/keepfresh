@@ -14,7 +14,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
 import { MaterialDb } from '../db/MaterialDb';
-import { Material } from '../model/Material';
+import { Material, MaterialStatus } from '../model/Material';
 import { CustomField, generateCustomFieldId } from '../model/CustomField';
 import { SettingsService } from './SettingsService';
 import { ReminderService, ReminderSettings } from './ReminderService';
@@ -429,12 +429,18 @@ export class BackupService {
       id: -1, // 默认新增，覆盖时由调用方设为现有 id
       name: m.name,
       category: m.category,
-      quantity: m.quantity,
+      quantity: typeof m.quantity === 'number' ? `${m.quantity}` : (m.quantity || '0'),
       unit: m.unit,
+      location: m.location || '',
       productionDate: m.productionDate,
       shelfLifeDays: m.shelfLifeDays,
+      shelfLifeMonths: m.shelfLifeMonths,
       expiryDate: m.expiryDate,
       note: m.note || '',
+      status: m.status || MaterialStatus.ACTIVE,
+      handledType: m.handledType,
+      handledAt: m.handledAt,
+      isDeleted: m.isDeleted === true,
       createdAt: m.createdAt || todayStr(),
       updatedAt: todayStr(),
       barcode: m.barcode,
