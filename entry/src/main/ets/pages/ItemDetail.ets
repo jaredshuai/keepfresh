@@ -25,6 +25,14 @@ struct ItemDetail {
   private db: MaterialDb = MaterialDb.getInstance();
   private itemId: number = -1;
 
+  private toast(message: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (e) {
+      console.error(`show toast failed: ${(e as BusinessError).message}`);
+    }
+  }
+
   onPageShow(): void {
     if (this.itemId < 0) {
       const params = this.getUIContext().getRouter().getParams() as RouteParams;
@@ -83,7 +91,7 @@ struct ItemDetail {
       } catch (e) {
         console.error(`sync reminder failed: ${(e as BusinessError).message}`);
       }
-      this.getUIContext().getPromptAction().showToast({ message: '已移入回收站' });
+      this.toast('已移入回收站');
       this.getUIContext().getRouter().back();
     } catch (e) {
       console.error(`delete failed: ${(e as BusinessError).message}`);
@@ -104,12 +112,12 @@ struct ItemDetail {
       } catch (e) {
         console.error(`sync reminder failed: ${(e as BusinessError).message}`);
       }
-      this.getUIContext().getPromptAction().showToast({ message: toastMsg });
+      this.toast(toastMsg);
       const fresh: Material | undefined = await this.db.getById(this.itemId);
       this.m = fresh;
     } catch (e) {
       console.error(`update status failed: ${(e as BusinessError).message}`);
-      this.getUIContext().getPromptAction().showToast({ message: '操作失败，请重试' });
+      this.toast('操作失败，请重试');
     } finally {
       this.updatingStatus = false;
     }

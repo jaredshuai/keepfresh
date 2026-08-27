@@ -16,6 +16,14 @@ struct RecycleBin {
   @State restoringId: number = -1;
   private db: MaterialDb = MaterialDb.getInstance();
 
+  private toast(message: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (e) {
+      console.error(`show toast failed: ${(e as BusinessError).message}`);
+    }
+  }
+
   aboutToAppear(): void {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     this.db.init(ctx)
@@ -45,11 +53,11 @@ struct RecycleBin {
     this.restoringId = id;
     try {
       await this.db.restore(id);
-      this.getUIContext().getPromptAction().showToast({ message: '已恢复' });
+      this.toast('已恢复');
       this.load();
     } catch (e) {
       console.error(`restore failed: ${(e as BusinessError).message}`);
-      this.getUIContext().getPromptAction().showToast({ message: '恢复失败，请重试' });
+      this.toast('恢复失败，请重试');
     } finally {
       this.restoringId = -1;
     }
@@ -77,7 +85,7 @@ struct RecycleBin {
   private async doPurge(m: Material): Promise<void> {
     try {
       await this.db.purge(m.id);
-      this.getUIContext().getPromptAction().showToast({ message: '已彻底删除' });
+      this.toast('已彻底删除');
       this.load();
     } catch (e) {
       console.error(`purge failed: ${(e as BusinessError).message}`);

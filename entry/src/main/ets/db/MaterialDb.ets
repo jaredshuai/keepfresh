@@ -145,7 +145,11 @@ export class MaterialDb {
   private async migrate(): Promise<void> {
     const store = this.getStore();
     // 新库：V2 全量建表（IF NOT EXISTS 对老库无副作用）
-    await store.executeSql(CREATE_TABLE_V2_SQL);
+    try {
+      await store.executeSql(CREATE_TABLE_V2_SQL);
+    } catch (e) {
+      this.rethrow(e, 'migrate create table');
+    }
     // 老库：逐列增量补齐
     const alterColumns: string[] = [
       `ALTER TABLE ${TABLE} ADD COLUMN location TEXT NOT NULL DEFAULT '';`,
@@ -666,14 +670,18 @@ export class MaterialDb {
    * ============================================================ */
 
   private rowToNameDef(rs: relationalStore.ResultSet): NameDef {
-    const def: NameDef = {
-      id: rs.getLong(rs.getColumnIndex('id')),
-      kind: rs.getString(rs.getColumnIndex('kind')),
-      name: rs.getString(rs.getColumnIndex('name')),
-      order: rs.getLong(rs.getColumnIndex('sort_order')),
-      createdAt: rs.getString(rs.getColumnIndex('created_at'))
-    };
-    return def;
+    try {
+      const def: NameDef = {
+        id: rs.getLong(rs.getColumnIndex('id')),
+        kind: rs.getString(rs.getColumnIndex('kind')),
+        name: rs.getString(rs.getColumnIndex('name')),
+        order: rs.getLong(rs.getColumnIndex('sort_order')),
+        createdAt: rs.getString(rs.getColumnIndex('created_at'))
+      };
+      return def;
+    } catch (e) {
+      this.rethrow(e, 'rowToNameDef');
+    }
   }
 
   /** 查询某 kind 的全部自定义名称，按 sort_order 升序 */

@@ -38,6 +38,14 @@ struct CategoryManager {
     return this.activeKind === 'category' ? 'category' : 'location';
   }
 
+  private toast(message: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (e) {
+      console.error(`show toast failed: ${(e as BusinessError).message}`);
+    }
+  }
+
   private defaults(): string[] {
     return this.activeKind === 'category' ? DEFAULT_CATEGORIES : DEFAULT_LOCATIONS;
   }
@@ -91,34 +99,34 @@ struct CategoryManager {
   private async saveName(): Promise<void> {
     const trimmed: string = this.inputName.trim();
     if (trimmed.length === 0) {
-      this.getUIContext().getPromptAction().showToast({ message: `请输入${this.kindLabel()}名称` });
+      this.toast(`请输入${this.kindLabel()}名称`);
       return;
     }
     if (trimmed.length > 20) {
-      this.getUIContext().getPromptAction().showToast({ message: '名称不能超过 20 字' });
+      this.toast('名称不能超过 20 字');
       return;
     }
     try {
       if (this.editingId < 0) {
         const rowId: number = await this.db.insertNameDef(this.kind(), trimmed);
         if (rowId < 0) {
-          this.getUIContext().getPromptAction().showToast({ message: '名称已存在' });
+          this.toast('名称已存在');
           return;
         }
-        this.getUIContext().getPromptAction().showToast({ message: '已添加' });
+        this.toast('已添加');
       } else {
         const affected: number = await this.db.renameNameDef(this.editingId, trimmed);
         if (affected < 0) {
-          this.getUIContext().getPromptAction().showToast({ message: '名称已存在或无效' });
+          this.toast('名称已存在或无效');
           return;
         }
-        this.getUIContext().getPromptAction().showToast({ message: '已重命名（物资引用已同步）' });
+        this.toast('已重命名（物资引用已同步）');
       }
       this.showEditSheet = false;
       this.load();
     } catch (e) {
       console.error(`save name failed: ${(e as BusinessError).message}`);
-      this.getUIContext().getPromptAction().showToast({ message: '保存失败，请重试' });
+      this.toast('保存失败，请重试');
     }
   }
 
@@ -148,7 +156,7 @@ struct CategoryManager {
   private async doDelete(def: NameDef): Promise<void> {
     try {
       await this.db.removeNameDef(def.id);
-      this.getUIContext().getPromptAction().showToast({ message: '已删除' });
+      this.toast('已删除');
       this.load();
     } catch (e) {
       console.error(`delete name failed: ${(e as BusinessError).message}`);
