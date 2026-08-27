@@ -7,6 +7,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { ReminderService, ReminderSettings } from './ReminderService';
 import { setNearExpiryThreshold, DEFAULT_NEAR_EXPIRY_DAYS } from './ExpiryService';
+import { NEAR_EXPIRY_DAYS_MIN, NEAR_EXPIRY_DAYS_MAX, validateNearExpiryDays } from '../common/Validation';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'SettingsService';
@@ -62,7 +63,7 @@ export class SettingsService {
     }
     try {
       const val: number = await this.prefStore.get(KEY_NEAR_EXPIRY_DAYS, DEFAULT_NEAR_EXPIRY_DAYS) as number;
-      if (typeof val === 'number' && val >= 1 && val <= 365) {
+      if (typeof val === 'number' && val >= NEAR_EXPIRY_DAYS_MIN && val <= NEAR_EXPIRY_DAYS_MAX) {
         return Math.floor(val);
       }
       return DEFAULT_NEAR_EXPIRY_DAYS;
@@ -77,7 +78,7 @@ export class SettingsService {
    * 更新临期天数阈值（1~365 天）并同步刷新模块级缓存
    */
   public async updateNearExpiryDays(days: number): Promise<boolean> {
-    if (Number.isNaN(days) || days < 1 || days > 365) {
+    if (Number.isNaN(days) || days < NEAR_EXPIRY_DAYS_MIN || days > NEAR_EXPIRY_DAYS_MAX) {
       return false;
     }
     const cleanDays = Math.floor(days);
@@ -98,20 +99,10 @@ export class SettingsService {
   }
 
   /**
-   * 校验临期天数输入
+   * 校验临期天数输入（转发纯模块实现，测试对象唯一 —— ticket #16）
    */
   public validateNearExpiryDays(input: string | number): string | null {
-    const num = typeof input === 'number' ? input : Number(input);
-    if (input === '' || Number.isNaN(num)) {
-      return '请输入有效的临期天数';
-    }
-    if (!Number.isInteger(num)) {
-      return '临期天数必须为整数';
-    }
-    if (num < 1 || num > 365) {
-      return '临期天数需在 1 到 365 天之间';
-    }
-    return null;
+    return validateNearExpiryDays(input);
   }
 
   /**

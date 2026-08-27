@@ -9,26 +9,13 @@ import {
   DEFAULT_NEAR_EXPIRY_DAYS
 } from '../entry/src/main/ets/service/ExpiryService.ets';
 import { addDays, todayStr } from '../entry/src/main/ets/common/DateUtils.ets';
+import { validateNearExpiryDays } from '../entry/src/main/ets/common/Validation.ets';
 
 const ExpiryLevel = {
   EXPIRED: 0,
   NEAR: 1,
   SAFE: 2
 };
-
-function validateNearExpiryDays(input: string | number): string | null {
-  const num = typeof input === 'number' ? input : Number(input);
-  if (input === '' || Number.isNaN(num)) {
-    return '请输入有效的临期天数';
-  }
-  if (!Number.isInteger(num)) {
-    return '临期天数必须为整数';
-  }
-  if (num < 1 || num > 365) {
-    return '临期天数需在 1 到 365 天之间';
-  }
-  return null;
-}
 
 /** 构造测试物资（新接口：quantity 字符串 + status + isDeleted） */
 function makeMaterial(overrides: Partial<Material> & Pick<Material, 'id' | 'name' | 'expiryDate'>): Material {

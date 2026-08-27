@@ -1,6 +1,7 @@
 import type { Material } from '../model/Material';
 import { ExpiryLevel, MaterialStatus, DerivedStatus } from '../model/Material';
 import { addDays, addMonths, diffDays, todayStr } from '../common/DateUtils';
+import { NEAR_EXPIRY_DAYS_MIN, NEAR_EXPIRY_DAYS_MAX } from '../common/Validation';
 import { Theme } from '../common/Theme';
 
 export const DEFAULT_NEAR_EXPIRY_DAYS: number = 7;
@@ -13,7 +14,7 @@ export function getNearExpiryThreshold(): number {
 }
 
 export function setNearExpiryThreshold(days: number): void {
-  if (days >= 1 && days <= 365) {
+  if (days >= NEAR_EXPIRY_DAYS_MIN && days <= NEAR_EXPIRY_DAYS_MAX) {
     cachedNearExpiryDays = Math.floor(days);
   }
 }
