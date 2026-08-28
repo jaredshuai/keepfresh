@@ -380,7 +380,8 @@ struct CategoryManager {
             // 上移/下移（沿用 CustomFieldManager 的紧凑按钮模式）
             this.smallIconBtn(
               $r('sys.symbol.chevron_up'),
-              this.moveUpEnabled(name),
+              name,
+              -1,
               () => {
                 const def: NameDef | undefined = this.findDef(name);
                 if (def !== undefined) {
@@ -390,7 +391,8 @@ struct CategoryManager {
             )
             this.smallIconBtn(
               $r('sys.symbol.chevron_down'),
-              this.moveDownEnabled(name),
+              name,
+              1,
               () => {
                 const def: NameDef | undefined = this.findDef(name);
                 if (def !== undefined) {
@@ -440,20 +442,26 @@ struct CategoryManager {
 
   /** 上移/下移 32x32 白底黑边 */
   @Builder
-  smallIconBtn(symbol: Resource, enabled: boolean, onClick: () => void) {
+  smallIconBtn(symbol: Resource, name: string, dir: number, onClick: () => void) {
     Button({ type: ButtonType.Normal, stateEffect: true }) {
       SymbolGlyph(symbol)
         .fontSize(16)
-        .fontColor([enabled ? Theme.textPrimary : Theme.textTertiary])
+        // enabled 在 builder 体内实时求值：按值传参不随移动/增删刷新
+        .fontColor([this.moveEnabled(name, dir) ? Theme.textPrimary : Theme.textTertiary])
     }
     .backgroundColor(Theme.cardBg)
     .width(32)
     .height(32)
     .borderRadius(Theme.iconBtnRadius)
     .border(Theme.borderThin)
-    .opacity(enabled ? 1 : 0.3)
-    .enabled(enabled)
+    .opacity(this.moveEnabled(name, dir) ? 1 : 0.3)
+    .enabled(this.moveEnabled(name, dir))
     .onClick(onClick)
+  }
+
+  /** 上移/下移按钮在当前位置是否可用（dir: -1 上移 / 1 下移） */
+  private moveEnabled(name: string, dir: number): boolean {
+    return dir < 0 ? this.moveUpEnabled(name) : this.moveDownEnabled(name);
   }
 
   /** 重命名小按钮：深黄底白字 */

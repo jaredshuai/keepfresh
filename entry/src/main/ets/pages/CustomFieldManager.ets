@@ -305,28 +305,29 @@ struct CustomFieldManager {
   }
 
   @Builder
-  bauhausSmallIconBtn(iconResource: Resource, btnSize: number, isPrimary: boolean, enabled: boolean, onClickAction: () => void) {
+  bauhausSmallIconBtn(iconResource: Resource, btnSize: number, index: number, dir: number, onClickAction: () => void) {
     Stack() {
       Column()
         .width(btnSize)
         .height(btnSize)
         .backgroundColor(Theme.ink)
         .margin({ left: 4, top: 4 })
-        .opacity(enabled ? 1 : 0.3)
+        // enabled 在 builder 体内实时求值：按值传参不随列表移动刷新
+        .opacity(this.moveEnabled(index, dir) ? 1 : 0.3)
 
       Button({ type: ButtonType.Normal, stateEffect: true }) {
         SymbolGlyph(iconResource)
           .fontSize(14)
-          .fontColor([isPrimary ? Theme.textWhite : (enabled ? Theme.textPrimary : Theme.textTertiary)])
+          .fontColor([this.moveEnabled(index, dir) ? Theme.textPrimary : Theme.textTertiary])
       }
-      .backgroundColor(isPrimary ? Theme.yellowDark : Theme.cardBg)
+      .backgroundColor(Theme.cardBg)
       .width(btnSize)
       .height(btnSize)
       .border(Theme.borderThin)
       .borderRadius(Theme.iconBtnRadius)
-      .enabled(enabled)
+      .enabled(this.moveEnabled(index, dir))
       .onClick(() => {
-        if (enabled) {
+        if (this.moveEnabled(index, dir)) {
           onClickAction();
         }
       })
@@ -334,6 +335,11 @@ struct CustomFieldManager {
     .width(btnSize + 4)
     .height(btnSize + 4)
     .padding({ right: 4, bottom: 4 })
+  }
+
+  /** 上移/下移按钮在当前位置是否可用（dir: -1 上移 / 1 下移） */
+  private moveEnabled(index: number, dir: number): boolean {
+    return dir < 0 ? index > 0 : index < this.customFields.length - 1;
   }
 
   @Builder
@@ -361,7 +367,7 @@ struct CustomFieldManager {
   }
 
   @Builder
-  bauhausChip(label: string, isSelected: boolean, onClickAction: () => void) {
+  bauhausChip(label: string, value: CustomFieldType, onClickAction: () => void) {
     Stack() {
       Column()
         .backgroundColor(Theme.ink)
@@ -369,9 +375,10 @@ struct CustomFieldManager {
 
       Text(label)
         .fontSize(14)
-        .fontColor(isSelected ? Theme.textWhite : Theme.textPrimary)
+        // 选中态在 builder 体内读 @State 比较：@Builder 按值传参不随状态刷新
+        .fontColor(this.selectedType === value ? Theme.textWhite : Theme.textPrimary)
         .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-        .backgroundColor(isSelected ? Theme.yellowDark : Theme.cardBg)
+        .backgroundColor(this.selectedType === value ? Theme.yellowDark : Theme.cardBg)
         .border(Theme.borderThin)
         .borderRadius(Theme.chipRadius)
         .onClick(() => {
@@ -581,11 +588,11 @@ struct CustomFieldManager {
           .layoutWeight(1)
 
           Row({ space: 2 }) {
-            this.bauhausSmallIconBtn($r('sys.symbol.arrow_up'), 32, false, index > 0, () => {
+            this.bauhausSmallIconBtn($r('sys.symbol.arrow_up'), 32, index, -1, () => {
               this.moveFieldUp(index);
             })
 
-            this.bauhausSmallIconBtn($r('sys.symbol.arrow_down'), 32, false, index < this.customFields.length - 1, () => {
+            this.bauhausSmallIconBtn($r('sys.symbol.arrow_down'), 32, index, 1, () => {
               this.moveFieldDown(index);
             })
 
@@ -701,7 +708,7 @@ struct CustomFieldManager {
         } else {
           Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
             ForEach(CUSTOM_FIELD_TYPES, (type: CustomFieldType) => {
-              this.bauhausChip(getFieldTypeName(type), this.selectedType === type, () => {
+              this.bauhausChip(getFieldTypeName(type), type, () => {
                 this.selectedType = type;
               })
             }, (type: CustomFieldType) => type)
