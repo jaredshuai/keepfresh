@@ -3,6 +3,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { ReminderService } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
+import { UsageService } from '../service/UsageService';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'EntryAbility';
@@ -11,8 +12,13 @@ export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onCreate');
     if (want?.parameters?.filterLevel) {
-      AppStorage.setOrCreate('targetFilterLevel', want.parameters.filterLevel as string);
+      const level = want.parameters.filterLevel as string;
+      UsageService.getInstance().init(this.context);
+      UsageService.getInstance().logNotificationClicked(level);
+      AppStorage.setOrCreate('targetFilterLevel', level);
     }
+    UsageService.getInstance().init(this.context);
+    UsageService.getInstance().logAppOpen();
     SettingsService.getInstance().init(this.context).then(() => {
       return ReminderService.getInstance().syncDailyReminder(this.context);
     }).catch((err: Error) => {
@@ -27,7 +33,10 @@ export default class EntryAbility extends UIAbility {
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onNewWant');
     if (want?.parameters?.filterLevel) {
-      AppStorage.setOrCreate('targetFilterLevel', want.parameters.filterLevel as string);
+      const level = want.parameters.filterLevel as string;
+      UsageService.getInstance().init(this.context);
+      UsageService.getInstance().logNotificationClicked(level);
+      AppStorage.setOrCreate('targetFilterLevel', level);
     }
     SettingsService.getInstance().init(this.context).then(() => {
       return ReminderService.getInstance().syncDailyReminder(this.context);

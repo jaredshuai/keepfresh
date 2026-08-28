@@ -7,7 +7,8 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { reminderAgentManager } from '@kit.BackgroundTasksKit';
 import { MaterialDb } from '../db/MaterialDb';
-import { levelOf } from './ExpiryService';
+import { levelOf, buildReminderText } from './ExpiryService';
+import { UsageService } from './UsageService';
 import { Material, ExpiryLevel, MaterialStatus } from '../model/Material';
 
 const DOMAIN: number = 0x0000;
@@ -125,14 +126,8 @@ export class ReminderService {
 
     await this.cancelAllReminders();
 
-    const parts: string[] = [];
-    if (expiredCount > 0) {
-      parts.push(`${expiredCount} 件已过期`);
-    }
-    if (nearCount > 0) {
-      parts.push(`${nearCount} 件即将过期`);
-    }
-    const textContent: string = `${parts.join('，')}，请及时处理`;
+    // 文案点名具体物品（dogfood P0.5）：不打开 App 即可知道该处理什么
+    const textContent: string = `${buildReminderText(materials)}，请及时处理`;
     // 点通知直达对应状态列表：有过期优先「已过期」，否则「临期」。
     // EntryAbility 会把该参数存入 AppStorage，Index onPageShow 读取后切 Tab。
     const filterLevel: string = expiredCount > 0 ? 'expired' : 'expiring';
@@ -165,6 +160,7 @@ export class ReminderService {
 
       const reminderId: number = await reminderAgentManager.publishReminder(alarmReq);
       hilog.info(DOMAIN, TAG, `Reminder published successfully, reminderId: ${reminderId}`);
+      UsageService.getInstance().logReminderPublished(expiredCount, nearCount);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, `Failed to publish reminder: ${e.code}, message: ${e.message}`);

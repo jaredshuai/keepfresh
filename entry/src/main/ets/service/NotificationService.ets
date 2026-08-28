@@ -4,6 +4,8 @@
 import { notificationManager } from '@kit.NotificationKit';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { Material } from '../model/Material';
+import { buildReminderText } from './ExpiryService';
 
 const NOTIFICATION_ID: number = 1001;
 
@@ -29,16 +31,10 @@ export async function requestNotificationEnable(context: common.UIAbilityContext
   }
 }
 
-/** 发布一条临期汇总通知（同一 id 会覆盖旧通知） */
-export async function publishExpiryAlert(nearCount: number, expiredCount: number): Promise<void> {
-  const parts: string[] = [];
-  if (expiredCount > 0) {
-    parts.push(`${expiredCount} 件已过期`);
-  }
-  if (nearCount > 0) {
-    parts.push(`${nearCount} 件即将过期`);
-  }
-  if (parts.length === 0) {
+/** 发布一条临期汇总通知（同一 id 会覆盖旧通知）；文案点名具体物品（dogfood P0.5） */
+export async function publishExpiryAlert(items: Material[]): Promise<void> {
+  const text = buildReminderText(items);
+  if (text === '') {
     return;
   }
   const request: notificationManager.NotificationRequest = {
@@ -47,7 +43,7 @@ export async function publishExpiryAlert(nearCount: number, expiredCount: number
       notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
       normal: {
         title: 'KeepFresh 临期提醒',
-        text: `${parts.join('，')}，记得及时处理`
+        text: `${text}，记得及时处理`
       }
     }
   };

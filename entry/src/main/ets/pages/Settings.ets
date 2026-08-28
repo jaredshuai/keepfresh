@@ -8,6 +8,7 @@ import { ReminderService, ReminderSettings } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
 import { BackupService, ImportPreview, ImportResult } from '../service/BackupService';
 import { Theme } from '../common/Theme';
+import { UsageService } from '../service/UsageService';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 
 interface TimePickerResult {
@@ -190,6 +191,12 @@ struct Settings {
   private async handleExport(): Promise<void> {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     await this.backupService.exportBackup(ctx, this.getUIContext());
+  }
+
+  private async handleExportUsageLog(): Promise<void> {
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    await UsageService.getInstance().init(ctx);
+    await UsageService.getInstance().exportUsageLog(ctx, this.getUIContext());
   }
 
   private async handleImport(): Promise<void> {
@@ -501,6 +508,14 @@ struct Settings {
 
                   this.secondaryButton('导入备份', () => {
                     this.handleImport();
+                  })
+                }
+                .width('100%')
+                .margin({ top: Theme.smallGap })
+
+                Column() {
+                  this.secondaryButton('导出使用日志（dogfood）', () => {
+                    this.handleExportUsageLog();
                   })
                 }
                 .width('100%')

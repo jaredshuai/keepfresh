@@ -318,3 +318,46 @@ export function statsOf(list: Material[], customThreshold?: number): ExpiryStats
   };
   return stats;
 }
+
+/** 汇总提醒文案：携带具体物品名，让提醒无需打开 App 即可行动（dogfood P0.5）。
+ * 过期优先、按剩余天数升序，最多点名 limit 件；其余以件数概括。
+ * 无过期/临期时返回空串（调用方据此取消提醒或不发通知）。 */
+export function buildReminderText(items: Material[], limit: number = 3): string {
+  const expired: Material[] = [];
+  const near: Material[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const persisted: string = items[i].status ?? MaterialStatus.ACTIVE;
+    if (persisted === MaterialStatus.EMPTY || persisted === MaterialStatus.DISCARDED) {
+      continue;
+    }
+    const lv: ExpiryLevel = levelOf(items[i]);
+    if (lv === ExpiryLevel.EXPIRED) {
+      expired.push(items[i]);
+    } else if (lv === ExpiryLevel.NEAR) {
+      near.push(items[i]);
+    }
+  }
+  if (expired.length + near.length === 0) {
+    return '';
+  }
+  const expiredSorted = sortByExpirationAsc(expired);
+  const nearSorted = sortByExpirationAsc(near);
+  const picked: string[] = [];
+  let remain: number = limit;
+  for (let i = 0; i < expiredSorted.length && remain > 0; i++) {
+    const left: number = remainingDays(expiredSorted[i]);
+    picked.push(`${expiredSorted[i].name}（过期${-left}天）`);
+    remain--;
+  }
+  for (let i = 0; i < nearSorted.length && remain > 0; i++) {
+    const left: number = remainingDays(nearSorted[i]);
+    picked.push(`${nearSorted[i].name}（剩${left}天）`);
+    remain--;
+  }
+  const total: number = expired.length + near.length;
+  let text: string = picked.join('、');
+  if (total > picked.length) {
+    text = `${text} 等${total}件`;
+  }
+  return text;
+}

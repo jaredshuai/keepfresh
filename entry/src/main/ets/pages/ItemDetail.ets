@@ -8,6 +8,7 @@ import { CustomField, readCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { levelOf, levelColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
 import { ReminderService } from '../service/ReminderService';
+import { UsageService } from '../service/UsageService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 import { getCategoryIcon } from '../common/CategoryIcons';
@@ -107,6 +108,8 @@ struct ItemDetail {
     this.updatingStatus = true;
     try {
       await this.db.updateStatus(this.itemId, status, handledType);
+      UsageService.getInstance().init(this.getUIContext().getHostContext() as common.UIAbilityContext);
+      UsageService.getInstance().logStatusChanged(this.m?.name ?? '', status);
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       try {
         await ReminderService.getInstance().syncDailyReminder(ctx);
