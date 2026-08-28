@@ -66,6 +66,7 @@ This file provides guidance to AI coding agents when working with code in this r
 - **Node 测试仅能 import 无 `@kit.*` 依赖的纯模块**（test/loader.mjs 限制）：需测的逻辑应下沉 common/ 与 model/；service 层直接 import 会失败
 - `npm run build` / `npm run build:release` — hvigor 自动探测（本项目本地 / DevEco 默认 / `DEVECO_HOME`）
 - `npm run test` / `npm run design:check` / `npm run wire:check` 可单独执行
+- ArkUI 已知陷阱速查（Button 胶囊 / @Builder 按值传参 / layoutWeight 轴向 / Scroll 居中等）：docs/agents/arkui-pitfalls.md；design-guard 报错时会直接指向具体条目
 
 ## Agent skills
 

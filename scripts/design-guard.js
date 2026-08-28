@@ -163,6 +163,28 @@ function checkShadowRule() {
   return { violations, whitelistHits };
 }
 
+// 规则 5：Button 默认胶囊防回潮（docs/agents/arkui-pitfalls.md#button-capsule）
+// ArkUI Button 默认 Capsule 类型，胶囊圆角由系统强制生成，borderRadius(0) 无效。
+// \bButton\( 词边界避免误伤 iconButton/backButton/smallIconBtn 等以 Button 结尾的标识符；
+// 语句行及其后 2 行内出现 ButtonType.（Normal / Circle 均可）即放行——容忍类型声明换行。
+function checkButtonRule() {
+  const violations = [];
+  const pattern = /\bButton\(/;
+  const exclude = /ButtonType\./;
+  for (const file of etsFiles) {
+    const rel = path.relative(rootDir, file);
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const clean = stripLineComment(lines[i]);
+      if (!pattern.test(clean) || exclude.test(clean)) continue;
+      const window = lines.slice(i, i + 3).map(stripLineComment).join('\n');
+      if (exclude.test(window)) continue;
+      violations.push({ line: i + 1, content: lines[i].trim(), file: rel });
+    }
+  }
+  return violations;
+}
+
 // 主逻辑
 let hasError = false;
 const etsFiles = getEtsFiles(pagesDir);
@@ -208,6 +230,22 @@ for (const rule of rules) {
   } else {
     console.log(`✅ 硬阴影样板防回潮: 通过`);
     console.log(`   组件化硬阴影 + 白名单长尾 ${whitelistHits} 条（附理由见 SHADOW_RULE）`);
+  }
+}
+
+// 规则 5：Button 默认胶囊防回潮
+{
+  const violations = checkButtonRule();
+  if (violations.length > 0) {
+    console.error(`❌ Button 默认胶囊 (${violations.length} 处) —— ArkUI Button 默认 Capsule 类型，无视 borderRadius(0)，与包豪斯零圆角冲突。`);
+    console.error('   修法：补 { type: ButtonType.Normal, stateEffect: true }。详见 docs/agents/arkui-pitfalls.md#button-capsule');
+    for (const v of violations.slice(0, 8)) {
+      console.error(`     ${v.file}:L${v.line}: ${v.content}`);
+    }
+    if (violations.length > 8) console.error(`     ... 还有 ${violations.length - 8} 处`);
+    hasError = true;
+  } else {
+    console.log('✅ Button 默认胶囊防回潮: 通过');
   }
 }
 

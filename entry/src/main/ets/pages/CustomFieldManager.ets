@@ -784,7 +784,7 @@ struct CustomFieldManager {
             .backgroundColor(Theme.ink)
             .margin({ left: 4, top: 4 })
 
-          Button('取消')
+          Button('取消', { type: ButtonType.Normal, stateEffect: true })
             .layoutWeight(1)
             .height(48)
             .borderRadius(Theme.buttonRadius)
@@ -807,7 +807,7 @@ struct CustomFieldManager {
             .backgroundColor(Theme.ink)
             .margin({ left: 4, top: 4 })
 
-          Button(this.isEditing ? '保存' : '创建')
+          Button(this.isEditing ? '保存' : '创建', { type: ButtonType.Normal, stateEffect: true })
             .layoutWeight(1)
             .height(48)
             .borderRadius(Theme.buttonRadius)
