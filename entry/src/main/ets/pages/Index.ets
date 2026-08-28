@@ -597,7 +597,9 @@ struct Index {
    * ============================================================ */
   @Builder
   handledCard(m: Material) {
-    HardShadowCard({shadowMode: 72}) {
+    HardShadowCard({shadowMode: 72, onCardClick: () => {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+    }}) {
 
       Row() {
         Column() {
@@ -729,7 +731,7 @@ struct Index {
    * ============================================================ */
   @Builder
   iconButton(symbol: Resource, onClick: () => void) {
-    HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize}) {
+    HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize, onBoxClick: onClick}) {
 
       // 主层
       Column() {
@@ -750,7 +752,9 @@ struct Index {
    * ============================================================ */
   @Builder
   expiredCard(m: Material) {
-    HardShadowCard({shadowMode: 72}) {
+    HardShadowCard({shadowMode: 72, onCardClick: () => {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+    }}) {
 
       // 主层：红底白字
       Row() {
@@ -804,7 +808,9 @@ struct Index {
    * ============================================================ */
   @Builder
   materialCard(m: Material) {
-    HardShadowCard({shadowMode: 72}) {
+    HardShadowCard({shadowMode: 72, onCardClick: () => {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+    }}) {
 
       // 主层
       Row() {
@@ -864,7 +870,7 @@ struct Index {
    * ============================================================ */
   @Builder
   hardShadowFab(onClick: () => void) {
-    HardShadowBox({boxWidth: Theme.fabSize, boxHeight: Theme.fabSize}) {
+    HardShadowBox({boxWidth: Theme.fabSize, boxHeight: Theme.fabSize, onBoxClick: onClick}) {
 
       Column() {
         SymbolGlyph($r('sys.symbol.plus'))

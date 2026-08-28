@@ -711,7 +711,7 @@ struct Settings {
    * ============================================================ */
   @Builder
   iconButton(symbol: Resource, onClick: () => void) {
-    HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize}) {
+    HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize, onBoxClick: onClick}) {
 
       Column() {
         SymbolGlyph(symbol)

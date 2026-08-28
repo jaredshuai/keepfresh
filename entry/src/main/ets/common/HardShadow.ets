@@ -24,6 +24,8 @@ export struct HardShadowCard {
   @Prop shadowMode: number = 0;
   /** 原 Stack 使用 TopStart 对齐时传 true（默认 false = Center） */
   @Prop topStart: boolean = false;
+  /** 卡片点击（还原原外层 Stack 的 onClick；无点击场景留默认空实现） */
+  onCardClick: () => void = () => {};
   @BuilderParam content: () => void = emptyShadowContent;
 
   private shadowHeightValue(): Length {
@@ -51,6 +53,7 @@ export struct HardShadowCard {
     }
     .width('100%')
     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+    .onClick(() => this.onCardClick())
   }
 }
 
@@ -61,6 +64,8 @@ export struct HardShadowBox {
   @Prop boxHeight: number = 0;
   /** 原 Stack 使用 TopStart 对齐时传 true（默认 false = Center） */
   @Prop topStart: boolean = false;
+  /** 点击回调（如图标按钮/FAB 的 onClick 参数） */
+  onBoxClick: () => void = () => {};
   @BuilderParam content: () => void = emptyShadowContent;
 
   build() {
@@ -76,5 +81,6 @@ export struct HardShadowBox {
     .width(this.boxWidth + Theme.hardShadowOffset)
     .height(this.boxHeight + Theme.hardShadowOffset)
     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
+    .onClick(() => this.onBoxClick())
   }
 }
