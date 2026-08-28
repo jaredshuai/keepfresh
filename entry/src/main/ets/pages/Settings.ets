@@ -321,6 +321,7 @@ struct Settings {
 
                       TextInput({ text: this.nearExpiryDaysStr, placeholder: '7' })
                         .type(InputType.Number)
+                        .borderRadius(Theme.inputRadius)
                         .fontSize(Theme.textBody)
                         .fontWeight(FontWeight.Bold)
                         .fontColor(Theme.textPrimary)
@@ -513,7 +514,9 @@ struct Settings {
                 .width('100%')
                 .margin({ top: Theme.smallGap })
 
-                Column() {
+                // 用 Row 包裹：secondaryButton 内含 layoutWeight(1)（横向平分宽度），
+                // 若包在 Column 里 weight 会作用到主轴高度，把按钮拉伸到视口剩余高度
+                Row() {
                   this.secondaryButton('导出使用日志（dogfood）', () => {
                     this.handleExportUsageLog();
                   })

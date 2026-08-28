@@ -20,7 +20,11 @@ function emptyShadowContent() {
 
 @Component
 export struct HardShadowCard {
-  /** 阴影层固定高度（vp）；-1 = '100%'（跟随主层）；0 = 不设 height（保留原样板缺省行为） */
+  /**
+   * 阴影层固定高度（vp）；0 = 不设 height（阴影层贴齐主层内容，绝大多数场景用这个）。
+   * 禁止传 -1/'100%' 之类的百分比语义：height('100%') 在滚动容器里解析为
+   * 「父约束的最大可用高度」而非主层高度，会把阴影撑成整屏黑板（#布局评审教训）。
+   */
   @Prop shadowMode: number = 0;
   /** 原 Stack 使用 TopStart 对齐时传 true（默认 false = Center） */
   @Prop topStart: boolean = false;
@@ -28,24 +32,17 @@ export struct HardShadowCard {
   onCardClick: () => void = () => {};
   @BuilderParam content: () => void = emptyShadowContent;
 
-  private shadowHeightValue(): Length {
-    if (this.shadowMode > 0) {
-      return this.shadowMode;
-    }
-    return '100%';
-  }
-
   build() {
     Stack({ alignContent: this.topStart ? Alignment.TopStart : Alignment.Center }) {
-      if (this.shadowMode === 0) {
+      if (this.shadowMode > 0) {
         Column()
           .width('100%')
+          .height(this.shadowMode)
           .backgroundColor(Theme.ink)
           .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
       } else {
         Column()
           .width('100%')
-          .height(this.shadowHeightValue())
           .backgroundColor(Theme.ink)
           .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
       }

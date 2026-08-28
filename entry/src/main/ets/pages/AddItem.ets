@@ -476,7 +476,7 @@ struct AddItem {
             .backgroundColor(Theme.ink)
             .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
-          Button(this.isEdit ? '保存' : '添加')
+          Button(this.isEdit ? '保存' : '添加', { type: ButtonType.Normal, stateEffect: true })
             .fontSize(Theme.textSubhead)
             .fontWeight(FontWeight.Bold)
             .fontColor(Theme.textWhite)
@@ -901,7 +901,7 @@ struct AddItem {
         .backgroundColor(Theme.ink)
         .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
-      Button({ type: ButtonType.Capsule, stateEffect: true }) {
+      Button({ type: ButtonType.Normal, stateEffect: true }) {
         Row({ space: Theme.smallGap }) {
           SymbolGlyph(symbol)
             .fontSize(18)
@@ -973,7 +973,7 @@ struct AddItem {
 
       HardShadowCard({shadowMode: Theme.primaryBtnHeight}) {
 
-        Button('都不对，手动填写')
+        Button('都不对，手动填写', { type: ButtonType.Normal, stateEffect: true })
           .width('100%')
           .height(Theme.primaryBtnHeight)
           .borderRadius(Theme.buttonRadius)

@@ -277,6 +277,8 @@ struct CategoryManager {
           .padding({ left: Theme.pagePadding, right: Theme.pagePadding })
         }
         .layoutWeight(1)
+        // 内容不足一屏时靠顶对齐（Scroll 通用 align 默认 Center 会把短内容垂直居中）
+        .align(Alignment.TopStart)
         .scrollBar(BarState.Off)
       }
     }
@@ -358,7 +360,7 @@ struct CategoryManager {
   /** 名称行卡片：预设只读 / 自定义可编辑（上下移+重命名+删除） */
   @Builder
   nameRow(name: string, idx: number) {
-    HardShadowCard({shadowMode: -1, topStart: true}) {
+    HardShadowCard({shadowMode: 0, topStart: true}) {
 
       Row() {
         Column({ space: Theme.tinyGap }) {

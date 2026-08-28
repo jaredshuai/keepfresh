@@ -177,6 +177,8 @@ struct ItemDetail {
           })
         }
         .layoutWeight(1)
+        // 内容不足一屏时靠顶对齐（Scroll 通用 align 默认 Center 会把短内容垂直居中）
+        .align(Alignment.TopStart)
         .scrollBar(BarState.Off)
 
         // 底部固定按钮：编辑 + 删除
@@ -218,7 +220,7 @@ struct ItemDetail {
 
   @Builder
   statusBanner() {
-    HardShadowCard({shadowMode: -1, topStart: true}) {
+    HardShadowCard({shadowMode: 0, topStart: true}) {
 
       Column({ space: Theme.smallGap }) {
         Row() {
@@ -282,7 +284,7 @@ struct ItemDetail {
    * ============================================================ */
   @Builder
   statusActions() {
-    HardShadowCard({shadowMode: -1, topStart: true}) {
+    HardShadowCard({shadowMode: 0, topStart: true}) {
 
       Column({ space: Theme.elementGap }) {
         Row({ space: Theme.tinyGap }) {
@@ -387,7 +389,7 @@ struct ItemDetail {
 
   @Builder
   infoCard() {
-    HardShadowCard({shadowMode: -1, topStart: true}) {
+    HardShadowCard({shadowMode: 0, topStart: true}) {
 
       Column({ space: 0 }) {
         // 头部：分类图标方块（2vp黑边） + 名称 + 分类/数量
@@ -537,7 +539,7 @@ struct ItemDetail {
       .backgroundColor(Theme.ink)
       .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
 
-      Button(text)
+      Button(text, { type: ButtonType.Normal, stateEffect: true })
         .width('100%')
         .height(Theme.primaryBtnHeight)
         .backgroundColor(bg)

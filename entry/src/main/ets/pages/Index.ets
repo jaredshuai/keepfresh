@@ -428,6 +428,7 @@ struct Index {
           .fontColor([Theme.textTertiary])
         TextInput({ text: this.searchKeyword, placeholder: '搜索物资 / 分类 / 位置 / 备注' })
           .fontSize(Theme.textBody)
+          .borderRadius(Theme.inputRadius)
           .fontColor(Theme.textPrimary)
           .placeholderColor(Theme.textTertiary)
           .placeholderFont({ size: Theme.textCaption })

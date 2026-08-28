@@ -151,6 +151,8 @@ struct RecycleBin {
           .padding({ left: Theme.pagePadding, right: Theme.pagePadding })
         }
         .layoutWeight(1)
+        // 内容不足一屏时靠顶对齐（Scroll 通用 align 默认 Center 会把短内容垂直居中）
+        .align(Alignment.TopStart)
         .scrollBar(BarState.Off)
       }
     }
@@ -181,7 +183,7 @@ struct RecycleBin {
   /** 已删除物资卡片：半透明白卡 + 恢复（深黄）/ 彻底删除（白底红字） */
   @Builder
   deletedCard(m: Material) {
-    HardShadowCard({ shadowMode: -1, topStart: true }) {
+    HardShadowCard({ shadowMode: 0, topStart: true }) {
       Column({ space: Theme.smallGap }) {
         Row() {
           Column({ space: Theme.tinyGap }) {

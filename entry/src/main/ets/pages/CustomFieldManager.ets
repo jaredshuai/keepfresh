@@ -240,7 +240,7 @@ struct CustomFieldManager {
         .backgroundColor(Theme.ink)
         .margin({ left: 4, top: 4 })
 
-      Button(label)
+      Button(label, { type: ButtonType.Normal, stateEffect: true })
         .fontSize(Theme.textSubhead)
         .fontColor(Theme.textWhite)
         .backgroundColor(Theme.yellowDark)
@@ -264,7 +264,7 @@ struct CustomFieldManager {
         .backgroundColor(Theme.ink)
         .margin({ left: 4, top: 4 })
 
-      Button(label)
+      Button(label, { type: ButtonType.Normal, stateEffect: true })
         .fontSize(Theme.textSubhead)
         .fontColor(Theme.textPrimary)
         .backgroundColor(Theme.cardBg)
@@ -288,7 +288,7 @@ struct CustomFieldManager {
         .backgroundColor(Theme.ink)
         .margin({ left: 4, top: 4 })
 
-      Button(label)
+      Button(label, { type: ButtonType.Normal, stateEffect: true })
         .fontSize(Theme.textSubhead)
         .fontColor(Theme.danger)
         .backgroundColor(Theme.cardBg)
@@ -344,7 +344,7 @@ struct CustomFieldManager {
         .backgroundColor(Theme.ink)
         .margin({ left: 4, top: 4 })
 
-      Button(label)
+      Button(label, { type: ButtonType.Normal, stateEffect: true })
         .fontSize(13)
         .fontColor(btnKind === 'primary' ? Theme.textWhite : (btnKind === 'danger' ? Theme.danger : Theme.textPrimary))
         .backgroundColor(btnKind === 'primary' ? Theme.yellowDark : Theme.cardBg)
