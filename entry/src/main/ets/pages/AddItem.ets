@@ -9,6 +9,7 @@ import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
 import { normalizeQuantityUnit } from '../common/QuantityUnit';
+import { UsageService } from '../service/UsageService';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
 import { ReminderService } from '../service/ReminderService';
@@ -51,10 +52,15 @@ struct AddItem {
   @State scanSuggestions: Material[] = [];
   @State saving: boolean = false;
   @State errorMsg: string = '';
+  /** 同名复购建议（dogfood P0）：名称精确匹配最近一条在库记录时出现 */
+  @State nameSuggestion: Material | undefined = undefined;
   @State customFieldsDefs: CustomField[] = [];
   @State customFieldValues: Record<string, string> = {};
   private db: MaterialDb = MaterialDb.getInstance();
   private editId: number = -1;
+  private pageOpenAt: number = Date.now();
+  private nameQuerySeq: number = 0;
+  private suggestionApplied: boolean = false;
   private loadedCreatedAt: string = '';
   private loadedStatus: string = MaterialStatus.ACTIVE;
   private loadedHandledType: string | undefined = undefined;
@@ -75,7 +81,9 @@ struct AddItem {
       this.isEdit = true;
     }
 
+    this.pageOpenAt = Date.now();
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    UsageService.getInstance().init(ctx);
     this.db.init(ctx)
       .then(() => {
         // 分类候选：管理页自定义定义（按排序）→ 预设 → 数据中出现过的
@@ -143,6 +151,70 @@ struct AddItem {
       .catch((e: BusinessError) => {
         console.error(`load material or custom fields failed: ${e.message}`);
       });
+  }
+
+  /** 同名复购建议：名称精确匹配最近一条在库记录（dogfood P0） */
+  private lookupSuggestion(v: string): void {
+    const trimmed = v.trim();
+    if (this.isEdit || trimmed.length < 2) {
+      this.nameSuggestion = undefined;
+      return;
+    }
+    const seq = ++this.nameQuerySeq;
+    this.db.findLatestByName(trimmed)
+      .then((m?: Material) => {
+        if (seq !== this.nameQuerySeq) {
+          return; // 过期查询，丢弃
+        }
+        if (m && m.name === trimmed) {
+          if (this.nameSuggestion === undefined) {
+            UsageService.getInstance().logSuggestionShown(m.name);
+          }
+          this.nameSuggestion = m;
+        } else {
+          this.nameSuggestion = undefined;
+        }
+      })
+      .catch((e: BusinessError) => {
+        console.error(`lookup suggestion failed: ${(e as BusinessError).message}`);
+      });
+  }
+
+  private suggestionSummary(): string {
+    const m = this.nameSuggestion!;
+    const shelf = (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0)
+      ? `保质期${m.shelfLifeMonths}个月`
+      : `保质期${m.shelfLifeDays}天`;
+    const loc = m.location && m.location.length > 0 ? ` · ${m.location}` : '';
+    return `${m.category}${loc} · ${m.quantity}${m.unit} · ${shelf}`;
+  }
+
+  private applySuggestion(): void {
+    const m = this.nameSuggestion;
+    if (!m) {
+      return;
+    }
+    UsageService.getInstance().logSuggestionApplied(m.name);
+    this.category = m.category;
+    if (m.location && m.location.length > 0) {
+      this.location = m.location;
+    }
+    const normalized = normalizeQuantityUnit(m.quantity, m.unit);
+    this.quantityStr = normalized.quantity;
+    if (normalized.unit.length > 0) {
+      this.unit = normalized.unit;
+    }
+    if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
+      this.shelfLifeMode = 'months';
+      this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+    } else {
+      this.shelfLifeMode = 'days';
+      this.shelfLifeStr = m.shelfLifeDays.toString();
+    }
+    this.productionDate = todayStr();
+    this.suggestionApplied = true;
+    this.nameSuggestion = undefined;
+    this.toast('已按上次入库参数预填');
   }
 
   private pickProductionDate(): void {
@@ -341,6 +413,15 @@ struct AddItem {
       } catch (e) {
         console.error(`sync reminder failed: ${(e as BusinessError).message}`);
       }
+      const viaBarcode = this.barcode.trim().length > 0;
+      UsageService.getInstance().logItemAdded(
+        this.name.trim(),
+        viaBarcode ? 'barcode' : (this.suggestionApplied ? 'suggestion' : 'manual'),
+        this.isEdit,
+        Date.now() - this.pageOpenAt,
+        material.shelfLifeDays,
+        this.shelfLifeMode === 'months');
+      this.suggestionApplied = false;
       this.toast(this.isEdit ? '已保存' : '已添加');
       this.getUIContext().getRouter().back();
     } catch (e) {
@@ -478,7 +559,42 @@ struct AddItem {
                   .height(48)
                   .onChange((v: string) => {
                     this.name = v;
+                    this.lookupSuggestion(v);
                   })
+              }
+
+              if (this.nameSuggestion) {
+                Row({ space: Theme.smallGap }) {
+                  Column({ space: 2 }) {
+                    Text(`复用上次「${this.nameSuggestion.name}」的参数`)
+                      .fontSize(Theme.textCaption)
+                      .fontWeight(FontWeight.Bold)
+                      .fontColor(Theme.textPrimary)
+                    Text(this.suggestionSummary())
+                      .fontSize(Theme.textCaption)
+                      .fontColor(Theme.textSecondary)
+                      .maxLines(1)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  }
+                  .alignItems(HorizontalAlign.Start)
+                  .layoutWeight(1)
+
+                  Text('填入')
+                    .fontSize(Theme.textCaption)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor(Theme.textWhite)
+                    .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+                    .backgroundColor(Theme.yellowDark)
+                    .border(Theme.borderThin)
+                    .onClick(() => {
+                      this.applySuggestion();
+                    })
+                }
+                .width('100%')
+                .padding({ left: Theme.cardPadding, right: Theme.cardPadding, top: 10, bottom: 10 })
+                .backgroundColor(Theme.nearSoft)
+                .border(Theme.borderThin)
+                .alignItems(VerticalAlign.Center)
               }
 
               if (this.barcode.trim().length > 0) {

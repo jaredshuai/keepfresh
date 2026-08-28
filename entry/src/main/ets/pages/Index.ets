@@ -20,6 +20,7 @@ import { SettingsService } from '../service/SettingsService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 import { getCategoryIcon } from '../common/CategoryIcons';
+import { UsageService } from '../service/UsageService';
 import { filterByKeyword } from '../common/SearchFilter';
 
 interface TimePickerResult {
@@ -81,6 +82,7 @@ struct Index {
     }
 
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    UsageService.getInstance().init(ctx);
     this.loadReminderSettings(ctx);
 
     SettingsService.getInstance().init(ctx)
@@ -173,7 +175,7 @@ struct Index {
       this.applyFilters();
       if (!notifiedThisSession && this.stats.near + this.stats.expired > 0) {
         notifiedThisSession = true;
-        await publishExpiryAlert(this.stats.near, this.stats.expired);
+        await publishExpiryAlert(this.materials);
       }
     } catch (e) {
       console.error(`load materials failed: ${(e as BusinessError).message}`);

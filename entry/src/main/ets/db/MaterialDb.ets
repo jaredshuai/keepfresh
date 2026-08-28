@@ -499,6 +499,34 @@ export class MaterialDb {
     return list;
   }
 
+  /** 按名称取最近一条在库记录（同名复购预填用，ticket：dogfood P0）；排除软删除 */
+  async findLatestByName(name: string): Promise<Material | undefined> {
+    const trimmed = name.trim();
+    if (trimmed.length === 0) {
+      return undefined;
+    }
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.equalTo('name', trimmed);
+      predicates.equalTo('is_deleted', 0);
+      predicates.orderByDesc('created_at');
+      predicates.orderByDesc('id');
+      predicates.limitAs(1);
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      let m: Material | undefined = undefined;
+      try {
+        if (rs.goToNextRow()) {
+          m = this.rowToMaterial(rs);
+        }
+      } finally {
+        rs.close();
+      }
+      return m;
+    } catch (e) {
+      this.rethrow(e, 'findLatestByName');
+    }
+  }
+
   /** 插入，返回新记录 rowId */
   async insert(m: Material): Promise<number> {
     try {
