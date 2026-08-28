@@ -18,6 +18,7 @@ import { ensureNotificationEnabled, publishExpiryAlert, requestNotificationEnabl
 import { ReminderService, ReminderSettings } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
 import { Theme } from '../common/Theme';
+import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 import { getCategoryIcon } from '../common/CategoryIcons';
 import { filterByKeyword } from '../common/SearchFilter';
 
@@ -402,12 +403,7 @@ struct Index {
    * ============================================================ */
   @Builder
   searchBar() {
-    Stack() {
-      Column()
-        .width('100%')
-        .height(40)
-        .backgroundColor(Theme.ink)
-        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: 40}) {
 
       Row({ space: Theme.smallGap }) {
         SymbolGlyph($r('sys.symbol.magnifyingglass'))
@@ -443,8 +439,6 @@ struct Index {
       .border(Theme.borderThin)
       .alignItems(VerticalAlign.Center)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   /* ============================================================
@@ -603,12 +597,9 @@ struct Index {
    * ============================================================ */
   @Builder
   handledCard(m: Material) {
-    Stack() {
-      Column()
-        .width('100%')
-        .height(72)
-        .backgroundColor(Theme.ink)
-        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: 72, onCardClick: () => {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+    }}) {
 
       Row() {
         Column() {
@@ -651,11 +642,6 @@ struct Index {
       .border(Theme.borderThin)
       .opacity(0.7)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-    .onClick(() => {
-      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
-    })
   }
 
   /* ============================================================
@@ -745,13 +731,7 @@ struct Index {
    * ============================================================ */
   @Builder
   iconButton(symbol: Resource, onClick: () => void) {
-    Stack() {
-      // 阴影层（黑色偏移）
-      Column()
-        .width(Theme.iconBtnSize)
-        .height(Theme.iconBtnSize)
-        .backgroundColor(Theme.ink)
-        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize, onBoxClick: onClick}) {
 
       // 主层
       Column() {
@@ -765,10 +745,6 @@ struct Index {
       .border(Theme.borderThin)
       .justifyContent(FlexAlign.Center)
     }
-    .width(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .height(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-    .onClick(onClick)
   }
 
   /* ============================================================
@@ -776,13 +752,9 @@ struct Index {
    * ============================================================ */
   @Builder
   expiredCard(m: Material) {
-    Stack() {
-      // 阴影层
-      Column()
-        .width('100%')
-        .height(72)
-        .backgroundColor(Theme.ink)
-        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: 72, onCardClick: () => {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+    }}) {
 
       // 主层：红底白字
       Row() {
@@ -829,11 +801,6 @@ struct Index {
       .backgroundColor(Theme.expired)
       .border(Theme.borderThin)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-    .onClick(() => {
-      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
-    })
   }
 
   /* ============================================================
@@ -841,13 +808,9 @@ struct Index {
    * ============================================================ */
   @Builder
   materialCard(m: Material) {
-    Stack() {
-      // 阴影层
-      Column()
-        .width('100%')
-        .height(72)
-        .backgroundColor(Theme.ink)
-        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: 72, onCardClick: () => {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
+    }}) {
 
       // 主层
       Row() {
@@ -900,11 +863,6 @@ struct Index {
       .backgroundColor(Theme.cardBg)
       .border(Theme.borderThin)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-    .onClick(() => {
-      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
-    })
   }
 
   /* ============================================================
@@ -912,12 +870,7 @@ struct Index {
    * ============================================================ */
   @Builder
   hardShadowFab(onClick: () => void) {
-    Stack() {
-      Column()
-        .width(Theme.fabSize)
-        .height(Theme.fabSize)
-        .backgroundColor(Theme.ink)
-        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowBox({boxWidth: Theme.fabSize, boxHeight: Theme.fabSize, onBoxClick: onClick}) {
 
       Column() {
         SymbolGlyph($r('sys.symbol.plus'))
@@ -931,11 +884,6 @@ struct Index {
       .border(Theme.borderThin)
       .justifyContent(FlexAlign.Center)
     }
-    .width(Theme.fabSize + Theme.hardShadowOffset)
-    .height(Theme.fabSize + Theme.hardShadowOffset)
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-    .margin({ right: Theme.pagePadding, bottom: Theme.pagePadding })
-    .onClick(onClick)
   }
 
   /* ============================================================
@@ -997,11 +945,7 @@ struct Index {
       .padding({ top: 8, bottom: 4 })
 
       // 开关卡片
-      Stack() {
-        Column()
-          .width('100%')
-          .backgroundColor(Theme.ink)
-          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+      HardShadowCard({shadowMode: 0}) {
         Row() {
           Column({ space: Theme.tinyGap }) {
             Text('每日临期汇总提醒')
@@ -1027,16 +971,10 @@ struct Index {
         .backgroundColor(Theme.cardBg)
         .border(Theme.borderThin)
       }
-      .width('100%')
-      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
       if (this.reminderEnabled) {
         // 时间选择卡片
-        Stack() {
-          Column()
-            .width('100%')
-            .backgroundColor(Theme.ink)
-            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+        HardShadowCard({shadowMode: 0}) {
           Row() {
             Column({ space: Theme.tinyGap }) {
               Text('提醒时间')
@@ -1071,17 +1009,10 @@ struct Index {
           .backgroundColor(Theme.cardBg)
           .border(Theme.borderThin)
         }
-        .width('100%')
-        .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
       }
 
       // 完成按钮：深黄主按钮
-      Stack() {
-        Column()
-          .width('100%')
-          .height(44)
-          .backgroundColor(Theme.ink)
-          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+      HardShadowCard({shadowMode: 44}) {
         Row() {
           Text('完成')
             .fontSize(Theme.textBody)
@@ -1097,9 +1028,6 @@ struct Index {
           this.showSettingsDialog = false;
         })
       }
-      .width('100%')
-      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-      .margin({ top: 8 })
 
       Column().width('100%').height(8)
     }

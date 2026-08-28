@@ -124,6 +124,45 @@ function checkFile(filePath, rule) {
   return violations;
 }
 
+// ── 规则 4：硬阴影样板防回潮（ticket #15）──
+// pages/ 下禁止再手写 `margin({ left: Theme.hardShadowOffset` 样板，
+// 统一走 common/HardShadow.ets 的 HardShadowCard / HardShadowBox。
+// 白名单 = survey 遗留的复用型 builder 微模式（flex 按钮对 / chips /
+// margin-trick / constraintSize），逐条附理由；新增样板必须走组件，不得扩白名单。
+const SHADOW_RULE = {
+  pattern: /margin\(\{\s*left: Theme\.hardShadowOffset/,
+  whitelist: [
+    { file: /AddItem\.ets$/, re: /constraintSize\(\{\s*minWidth: 88 \}\)/, reason: '主按钮阴影 constraintSize 微模式' },
+    { file: /AddItem\.ets$/, re: /right: Theme\.smallGap \+ Theme\.hardShadowOffset/, reason: '自定义字段枚举 chips margin-trick 补位' },
+    { file: /AddItem\.ets$/, re: /layoutWeight\(1\)/, reason: '胶囊按钮 builder（flex layoutWeight 阴影）' },
+    { file: /Settings\.ets$/, re: /Theme\.chipHeight/, reason: 'chipButton 复用 builder（定高自适应宽）' },
+    { file: /Settings\.ets$/, re: /formatTime/, reason: '提醒时间行（0 尺寸死阴影，清理候选）' },
+    { file: /Settings\.ets$/, re: /layoutWeight\(1\)/, reason: '主/次按钮 builder（flex layoutWeight 阴影）' },
+    { file: /ItemDetail\.ets$/, re: /layoutWeight\(1\)/, reason: 'primaryBtn builder（flex layoutWeight 阴影）' },
+    { file: /CategoryManager\.ets$/, re: /layoutWeight\(1\)/, reason: '取消/保存按钮（flex layoutWeight 阴影）' },
+  ],
+};
+
+function checkShadowRule() {
+  const violations = [];
+  let whitelistHits = 0;
+  for (const file of etsFiles) {
+    const rel = path.relative(rootDir, file);
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (!SHADOW_RULE.pattern.test(lines[i])) continue;
+      const window = lines.slice(Math.max(0, i - 3), i + 26).join('\n');
+      const wl = SHADOW_RULE.whitelist.find((w) => w.file.test(rel) && w.re.test(window));
+      if (wl) {
+        whitelistHits++;
+      } else {
+        violations.push({ line: i + 1, content: lines[i].trim(), file: rel });
+      }
+    }
+  }
+  return { violations, whitelistHits };
+}
+
 // 主逻辑
 let hasError = false;
 const etsFiles = getEtsFiles(pagesDir);
@@ -153,6 +192,22 @@ for (const rule of rules) {
     hasError = true;
   } else {
     console.log(`✅ ${rule.name}: 通过`);
+  }
+}
+
+// 规则 4：硬阴影样板防回潮
+{
+  const { violations, whitelistHits } = checkShadowRule();
+  if (violations.length > 0) {
+    console.error(`❌ 硬阴影样板防回潮 (${violations.length} 处) —— 请改用 common/HardShadow.ets 组件:`);
+    for (const v of violations.slice(0, 8)) {
+      console.error(`     ${v.file}:L${v.line}: ${v.content}`);
+    }
+    if (violations.length > 8) console.error(`     ... 还有 ${violations.length - 8} 处`);
+    hasError = true;
+  } else {
+    console.log(`✅ 硬阴影样板防回潮: 通过`);
+    console.log(`   组件化硬阴影 + 白名单长尾 ${whitelistHits} 条（附理由见 SHADOW_RULE）`);
   }
 }
 

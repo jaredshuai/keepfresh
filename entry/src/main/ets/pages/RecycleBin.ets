@@ -7,6 +7,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, MaterialStatus } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
 import { Theme } from '../common/Theme';
+import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 
 @Entry
 @Component
@@ -160,14 +161,7 @@ struct RecycleBin {
 
   @Builder
   backButton() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Row() {
-      }
-      .width(Theme.iconBtnSize)
-      .height(Theme.iconBtnSize)
-      .backgroundColor(Theme.ink)
-      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
-
+    HardShadowBox({ boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize, topStart: true }) {
       Button({ type: ButtonType.Normal, stateEffect: true }) {
         SymbolGlyph($r('sys.symbol.chevron_left'))
           .fontSize(22)
@@ -182,22 +176,12 @@ struct RecycleBin {
         this.getUIContext().getRouter().back();
       })
     }
-    .width(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .height(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   /** 已删除物资卡片：半透明白卡 + 恢复（深黄）/ 彻底删除（白底红字） */
   @Builder
   deletedCard(m: Material) {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Row() {
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(Theme.ink)
-      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
-
+    HardShadowCard({ shadowMode: -1, topStart: true }) {
       Column({ space: Theme.smallGap }) {
         Row() {
           Column({ space: Theme.tinyGap }) {
@@ -259,7 +243,5 @@ struct RecycleBin {
       .alignItems(HorizontalAlign.Start)
       .opacity(0.85)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 }

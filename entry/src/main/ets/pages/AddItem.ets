@@ -13,6 +13,7 @@ import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
+import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 
 interface RouteParams {
   id?: number;
@@ -354,12 +355,7 @@ struct AddItem {
   build() {
     Column() {
       Row() {
-        Stack() {
-          Row()
-            .width(Theme.iconBtnSize)
-            .height(Theme.iconBtnSize)
-            .backgroundColor(Theme.ink)
-            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+        HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize}) {
 
           Button({ type: ButtonType.Circle, stateEffect: true }) {
             SymbolGlyph($r('sys.symbol.chevron_left'))
@@ -375,7 +371,6 @@ struct AddItem {
             this.getUIContext().getRouter().back();
           })
         }
-        .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
         Text(this.isEdit ? '编辑物资' : '新增物资')
           .fontSize(Theme.textTitle)
@@ -427,11 +422,7 @@ struct AddItem {
       Scroll() {
         Column({ space: Theme.cardGap }) {
           if (this.errorMsg !== '') {
-            Stack() {
-              Row()
-                .width('100%')
-                .backgroundColor(Theme.ink)
-                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+            HardShadowCard({shadowMode: 0}) {
 
               Row({ space: Theme.smallGap }) {
                 Column()
@@ -457,8 +448,6 @@ struct AddItem {
               .border(Theme.borderThin)
               .borderRadius(Theme.cardRadius)
             }
-            .width('100%')
-            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
 
           Row({ space: Theme.elementGap }) {
@@ -472,21 +461,13 @@ struct AddItem {
           }
           .width('100%')
 
-          Stack() {
-            Column()
-              .width('100%')
-              .backgroundColor(Theme.ink)
-              .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+          HardShadowCard({shadowMode: 0}) {
 
             Column({ space: Theme.elementGap }) {
               this.sectionTitle('基本信息', Theme.yellowDark)
 
               this.fieldLabel('物资名称 *')
-              Stack() {
-                Row()
-                  .width('100%')
-                  .backgroundColor(Theme.ink)
-                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+              HardShadowCard({shadowMode: 0}) {
                 TextInput({ text: this.name, placeholder: '如：牛奶、感冒灵、洗面奶' })
                   .fontSize(Theme.textBody)
                   .fontColor(Theme.textPrimary)
@@ -499,15 +480,10 @@ struct AddItem {
                     this.name = v;
                   })
               }
-              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
               if (this.barcode.trim().length > 0) {
                 this.fieldLabel('条形码')
-                Stack() {
-                  Row()
-                    .width('100%')
-                    .backgroundColor(Theme.ink)
-                    .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                HardShadowCard({shadowMode: 0}) {
                   Row() {
                     SymbolGlyph($r('sys.symbol.barcode_viewfinder'))
                       .fontSize(18)
@@ -535,7 +511,6 @@ struct AddItem {
                   .border(Theme.borderThin)
                   .borderRadius(Theme.inputRadius)
                 }
-                .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
               }
 
               this.fieldLabel('分类')
@@ -549,11 +524,7 @@ struct AddItem {
               })
 
               this.fieldLabel('数量 *（支持 500g 混合输入）')
-              Stack() {
-                Row()
-                  .width('100%')
-                  .backgroundColor(Theme.ink)
-                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+              HardShadowCard({shadowMode: 0}) {
                 TextInput({ text: this.quantityStr, placeholder: '如：2 或 500g' })
                   .fontSize(Theme.textBody)
                   .fontColor(Theme.textPrimary)
@@ -566,7 +537,6 @@ struct AddItem {
                     this.quantityStr = v;
                   })
               }
-              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
               this.chipGroup(this.units, this.unit, (v: string) => {
                 this.unit = v;
               })
@@ -578,24 +548,14 @@ struct AddItem {
             .borderRadius(Theme.cardRadius)
             .alignItems(HorizontalAlign.Start)
           }
-          .width('100%')
-          .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
-          Stack() {
-            Column()
-              .width('100%')
-              .backgroundColor(Theme.ink)
-              .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+          HardShadowCard({shadowMode: 0}) {
 
             Column({ space: Theme.elementGap }) {
               this.sectionTitle('日期与保质期', Theme.near)
 
               this.fieldLabel('生产日期 *')
-              Stack() {
-                Row()
-                  .width('100%')
-                  .backgroundColor(Theme.ink)
-                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+              HardShadowCard({shadowMode: 0}) {
                 Row() {
                   Text(this.productionDate)
                     .fontSize(Theme.textBody)
@@ -616,7 +576,6 @@ struct AddItem {
                   this.pickProductionDate();
                 })
               }
-              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
               // ── 保质期模式切换：天数 / 月数（包装常标月数，月末自动 clamp）──
               Row({ space: Theme.smallGap }) {
@@ -664,11 +623,7 @@ struct AddItem {
 
               if (this.shelfLifeMode === 'days') {
                 this.fieldLabel('保质期（天）*')
-                Stack() {
-                  Row()
-                    .width('100%')
-                    .backgroundColor(Theme.ink)
-                    .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                HardShadowCard({shadowMode: 0}) {
                   TextInput({ text: this.shelfLifeStr, placeholder: '天数' })
                     .type(InputType.Number)
                     .fontSize(Theme.textBody)
@@ -682,17 +637,12 @@ struct AddItem {
                       this.shelfLifeStr = v;
                     })
                 }
-                .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
                 this.chipGroup(this.presetLabels(), `${this.shelfLifeStr}天`, (v: string) => {
                   this.shelfLifeStr = v.replace('天', '');
                 })
               } else {
                 this.fieldLabel('保质期（月）*')
-                Stack() {
-                  Row()
-                    .width('100%')
-                    .backgroundColor(Theme.ink)
-                    .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+                HardShadowCard({shadowMode: 0}) {
                   TextInput({ text: this.shelfLifeMonthsStr, placeholder: '月数（如 12）' })
                     .type(InputType.Number)
                     .fontSize(Theme.textBody)
@@ -706,7 +656,6 @@ struct AddItem {
                       this.shelfLifeMonthsStr = v;
                     })
                 }
-                .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
                 this.chipGroup(this.presetMonthLabels(), `${this.shelfLifeMonthsStr}个月`, (v: string) => {
                   this.shelfLifeMonthsStr = v.replace('个月', '');
                 })
@@ -715,11 +664,7 @@ struct AddItem {
                   .fontColor(Theme.textTertiary)
               }
 
-              Stack() {
-                Row()
-                  .width('100%')
-                  .backgroundColor(Theme.ink)
-                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+              HardShadowCard({shadowMode: 0}) {
 
                 Row() {
                   Column({ space: Theme.tinyGap }) {
@@ -748,9 +693,6 @@ struct AddItem {
                 .borderRadius(Theme.cardRadius)
                 .backgroundColor(Theme.safe)
               }
-              .width('100%')
-              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-              .margin({ top: Theme.smallGap })
             }
             .width('100%')
             .padding(Theme.cardPadding)
@@ -759,15 +701,9 @@ struct AddItem {
             .borderRadius(Theme.cardRadius)
             .alignItems(HorizontalAlign.Start)
           }
-          .width('100%')
-          .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
           if (this.customFieldsDefs.length > 0) {
-            Stack() {
-              Column()
-                .width('100%')
-                .backgroundColor(Theme.ink)
-                .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+            HardShadowCard({shadowMode: 0}) {
 
               Column({ space: Theme.elementGap }) {
                 this.sectionTitle('扩展信息', Theme.expired)
@@ -783,24 +719,14 @@ struct AddItem {
               .borderRadius(Theme.cardRadius)
               .alignItems(HorizontalAlign.Start)
             }
-            .width('100%')
-            .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
           }
 
-          Stack() {
-            Column()
-              .width('100%')
-              .backgroundColor(Theme.ink)
-              .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+          HardShadowCard({shadowMode: 0}) {
 
             Column({ space: Theme.elementGap }) {
               this.sectionTitle('备注', Theme.safe)
 
-              Stack() {
-                Row()
-                  .width('100%')
-                  .backgroundColor(Theme.ink)
-                  .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+              HardShadowCard({shadowMode: 0}) {
                 TextArea({ text: this.note, placeholder: '选填，如存放位置、购买渠道等' })
                   .fontSize(Theme.textBody)
                   .fontColor(Theme.textPrimary)
@@ -813,7 +739,6 @@ struct AddItem {
                     this.note = v;
                   })
               }
-              .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
             }
             .width('100%')
             .padding(Theme.cardPadding)
@@ -822,8 +747,6 @@ struct AddItem {
             .borderRadius(Theme.cardRadius)
             .alignItems(HorizontalAlign.Start)
           }
-          .width('100%')
-          .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
 
           Column()
             .width('100%')
@@ -932,12 +855,7 @@ struct AddItem {
       .constraintSize({ maxHeight: 320 })
       .scrollBar(BarState.Off)
 
-      Stack() {
-        Row()
-          .width('100%')
-          .height(Theme.primaryBtnHeight)
-          .backgroundColor(Theme.ink)
-          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+      HardShadowCard({shadowMode: Theme.primaryBtnHeight}) {
 
         Button('都不对，手动填写')
           .width('100%')
@@ -952,9 +870,6 @@ struct AddItem {
             this.discardScanSuggestions();
           })
       }
-      .width('100%')
-      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-      .margin({ bottom: Theme.cardGap })
     }
     .width('100%')
     .padding({
@@ -966,11 +881,7 @@ struct AddItem {
 
   @Builder
   suggestionRow(m: Material) {
-    Stack() {
-      Row()
-        .width('100%')
-        .backgroundColor(Theme.ink)
-        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: 0}) {
 
       Row() {
         Column() {
@@ -1010,8 +921,6 @@ struct AddItem {
         this.applyScanSuggestion(m);
       })
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   @Builder
@@ -1054,11 +963,7 @@ struct AddItem {
   renderCustomFieldInput(def: CustomField) {
     if (def.type === 'text') {
       this.fieldLabel(def.name)
-      Stack() {
-        Row()
-          .width('100%')
-          .backgroundColor(Theme.ink)
-          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+      HardShadowCard({shadowMode: 0}) {
         TextInput({ text: this.customFieldValues[def.id] || '', placeholder: '选填' })
           .fontSize(Theme.textBody)
           .fontColor(Theme.textPrimary)
@@ -1071,14 +976,9 @@ struct AddItem {
             this.updateCustomFieldValue(def.id, v);
           })
       }
-      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     } else if (def.type === 'number') {
       this.fieldLabel(def.name)
-      Stack() {
-        Row()
-          .width('100%')
-          .backgroundColor(Theme.ink)
-          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+      HardShadowCard({shadowMode: 0}) {
         TextInput({ text: this.customFieldValues[def.id] || '', placeholder: '选填（数字）' })
           .type(InputType.Number)
           .fontSize(Theme.textBody)
@@ -1092,14 +992,9 @@ struct AddItem {
             this.updateCustomFieldValue(def.id, v);
           })
       }
-      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     } else if (def.type === 'date') {
       this.fieldLabel(def.name)
-      Stack() {
-        Row()
-          .width('100%')
-          .backgroundColor(Theme.ink)
-          .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+      HardShadowCard({shadowMode: 0}) {
         Row() {
           Text(this.customFieldValues[def.id] ? this.customFieldValues[def.id] : `选择${def.name}`)
             .fontSize(Theme.textBody)
@@ -1133,7 +1028,6 @@ struct AddItem {
           this.pickCustomFieldDate(def.id);
         })
       }
-      .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
     } else if (def.type === 'enum') {
       this.fieldLabel(def.name)
       this.customEnumChipGroup(def.id, def.options || [])

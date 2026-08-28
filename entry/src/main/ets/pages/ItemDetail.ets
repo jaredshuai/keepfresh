@@ -9,6 +9,7 @@ import { MaterialDb } from '../db/MaterialDb';
 import { levelOf, levelColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
+import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 import { getCategoryIcon } from '../common/CategoryIcons';
 
 interface RouteParams {
@@ -194,13 +195,7 @@ struct ItemDetail {
 
   @Builder
   backButton() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Row() {
-      }
-      .width(Theme.iconBtnSize)
-      .height(Theme.iconBtnSize)
-      .backgroundColor(Theme.ink)
-      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowBox({boxWidth: Theme.iconBtnSize, boxHeight: Theme.iconBtnSize, topStart: true}) {
 
       Button({ type: ButtonType.Circle, stateEffect: true }) {
         SymbolGlyph($r('sys.symbol.chevron_left'))
@@ -216,20 +211,11 @@ struct ItemDetail {
         this.getUIContext().getRouter().back();
       })
     }
-    .width(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .height(Theme.iconBtnSize + Theme.hardShadowOffset)
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   @Builder
   statusBanner() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Row() {
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(Theme.ink)
-      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: -1, topStart: true}) {
 
       Column({ space: Theme.smallGap }) {
         Row() {
@@ -261,8 +247,6 @@ struct ItemDetail {
       .backgroundColor(this.bannerColor())
       .alignItems(HorizontalAlign.Start)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   /** 终态时 Banner 主文案切换为处理结果 */
@@ -295,13 +279,7 @@ struct ItemDetail {
    * ============================================================ */
   @Builder
   statusActions() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Row() {
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(Theme.ink)
-      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: -1, topStart: true}) {
 
       Column({ space: Theme.elementGap }) {
         Row({ space: Theme.tinyGap }) {
@@ -354,8 +332,6 @@ struct ItemDetail {
       .border(Theme.borderThin)
       .alignItems(HorizontalAlign.Start)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   /** 状态操作小按钮：白底彩字黑边（非当前状态才可点） */
@@ -408,13 +384,7 @@ struct ItemDetail {
 
   @Builder
   infoCard() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Row() {
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(Theme.ink)
-      .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+    HardShadowCard({shadowMode: -1, topStart: true}) {
 
       Column({ space: 0 }) {
         // 头部：分类图标方块（2vp黑边） + 名称 + 分类/数量
@@ -492,8 +462,6 @@ struct ItemDetail {
       .backgroundColor(Theme.cardBg)
       .alignItems(HorizontalAlign.Start)
     }
-    .width('100%')
-    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
   private hasCustomFieldValue(fieldId: string): boolean {
