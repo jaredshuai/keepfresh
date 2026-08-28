@@ -30,6 +30,44 @@ function copyStringRecord(src: Record<string, string>): Record<string, string> {
   return out;
 }
 
+/**
+ * 换行铺开的单选芯片组（分类/位置/单位/保质期预设共用）。
+ * 独立组件而非 @Builder：@Builder 按值传参不随状态刷新，选中高亮会停滞
+ * （界面显示与实际保存值不一致，实测坑）；@Prop selected 由父状态驱动，响应式有保证。
+ */
+@Component
+struct ChipGroup {
+  @Prop options: string[] = [];
+  @Prop selected: string = '';
+  onSelect: (v: string) => void = () => {};
+
+  build() {
+    Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
+      ForEach(this.options, (opt: string) => {
+        Stack() {
+          Row()
+            .backgroundColor(Theme.ink)
+            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
+
+          Text(opt)
+            .fontSize(Theme.textCaption)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.selected === opt ? Theme.textWhite : Theme.textPrimary)
+            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+            .borderRadius(Theme.chipRadius)
+            .backgroundColor(this.selected === opt ? Theme.yellowDark : Theme.inputBg)
+            .border(Theme.borderThin)
+            .onClick(() => {
+              this.onSelect(opt);
+            })
+        }
+        .margin({ right: Theme.smallGap + Theme.hardShadowOffset, bottom: Theme.smallGap + Theme.hardShadowOffset })
+      }, (opt: string) => opt)
+    }
+    .width('100%')
+  }
+}
+
 @Entry
 @Component
 struct AddItem {
@@ -630,14 +668,14 @@ struct AddItem {
               }
 
               this.fieldLabel('分类')
-              this.chipGroup(this.categories, this.category, (v: string) => {
+              ChipGroup({ options: this.categories, selected: this.category, onSelect: (v: string) => {
                 this.category = v;
-              })
+              } })
 
               this.fieldLabel('存放位置')
-              this.chipGroup(this.locations, this.location, (v: string) => {
+              ChipGroup({ options: this.locations, selected: this.location, onSelect: (v: string) => {
                 this.location = v;
-              })
+              } })
 
               this.fieldLabel('数量 *（支持 500g 混合输入）')
               HardShadowCard({shadowMode: 0}) {
@@ -653,9 +691,9 @@ struct AddItem {
                     this.quantityStr = v;
                   })
               }
-              this.chipGroup(this.units, this.unit, (v: string) => {
+              ChipGroup({ options: this.units, selected: this.unit, onSelect: (v: string) => {
                 this.unit = v;
-              })
+              } })
             }
             .width('100%')
             .padding(Theme.cardPadding)
@@ -753,9 +791,9 @@ struct AddItem {
                       this.shelfLifeStr = v;
                     })
                 }
-                this.chipGroup(this.presetLabels(), `${this.shelfLifeStr}天`, (v: string) => {
+                ChipGroup({ options: this.presetLabels(), selected: `${this.shelfLifeStr}天`, onSelect: (v: string) => {
                   this.shelfLifeStr = v.replace('天', '');
-                })
+                } })
               } else {
                 this.fieldLabel('保质期（月）*')
                 HardShadowCard({shadowMode: 0}) {
@@ -772,9 +810,9 @@ struct AddItem {
                       this.shelfLifeMonthsStr = v;
                     })
                 }
-                this.chipGroup(this.presetMonthLabels(), `${this.shelfLifeMonthsStr}个月`, (v: string) => {
+                ChipGroup({ options: this.presetMonthLabels(), selected: `${this.shelfLifeMonthsStr}个月`, onSelect: (v: string) => {
                   this.shelfLifeMonthsStr = v.replace('个月', '');
-                })
+                } })
                 Text('按月加法自动处理月末（1/31 + 1个月 = 2/28 或 2/29）')
                   .fontSize(Theme.textCaption)
                   .fontColor(Theme.textTertiary)
@@ -1048,32 +1086,7 @@ struct AddItem {
       .margin({ bottom: Theme.tinyGap })
   }
 
-  @Builder
-  chipGroup(options: string[], selected: string, onSelect: (v: string) => void) {
-    Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
-      ForEach(options, (opt: string) => {
-        Stack() {
-          Row()
-            .backgroundColor(Theme.ink)
-            .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
-
-          Text(opt)
-            .fontSize(Theme.textCaption)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(selected === opt ? Theme.textWhite : Theme.textPrimary)
-            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-            .borderRadius(Theme.chipRadius)
-            .backgroundColor(selected === opt ? Theme.yellowDark : Theme.inputBg)
-            .border(Theme.borderThin)
-            .onClick(() => {
-              onSelect(opt);
-            })
-        }
-        .margin({ right: Theme.smallGap + Theme.hardShadowOffset, bottom: Theme.smallGap + Theme.hardShadowOffset })
-      }, (opt: string) => opt)
-    }
-    .width('100%')
-  }
+  /* chipGroup 已上移为文件级 ChipGroup 组件（@Prop 响应式），见文件头部 */
 
   @Builder
   renderCustomFieldInput(def: CustomField) {

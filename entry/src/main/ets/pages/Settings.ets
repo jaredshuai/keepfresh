@@ -115,9 +115,17 @@ struct Settings {
     try {
       const ok = await this.settingsService.updateNearExpiryDays(days);
       if (ok) {
-        const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-        await this.reminderService.syncDailyReminder(ctx);
-        this.toast(`已设置临期阈值为 ${days} 天`);
+        let reminderHint = '';
+        try {
+          const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+          await this.reminderService.syncDailyReminder(ctx);
+        } catch (syncErr) {
+          // 阈值此刻已持久化成功；提醒重同步失败（如未授予通知权限导致
+          // 代理提醒配额为 0）只附提示，不得误报为「保存失败」
+          console.error(`threshold saved but reminder resync failed: ${(syncErr as BusinessError).message}`);
+          reminderHint = '，但提醒同步失败（检查通知权限）';
+        }
+        this.toast(`已设置临期阈值为 ${days} 天${reminderHint}`);
       }
     } catch (e) {
       console.error(`update threshold failed: ${(e as BusinessError).message}`);
@@ -165,8 +173,15 @@ struct Settings {
       };
       await this.reminderService.updateSettings(settings);
       if (this.reminderEnabled) {
-        await this.reminderService.syncDailyReminder(ctx);
-        this.toast('已更新提醒设置');
+        let reminderHint = '';
+        try {
+          await this.reminderService.syncDailyReminder(ctx);
+        } catch (syncErr) {
+          // 提醒配置已持久化；仅同步发布失败（如未授予通知权限）只附提示
+          console.error(`reminder settings saved but sync failed: ${(syncErr as BusinessError).message}`);
+          reminderHint = '，但提醒同步失败（检查通知权限）';
+        }
+        this.toast(`已更新提醒设置${reminderHint}`);
       } else {
         await this.reminderService.cancelAllReminders();
         this.toast('已关闭后台提醒');
@@ -359,7 +374,7 @@ struct Settings {
                     Stack() {
                       this.chipButton(
                         `${preset}天`,
-                        this.nearExpiryDaysStr === preset.toString(),
+                        preset.toString(),
                         () => {
                           this.handleThresholdChange(preset.toString());
                         }
@@ -748,7 +763,7 @@ struct Settings {
    * Chip 按钮：未选中白底黑边黑字，选中深黄底白字黑边 + 硬阴影
    * ============================================================ */
   @Builder
-  chipButton(label: string, selected: boolean, onClick: () => void) {
+  chipButton(label: string, value: string, onClick: () => void) {
     Stack() {
       Column()
         .height(Theme.chipHeight)
@@ -759,11 +774,11 @@ struct Settings {
         Text(label)
           .fontSize(Theme.textSmall)
           .fontWeight(FontWeight.Bold)
-          .fontColor(selected ? Theme.textWhite : Theme.textPrimary)
+          .fontColor(this.nearExpiryDaysStr === value ? Theme.textWhite : Theme.textPrimary)
       }
       .height(Theme.chipHeight)
       .padding({ left: 12, right: 12 })
-      .backgroundColor(selected ? Theme.yellowDark : Theme.cardBg)
+      .backgroundColor(this.nearExpiryDaysStr === value ? Theme.yellowDark : Theme.cardBg)
       .border(Theme.borderThin)
       .justifyContent(FlexAlign.Center)
     }
