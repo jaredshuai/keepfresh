@@ -71,6 +71,7 @@ struct Index {
   @State selectedCategory: string = '';   // 空 = 全部分类
   @State categories: string[] = DEFAULT_CATEGORIES.slice();
   private db: MaterialDb = MaterialDb.getInstance();
+  private scroller: Scroller = new Scroller();
 
   onPageShow(): void {
     // 通知跳转：EntryAbility 已把 want.parameters.filterLevel 存入 AppStorage，
@@ -186,6 +187,7 @@ struct Index {
 
   /** 筛选链路（移植自 the-ai-menu applyPantryListControls）：关键词 → 分类 → 状态 Tab → 分组排序 */
   private applyFilters(): void {
+    this.scroller.scrollTo({ xOffset: 0, yOffset: 0 });
     let filtered: Material[] = this.materials;
     filtered = filterByKeyword(filtered, this.searchKeyword);
     if (this.selectedCategory.length > 0) {
@@ -222,6 +224,12 @@ struct Index {
   }
 
   /** 当前筛选结果总数（空态判断用） */
+  /** 是否处于筛选态（非「全部」）：此时分组强制展开、折叠开关隐藏 */
+  private isFiltering(): boolean {
+    return this.activeStatusTab !== 'all' || this.selectedCategory.length > 0
+      || this.searchKeyword.trim().length > 0;
+  }
+
   private filteredTotal(): number {
     const g = this.groupedMaterials;
     return g.expired.length + g.near.length + g.safe.length + g.handled.length;
@@ -241,13 +249,21 @@ struct Index {
         } else if (this.materials.length === 0) {
           this.emptyState()
         } else {
-          Scroll() {
-            Column({ space: Theme.cardGap }) {
-              // ── 筛选区：搜索框 + 状态 Tab + 分类 Chip（骨架来自 the-ai-menu）──
-              this.searchBar()
-              this.statusTabs()
-              this.categoryChips()
+          // ── 固定筛选区：搜索框 + 状态 Tab + 分类 Chip —— 不随列表滚动，位置恒定 ──
+          Column({ space: Theme.cardGap }) {
+            this.searchBar()
+            this.statusTabs()
+            this.categoryChips()
+          }
+          .width('100%')
+          .padding({
+            left: Theme.pagePadding,
+            right: Theme.pagePadding,
+            top: Theme.smallGap
+          })
 
+          Scroll(this.scroller) {
+            Column({ space: Theme.cardGap }) {
               if (this.filteredTotal() === 0) {
                 this.noResultState()
               } else {
@@ -276,7 +292,7 @@ struct Index {
                 // ─── 安全组（蓝绿正方形，可折叠） ───
                 if (this.groupedMaterials.safe.length > 0) {
                   this.groupHeaderWithToggle('安全', ExpiryLevel.SAFE, this.groupedMaterials.safe.length)
-                  if (!this.safeCollapsed) {
+                  if (!this.safeCollapsed || this.isFiltering()) {
                     Column({ space: Theme.smallGap }) {
                       ForEach(this.groupedMaterials.safe, (m: Material) => {
                         this.materialCard(m)
@@ -289,7 +305,7 @@ struct Index {
                 // ─── 已处理组（用完/丢弃，可折叠，沉底） ───
                 if (this.groupedMaterials.handled.length > 0) {
                   this.handledGroupHeader(this.groupedMaterials.handled.length)
-                  if (!this.handledCollapsed) {
+                  if (!this.handledCollapsed || this.isFiltering()) {
                     Column({ space: Theme.smallGap }) {
                       ForEach(this.groupedMaterials.handled, (m: Material) => {
                         this.handledCard(m)
@@ -306,8 +322,7 @@ struct Index {
             .width('100%')
             .padding({
               left: Theme.pagePadding,
-              right: Theme.pagePadding,
-              top: Theme.smallGap
+              right: Theme.pagePadding
             })
           }
           .layoutWeight(1)
@@ -580,15 +595,17 @@ struct Index {
       }
       .layoutWeight(1)
 
-      Text(this.handledCollapsed ? '展开' : '收起')
-        .fontSize(Theme.textSmall)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(Theme.textSecondary)
-        .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-        .border({ width: 2, color: Theme.textSecondary })
-        .onClick(() => {
-          this.handledCollapsed = !this.handledCollapsed;
-        })
+      if (!this.isFiltering()) {
+        Text(this.handledCollapsed ? '展开' : '收起')
+          .fontSize(Theme.textSmall)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Theme.textSecondary)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .border({ width: 2, color: Theme.textSecondary })
+          .onClick(() => {
+            this.handledCollapsed = !this.handledCollapsed;
+          })
+      }
     }
     .width('100%')
     .padding({ left: 4, top: Theme.smallGap, bottom: Theme.tinyGap })
@@ -684,15 +701,17 @@ struct Index {
       }
       .layoutWeight(1)
 
-      Text(this.safeCollapsed ? '展开' : '收起')
-        .fontSize(Theme.textSmall)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(Theme.safe)
-        .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-        .border({ width: 2, color: Theme.safe })
-        .onClick(() => {
-          this.safeCollapsed = !this.safeCollapsed;
-        })
+      if (!this.isFiltering()) {
+        Text(this.safeCollapsed ? '展开' : '收起')
+          .fontSize(Theme.textSmall)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Theme.safe)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .border({ width: 2, color: Theme.safe })
+          .onClick(() => {
+            this.safeCollapsed = !this.safeCollapsed;
+          })
+      }
     }
     .width('100%')
     .padding({ left: 4, top: Theme.smallGap, bottom: Theme.tinyGap })
