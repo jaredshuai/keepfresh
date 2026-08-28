@@ -463,36 +463,33 @@ struct Index {
    * ============================================================ */
   @Builder
   statusTabs() {
-    Scroll() {
-      Row({ space: Theme.smallGap }) {
-        ForEach(STATUS_TABS, (tab: StatusTab) => {
-          Stack() {
-            Column()
-              .height(28)
-              .backgroundColor(Theme.ink)
-              .margin({ left: 3, top: 3 })
+    // 换行铺开而非横滑：5 个 tab 全部可见，不留隐藏选项（Mobbin 调研：Beli/Deliveroo 同款）
+    Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
+      ForEach(STATUS_TABS, (tab: StatusTab) => {
+        Stack() {
+          Column()
+            .height(28)
+            .backgroundColor(Theme.ink)
+            .margin({ left: 3, top: 3 })
 
-            Text(tab.label)
-              .fontSize(Theme.textSmall)
-              .fontWeight(this.activeStatusTab === tab.id ? FontWeight.Bold : FontWeight.Medium)
-              .fontColor(this.activeStatusTab === tab.id ? Theme.textWhite : Theme.textPrimary)
-              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
-              .backgroundColor(this.activeStatusTab === tab.id ? Theme.yellowDark : Theme.cardBg)
-              .border(Theme.borderThin)
-              .onClick(() => {
-                this.activeStatusTab = tab.id;
-                this.applyFilters();
-              })
-          }
-          .padding({ right: 3, bottom: 3 })
-        }, (tab: StatusTab) => tab.id)
-      }
-      .padding({ top: Theme.tinyGap, bottom: Theme.tinyGap })
+          Text(tab.label)
+            .fontSize(Theme.textSmall)
+            .fontWeight(this.activeStatusTab === tab.id ? FontWeight.Bold : FontWeight.Medium)
+            .fontColor(this.activeStatusTab === tab.id ? Theme.textWhite : Theme.textPrimary)
+            .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+            .backgroundColor(this.activeStatusTab === tab.id ? Theme.yellowDark : Theme.cardBg)
+            .border(Theme.borderThin)
+            .onClick(() => {
+              this.activeStatusTab = tab.id;
+              this.applyFilters();
+            })
+        }
+        .padding({ right: 3, bottom: 3 })
+        .margin({ right: Theme.smallGap, bottom: Theme.smallGap })
+      }, (tab: StatusTab) => tab.id)
     }
-    .scrollable(ScrollDirection.Horizontal)
-    .scrollBar(BarState.Off)
+    .padding({ top: Theme.tinyGap })
     .width('100%')
-    .align(Alignment.Start)
   }
 
   /* ============================================================
@@ -500,56 +497,54 @@ struct Index {
    * ============================================================ */
   @Builder
   categoryChips() {
-    Scroll() {
-      Row({ space: Theme.smallGap }) {
+    // 换行铺开而非横滑：分类全可见，自建分类不会被藏在滑动区外（Mobbin 调研：Beli/Deliveroo 同款）
+    Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
+      Stack() {
+        Column()
+          .height(28)
+          .backgroundColor(Theme.ink)
+          .margin({ left: 3, top: 3 })
+
+        Text('全部')
+          .fontSize(Theme.textSmall)
+          .fontWeight(this.selectedCategory.length === 0 ? FontWeight.Bold : FontWeight.Medium)
+          .fontColor(this.selectedCategory.length === 0 ? Theme.textWhite : Theme.textPrimary)
+          .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+          .backgroundColor(this.selectedCategory.length === 0 ? Theme.yellowDark : Theme.cardBg)
+          .border(Theme.borderThin)
+          .onClick(() => {
+            this.selectedCategory = '';
+            this.applyFilters();
+          })
+      }
+      .padding({ right: 3, bottom: 3 })
+      .margin({ right: Theme.smallGap, bottom: Theme.smallGap })
+
+      ForEach(this.categories, (cat: string) => {
         Stack() {
           Column()
             .height(28)
             .backgroundColor(Theme.ink)
             .margin({ left: 3, top: 3 })
 
-          Text('全部')
+          Text(cat)
             .fontSize(Theme.textSmall)
-            .fontWeight(this.selectedCategory.length === 0 ? FontWeight.Bold : FontWeight.Medium)
-            .fontColor(this.selectedCategory.length === 0 ? Theme.textWhite : Theme.textPrimary)
+            .fontWeight(this.selectedCategory === cat ? FontWeight.Bold : FontWeight.Medium)
+            .fontColor(this.selectedCategory === cat ? Theme.textWhite : Theme.textPrimary)
             .padding({ left: 12, right: 12, top: 5, bottom: 5 })
-            .backgroundColor(this.selectedCategory.length === 0 ? Theme.yellowDark : Theme.cardBg)
+            .backgroundColor(this.selectedCategory === cat ? Theme.yellowDark : Theme.cardBg)
             .border(Theme.borderThin)
             .onClick(() => {
-              this.selectedCategory = '';
+              this.selectedCategory = cat;
               this.applyFilters();
             })
         }
         .padding({ right: 3, bottom: 3 })
-
-        ForEach(this.categories, (cat: string) => {
-          Stack() {
-            Column()
-              .height(28)
-              .backgroundColor(Theme.ink)
-              .margin({ left: 3, top: 3 })
-
-            Text(cat)
-              .fontSize(Theme.textSmall)
-              .fontWeight(this.selectedCategory === cat ? FontWeight.Bold : FontWeight.Medium)
-              .fontColor(this.selectedCategory === cat ? Theme.textWhite : Theme.textPrimary)
-              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
-              .backgroundColor(this.selectedCategory === cat ? Theme.yellowDark : Theme.cardBg)
-              .border(Theme.borderThin)
-              .onClick(() => {
-                this.selectedCategory = cat;
-                this.applyFilters();
-              })
-          }
-          .padding({ right: 3, bottom: 3 })
-        }, (cat: string) => cat)
-      }
-      .padding({ top: Theme.tinyGap, bottom: Theme.tinyGap })
+        .margin({ right: Theme.smallGap, bottom: Theme.smallGap })
+      }, (cat: string) => cat)
     }
-    .scrollable(ScrollDirection.Horizontal)
-    .scrollBar(BarState.Off)
+    .padding({ top: Theme.tinyGap })
     .width('100%')
-    .align(Alignment.Start)
   }
 
   /* ============================================================
