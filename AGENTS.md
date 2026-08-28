@@ -14,7 +14,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## 代码结构（entry/src/main/ets/）
 
-> 本节由实际文件枚举生成（2026-08-27，24 个 .ets）。wire-guard 规则 7 校验本文档列出的 .ets 路径真实存在（文档→代码单向）；**新增/删除文件时同步本节，删除文件而忘改文档会直接 CI 红**。
+> 本节由实际文件枚举生成（2026-08-28，25 个 .ets）。wire-guard 规则 7 校验本文档列出的 .ets 路径真实存在（文档→代码单向）；**新增/删除文件时同步本节，删除文件而忘改文档会直接 CI 红**。
 
 **model/（领域模型，纯逻辑）**
 - `entry/src/main/ets/model/Material.ets` — 物资数据模型、状态机（active/opened/empty/discarded）、分类/位置/单位预设、临期阈值常量
@@ -28,6 +28,7 @@ This file provides guidance to AI coding agents when working with code in this r
 - `entry/src/main/ets/common/Validation.ets` — 输入校验纯函数（临期天数范围常量 + 校验；service 层同名方法只转发）
 - `entry/src/main/ets/common/Theme.ets` — 包豪斯设计令牌（页面禁写死色值/圆角，design-guard 执法）
 - `entry/src/main/ets/common/CategoryIcons.ets` — 分类图标映射
+- `entry/src/main/ets/common/HardShadow.ets` — 硬阴影容器组件（pages/ 禁手写阴影样板，design-guard 规则 4 执法）
 
 **db/（存储层）**
 - `entry/src/main/ets/db/MaterialDb.ets` — RelationalStore 封装（materials V2 / custom_field_defs / name_defs 三表 CRUD、迁移、软删除，单例；唯一允许裸 JSON 编解码 custom_fields 列之处）
