@@ -2,6 +2,7 @@
  * 物资数据模型与预设常量。
  * quantity 为字符串，支持 "500g" 混合输入（由 QuantityUnit.normalizeQuantityUnit 解析）。
  */
+import { encodeCustomFields } from './CustomField';
 
 /** 物资生命周期状态（持久化） */
 export enum MaterialStatus {
@@ -57,3 +58,43 @@ export const DEFAULT_UNITS: string[] = ['个', '袋', '盒', '瓶', '包', '份'
 export const SHELF_PRESET_DAYS: number[] = [7, 30, 90, 180, 365];
 
 export const SHELF_PRESET_MONTHS: number[] = [1, 3, 6, 12, 18, 24];
+
+/* ============================================================
+ * 同批次合并：同名+同位置+同到期日+同单位 的在库记录 = 同一批次，
+ * 新增入库自动并入（数量求和）而非另起一条；启动时对存量无损重复做一次并条。
+ * ============================================================ */
+
+/**
+ * 数量求和（入参为数值字符串）。
+ * 任一不可解析为正数（如 "半箱"、空串、"0"）返回 null，调用方放弃合并走新增——宁可两条，不可丢数。
+ */
+export function batchQuantitySum(a: string, b: string): string | null {
+  const na = Number((a ?? '').trim());
+  const nb = Number((b ?? '').trim());
+  if (Number.isNaN(na) || Number.isNaN(nb) || na <= 0 || nb <= 0) {
+    return null;
+  }
+  // 两位小数封顶，规避 0.1+0.2 浮点尾差
+  return `${Math.round((na + nb) * 100) / 100}`;
+}
+
+/**
+ * 两行是否可「无损」并条：同批次键（名称/位置/到期日/单位）且分类、备注、自定义字段完全一致——
+ * 即重复行不携带任何独有信息，只差数量。持久化 status 需均为 active（在库；开封/终态各自独立成条）。
+ * 注意比较的是持久化 status 而非派生状态：过期但在库的两条重复同样应并。
+ */
+export function isLosslessDuplicate(a: Material, b: Material): boolean {
+  if (a.id === b.id) {
+    return false;
+  }
+  if (a.status !== MaterialStatus.ACTIVE || b.status !== MaterialStatus.ACTIVE) {
+    return false;
+  }
+  return a.name === b.name
+    && a.location === b.location
+    && a.expiryDate === b.expiryDate
+    && a.unit === b.unit
+    && a.category === b.category
+    && a.note === b.note
+    && encodeCustomFields(a.customFields) === encodeCustomFields(b.customFields);
+}

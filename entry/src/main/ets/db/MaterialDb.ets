@@ -4,7 +4,7 @@
 import { relationalStore } from '@kit.ArkData';
 import { Context } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, MaterialStatus } from '../model/Material';
+import { Material, MaterialStatus, batchQuantitySum, isLosslessDuplicate } from '../model/Material';
 import { CustomField, CustomFieldType, decodeCustomFieldsJson, encodeCustomFields } from '../model/CustomField';
 
 const DB_NAME: string = 'keepfresh.db';
@@ -133,6 +133,15 @@ export class MaterialDb {
       await this.migrate();
       await this.store.executeSql(CREATE_CUSTOM_FIELD_DEFS_TABLE_SQL);
       await this.store.executeSql(CREATE_NAME_DEFS_TABLE_SQL);
+      // 存量无损重复批次并条（幂等，进程内仅 init 这一次）；失败不阻断启动
+      try {
+        const merged: number = await this.consolidateDuplicateBatches();
+        if (merged > 0) {
+          console.info(`consolidated ${merged} duplicate batch(es)`);
+        }
+      } catch (e) {
+        console.error(`consolidateDuplicateBatches failed: ${(e as BusinessError).message}`);
+      }
     } catch (e) {
       this.rethrow(e, 'init db');
     }
@@ -534,6 +543,75 @@ export class MaterialDb {
     } catch (e) {
       this.rethrow(e, 'insert');
     }
+  }
+
+  /**
+   * 同批次在库记录（新增并条用）：同名+同位置+同到期日+同单位且 active，排除软删除。
+   * 多条命中取最早一条（最"成形"的记录作为并条主体）。
+   */
+  async findActiveBatchMatch(m: Material): Promise<Material | undefined> {
+    let hit: Material | undefined = undefined;
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE);
+      predicates.equalTo('is_deleted', 0);
+      predicates.equalTo('status', MaterialStatus.ACTIVE);
+      predicates.equalTo('name', m.name);
+      predicates.equalTo('location', m.location ?? '');
+      predicates.equalTo('expiry_date', m.expiryDate);
+      predicates.equalTo('unit', m.unit);
+      predicates.orderByAsc('created_at');
+      predicates.orderByAsc('id');
+      predicates.limitAs(1);
+      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
+      try {
+        if (rs.goToNextRow()) {
+          hit = this.rowToMaterial(rs);
+        }
+      } finally {
+        rs.close();
+      }
+    } catch (e) {
+      this.rethrow(e, 'findActiveBatchMatch');
+    }
+    return hit;
+  }
+
+  /**
+   * 存量无损重复批次并条：isLosslessDuplicate 的两两配对并入最早一条（数量求和，条码互补），
+   * 其余物理删除（并条不是用户删除语义，不进回收站）。幂等；返回并掉的条数。
+   * 携带独有信息（备注/分类/自定义字段不同）的重复不动——宁可两条，不可静默丢数。
+   */
+  async consolidateDuplicateBatches(): Promise<number> {
+    const all: Material[] = await this.listAll();
+    const purged: Set<number> = new Set<number>();
+    let mergedCount: number = 0;
+    const now: string = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    for (let i = 0; i < all.length; i++) {
+      const primary: Material = all[i];
+      if (purged.has(primary.id) || primary.status !== MaterialStatus.ACTIVE) {
+        continue;
+      }
+      for (let j = i + 1; j < all.length; j++) {
+        const dup: Material = all[j];
+        if (purged.has(dup.id) || !isLosslessDuplicate(primary, dup)) {
+          continue;
+        }
+        const sum: string | null = batchQuantitySum(primary.quantity, dup.quantity);
+        if (sum === null) {
+          continue;
+        }
+        primary.quantity = sum;
+        primary.updatedAt = now;
+        if ((!primary.barcode || primary.barcode.length === 0) && dup.barcode) {
+          primary.barcode = dup.barcode;
+        }
+        await this.update(primary);
+        await this.purge(dup.id);
+        purged.add(dup.id);
+        mergedCount++;
+      }
+    }
+    return mergedCount;
   }
 
   /** 更新，返回受影响行数 */

@@ -55,6 +55,7 @@ const RULE4_WHITELIST = {
     listLocations: '已被 listEffectiveNames 取代，清理候选',
     getCustomFieldById: '零调用，清理候选',
     softDelete: 'remove() 内部转发的语义核心，保留 public',
+    consolidateDuplicateBatches: 'init() 启动并条钩子内部调用的语义核心，保留 public（测试无法触达 db 层）',
   },
   ExpiryService: {
     getNearExpiryThreshold: '仅测试消费的缓存 getter',

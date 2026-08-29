@@ -5,6 +5,7 @@
 import test, { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Material } from '../entry/src/main/ets/model/Material.ets';
+import { batchQuantitySum, isLosslessDuplicate } from '../entry/src/main/ets/model/Material.ets';
 import { addDays, todayStr, addMonths } from '../entry/src/main/ets/common/DateUtils.ets';
 import { normalizeQuantityUnit, formatQuantityUnit } from '../entry/src/main/ets/common/QuantityUnit.ets';
 import { normalizeText, normalizeNullableText, normalizeNonNegativeInteger, parseNonNegativeInteger } from '../entry/src/main/ets/common/InputNormalize.ets';
@@ -301,6 +302,45 @@ describe('基础排序 sortByCreatedDesc / sortByExpirationAsc', () => {
       makeMaterial({ id: 2, name: '早', expiryDate: addDays(today, 1) })
     ];
     assert.equal(sortByExpirationAsc(list)[0].name, '早');
+  });
+});
+
+
+describe('同批次并条（同名+同位置+同到期日+同单位 = 同一批次）', () => {
+  it('41. 数量求和：整数、小数、浮点尾差封顶', () => {
+    assert.equal(batchQuantitySum('1', '1'), '2');
+    assert.equal(batchQuantitySum('1.5', '1'), '2.5');
+    assert.equal(batchQuantitySum('0.1', '0.2'), '0.3');
+  });
+
+  it('42. 任一数量不可解析为正数 → null（放弃合并走新增，宁两条不丢数）', () => {
+    assert.equal(batchQuantitySum('abc', '1'), null);
+    assert.equal(batchQuantitySum('1', ''), null);
+    assert.equal(batchQuantitySum('0', '3'), null);
+    assert.equal(batchQuantitySum('-1', '3'), null);
+  });
+
+  it('43. 无损重复：同键 + 分类/备注/自定义字段一致 + 双在库 → 可并（数量不参与判定）', () => {
+    const a = makeMaterial({
+      id: 1, name: '脉动', expiryDate: '2027-04-04', quantity: '1', unit: '瓶',
+      location: '客厅', category: '饮料', note: '', status: MaterialStatus.ACTIVE
+    });
+    const b = makeMaterial({
+      id: 2, name: '脉动', expiryDate: '2027-04-04', quantity: '2', unit: '瓶',
+      location: '客厅', category: '饮料', note: '', status: MaterialStatus.ACTIVE
+    });
+    assert.equal(isLosslessDuplicate(a, b), true);
+  });
+
+  it('44. 有独有信息或非在库态 → 不可并（备注/分类/到期日不同、开封、终态、同 id）', () => {
+    const base = { name: '脉动', expiryDate: '2027-04-04', quantity: '1', unit: '瓶', location: '客厅', category: '饮料' };
+    const a = makeMaterial({ ...base, id: 1, status: MaterialStatus.ACTIVE });
+    assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 2, note: '赠品' })), false);
+    assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 2, category: '速食' })), false);
+    assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 2, expiryDate: '2027-05-04' })), false);
+    assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 2, status: MaterialStatus.OPENED })), false);
+    assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 2, status: MaterialStatus.DISCARDED })), false);
+    assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 1 })), false);
   });
 });
 

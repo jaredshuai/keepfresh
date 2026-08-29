@@ -3,12 +3,12 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, MaterialStatus, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS } from '../model/Material';
+import { Material, MaterialStatus, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS, batchQuantitySum } from '../model/Material';
 import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../service/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
-import { normalizeQuantityUnit } from '../common/QuantityUnit';
+import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUnit';
 import { UsageService } from '../service/UsageService';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
@@ -491,10 +491,33 @@ struct AddItem {
     try {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       await this.db.init(ctx);
+      let mergeToast = '';
       if (this.isEdit) {
         await this.db.update(material);
       } else {
-        await this.db.insert(material);
+        // 同批次并条：同名+同位置+同到期日+同单位的在库记录已存在 → 数量求和，不另起新条
+        // （编辑保存不并入：编辑语义是改这条本身，1:1 落库）
+        const twin = await this.db.findActiveBatchMatch(material);
+        const sum = twin ? batchQuantitySum(twin.quantity, material.quantity) : null;
+        if (twin && sum !== null) {
+          twin.quantity = sum;
+          twin.updatedAt = now;
+          // 并条只补空位，不覆盖既有信息（新填的备注/条码/自定义字段仅在原记录为空时带上）
+          if (twin.note.length === 0 && material.note.length > 0) {
+            twin.note = material.note;
+          }
+          if ((!twin.barcode || twin.barcode.length === 0) && material.barcode) {
+            twin.barcode = material.barcode;
+          }
+          if ((!twin.customFields || Object.keys(twin.customFields).length === 0)
+            && material.customFields && Object.keys(material.customFields).length > 0) {
+            twin.customFields = material.customFields;
+          }
+          await this.db.update(twin);
+          mergeToast = `已并入现有记录，数量合并为 ${formatQuantityUnit(sum, material.unit, '')}`;
+        } else {
+          await this.db.insert(material);
+        }
       }
       try {
         await ReminderService.getInstance().syncDailyReminder(ctx);
@@ -510,7 +533,7 @@ struct AddItem {
         material.shelfLifeDays,
         this.shelfLifeMode === 'months');
       this.suggestionApplied = false;
-      this.toast(this.isEdit ? '已保存' : '已添加');
+      this.toast(this.isEdit ? '已保存' : (mergeToast.length > 0 ? mergeToast : '已添加'));
       this.getUIContext().getRouter().back();
     } catch (e) {
       const err: BusinessError = e as BusinessError;
