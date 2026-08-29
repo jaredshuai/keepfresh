@@ -72,7 +72,6 @@ const RULE4_WHITELIST = {
   },
   common: {
     normalizeNullableText: '预留',
-    formatQuantityUnit: '清理候选：无外部调用方（原 AddItem 死导入已删，ticket #18）',
     pad2: 'toDateStr 内部件',
     // 审计复核新增（任务清单外）：InputNormalize 内部组合件，与 softDelete/pad2 同性质
     normalizeText: 'InputNormalize 内部组合件（被 normalizeNullableText/parseNonNegativeInteger 复用）',
