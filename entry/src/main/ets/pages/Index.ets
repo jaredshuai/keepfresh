@@ -617,7 +617,7 @@ struct Index {
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textSecondary)
           .letterSpacing(0.5)
-        Text(`${this.groupedMaterials.handled.length}项`)
+        Text(`${this.handledCount()}项`)
           .fontSize(Theme.textCaption)
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textTertiary)
@@ -755,7 +755,16 @@ struct Index {
     if (level === ExpiryLevel.NEAR) {
       return this.groupedMaterials.near.length;
     }
-    return this.groupedMaterials.safe.length;
+    if (level === ExpiryLevel.SAFE) {
+      return this.groupedMaterials.safe.length;
+    }
+    // 契约收窄：未知 level 快速失败，不静默兜底 safe 计数（防未来新增 level 时隐蔽数据错误）
+    throw new Error(`groupCountOf: unknown ExpiryLevel ${level}`);
+  }
+
+  /** 已处理组计数（用完/丢弃）：与 groupCountOf 同为组计数唯一入口 */
+  private handledCount(): number {
+    return this.groupedMaterials.handled.length;
   }
 
   /* ============================================================
