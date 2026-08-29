@@ -887,20 +887,24 @@ struct Index {
    * ============================================================ */
   @Builder
   hardShadowFab(onClick: () => void) {
-    HardShadowBox({boxWidth: Theme.fabSize, boxHeight: Theme.fabSize, onBoxClick: onClick}) {
+    Column() {
+      HardShadowBox({boxWidth: Theme.fabSize, boxHeight: Theme.fabSize, onBoxClick: onClick}) {
 
-      Column() {
-        SymbolGlyph($r('sys.symbol.plus'))
-          .fontSize(28)
-          .fontColor([Theme.textWhite])
-          .fontWeight(FontWeight.Bold)
+        Column() {
+          SymbolGlyph($r('sys.symbol.plus'))
+            .fontSize(28)
+            .fontColor([Theme.textWhite])
+            .fontWeight(FontWeight.Bold)
+        }
+        .width(Theme.fabSize)
+        .height(Theme.fabSize)
+        .backgroundColor(Theme.yellowDark)
+        .border(Theme.borderThin)
+        .justifyContent(FlexAlign.Center)
       }
-      .width(Theme.fabSize)
-      .height(Theme.fabSize)
-      .backgroundColor(Theme.yellowDark)
-      .border(Theme.borderThin)
-      .justifyContent(FlexAlign.Center)
     }
+    // BottomEnd 贴角对齐下留出安全边距，避免按钮+阴影怼死屏幕角落
+    .margin({ right: Theme.pagePadding, bottom: Theme.pagePadding })
   }
 
   /* ============================================================
