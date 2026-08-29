@@ -68,6 +68,59 @@ struct ChipGroup {
   }
 }
 
+/**
+ * 日期录入行（标签 + 触发行 + 可选说明文案），shelf 生产日期与 direct 到期日区块共用（#22 去重）。
+ * 独立组件而非 @Builder：@Builder 按值传参不随状态刷新，日期显示会停滞
+ * （#builder-by-value 实测坑）；@Prop value 由父状态驱动，响应式有保证（ChipGroup 先例）。
+ */
+@Component
+struct DateFieldRow {
+  @Prop label: string = '';
+  @Prop value: string = '';
+  caption: string = '';
+  onPick: () => void = () => {};
+
+  build() {
+    Column({ space: Theme.elementGap }) {
+      Text(this.label)
+        .fontSize(Theme.textCaption)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Theme.textSecondary)
+        .margin({ bottom: Theme.tinyGap })
+
+      HardShadowCard({shadowMode: 0}) {
+        Row() {
+          Text(this.value)
+            .fontSize(Theme.textBody)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Theme.textPrimary)
+            .layoutWeight(1)
+          SymbolGlyph($r('sys.symbol.calendar'))
+            .fontSize(20)
+            .fontColor([Theme.near])
+        }
+        .width('100%')
+        .padding(Theme.cardPadding)
+        .backgroundColor(Theme.inputBg)
+        .border(Theme.borderThin)
+        .borderRadius(Theme.inputRadius)
+        .height(48)
+        .onClick(() => {
+          this.onPick();
+        })
+      }
+
+      if (this.caption.length > 0) {
+        Text(this.caption)
+          .fontSize(Theme.textCaption)
+          .fontColor(Theme.textTertiary)
+      }
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+  }
+}
+
 @Entry
 @Component
 struct AddItem {
@@ -275,25 +328,27 @@ struct AddItem {
     this.toast('已按上次入库参数预填');
   }
 
-  private pickProductionDate(): void {
+  /** 共用日期选择包装（#22 去重）：只差 selected 与写回目标 */
+  private pickDate(selected: string, onAccept: (dateStr: string) => void): void {
     this.getUIContext().showDatePickerDialog({
       start: new Date('2020-01-01'),
       end: new Date('2035-12-31'),
-      selected: parseDate(this.productionDate),
+      selected: parseDate(selected),
       onDateAccept: (value: Date) => {
-        this.productionDate = toDateStr(value);
+        onAccept(toDateStr(value));
       }
     });
   }
 
+  private pickProductionDate(): void {
+    this.pickDate(this.productionDate, (d: string) => {
+      this.productionDate = d;
+    });
+  }
+
   private pickDirectExpiryDate(): void {
-    this.getUIContext().showDatePickerDialog({
-      start: new Date('2020-01-01'),
-      end: new Date('2035-12-31'),
-      selected: parseDate(this.directExpiryDate),
-      onDateAccept: (value: Date) => {
-        this.directExpiryDate = toDateStr(value);
-      }
+    this.pickDate(this.directExpiryDate, (d: string) => {
+      this.directExpiryDate = d;
     });
   }
 
@@ -823,28 +878,11 @@ struct AddItem {
               .justifyContent(FlexAlign.Start)
 
               if (this.dateMode === DateEntryMode.SHELF) {
-              this.fieldLabel('生产日期 *')
-              HardShadowCard({shadowMode: 0}) {
-                Row() {
-                  Text(this.productionDate)
-                    .fontSize(Theme.textBody)
-                    .fontWeight(FontWeight.Medium)
-                    .fontColor(Theme.textPrimary)
-                    .layoutWeight(1)
-                  SymbolGlyph($r('sys.symbol.calendar'))
-                    .fontSize(20)
-                    .fontColor([Theme.near])
-                }
-                .width('100%')
-                .padding(Theme.cardPadding)
-                .backgroundColor(Theme.inputBg)
-                .border(Theme.borderThin)
-                .borderRadius(Theme.inputRadius)
-                .height(48)
-                .onClick(() => {
-                  this.pickProductionDate();
-                })
-              }
+              DateFieldRow({
+                label: '生产日期 *',
+                value: this.productionDate,
+                onPick: () => this.pickProductionDate()
+              })
 
               // ── 保质期模式切换：天数 / 月数（包装常标月数，月末自动 clamp）──
               Row({ space: Theme.smallGap }) {
@@ -933,31 +971,12 @@ struct AddItem {
                   .fontColor(Theme.textTertiary)
               }
               } else {
-                this.fieldLabel('到期日期 *')
-                HardShadowCard({shadowMode: 0}) {
-                  Row() {
-                    Text(this.directExpiryDate)
-                      .fontSize(Theme.textBody)
-                      .fontWeight(FontWeight.Medium)
-                      .fontColor(Theme.textPrimary)
-                      .layoutWeight(1)
-                    SymbolGlyph($r('sys.symbol.calendar'))
-                      .fontSize(20)
-                      .fontColor([Theme.near])
-                  }
-                  .width('100%')
-                  .padding(Theme.cardPadding)
-                  .backgroundColor(Theme.inputBg)
-                  .border(Theme.borderThin)
-                  .borderRadius(Theme.inputRadius)
-                  .height(48)
-                  .onClick(() => {
-                    this.pickDirectExpiryDate();
-                  })
-                }
-                Text('包装上只印「保质期至 / 到期日」时用这个，应用只关心什么时候到期')
-                  .fontSize(Theme.textCaption)
-                  .fontColor(Theme.textTertiary)
+                DateFieldRow({
+                  label: '到期日期 *',
+                  value: this.directExpiryDate,
+                  caption: '包装上只印「保质期至 / 到期日」时用这个，应用只关心什么时候到期',
+                  onPick: () => this.pickDirectExpiryDate()
+                })
               }
 
               HardShadowCard({shadowMode: 0}) {
