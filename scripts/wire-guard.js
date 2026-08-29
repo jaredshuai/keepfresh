@@ -576,24 +576,26 @@ function runRule6(allFiles) {
   return { violations, whitelistHits: [], stat };
 }
 
-// 规则 7：AGENTS.md 引用的 .ets 路径必须真实存在（ticket #17，文档→代码单向）
+// 规则 7：AGENTS.md 与 docs/agents/code-structure.md 引用的 .ets 路径必须真实存在（ticket #17，文档→代码单向）
 // 只校验存在性，不要求「代码文件必须写进文档」——反向会劝退小改动。
 function runRule7() {
   const violations = [];
-  const agentsPath = path.join(rootDir, 'AGENTS.md');
-  const content = fs.readFileSync(agentsPath, 'utf8');
-  const re = /`([^`\n]*\.ets)`/g;
-  let m;
+  const docFiles = ['AGENTS.md', 'docs/agents/code-structure.md'];
   let count = 0;
-  while ((m = re.exec(content)) !== null) {
-    const p = m[1];
-    if (p.includes('*') || p.includes('**')) continue;
-    count++;
-    if (!fs.existsSync(path.join(rootDir, p))) {
-      violations.push(`AGENTS.md 引用的 ${p} 不存在（文件已删/移？请同步更新文档）`);
+  for (const docFile of docFiles) {
+    const content = fs.readFileSync(path.join(rootDir, docFile), 'utf8');
+    const re = /`([^`\n]*\.ets)`/g;
+    let m;
+    while ((m = re.exec(content)) !== null) {
+      const p = m[1];
+      if (p.includes('*') || p.includes('**')) continue;
+      count++;
+      if (!fs.existsSync(path.join(rootDir, p))) {
+        violations.push(`${docFile} 引用的 ${p} 不存在（文件已删/移？请同步更新文档）`);
+      }
     }
   }
-  const stat = `校验 AGENTS.md 中 ${count} 个 .ets 引用路径（单向：文档→代码）`;
+  const stat = `校验 ${docFiles.join(' + ')} 中 ${count} 个 .ets 引用路径（单向：文档→代码）`;
   return { violations, whitelistHits: [], stat };
 }
 
@@ -604,13 +606,14 @@ console.log('🔍 跨层接线守护检查（固化接线审计不变量）...\n
 const allFiles = getEtsFiles(etsRoot).map(readEts);
 
 const results = [
-  { title: '规则 1 · Material 字段 ⇄ DB 行双向映射完整性', ...runRule1() },
-  { title: '规则 2 · 建表列 ⊆ toRow 写入键', ...runRule2() },
-  { title: '规则 3 · pages 硬编码预设数据源检测', ...runRule3() },
-  { title: '规则 4 · 导出 API 必须有非测试外部调用者', ...runRule4(allFiles) },
-  { title: '规则 5 · 未使用 import 检测', ...runRule5(allFiles) },
-  { title: '规则 6 · custom_fields 键语义裸操作检测', ...runRule6(allFiles) },
-  { title: '规则 7 · AGENTS.md 路径存在性（文档→代码单向）', ...runRule7() },
+  { title: '规则 1 · Material 字段 ⇄ DB 行双向映射完整性', doc: 'CONTEXT.md「新字段必改清单」（背景：docs/audit-wiring.md）', ...runRule1() },
+  { title: '规则 2 · 建表列 ⊆ toRow 写入键', doc: 'CONTEXT.md「新字段必改清单」', ...runRule2() },
+  { title: '规则 3 · pages 硬编码预设数据源检测', doc: 'CONTEXT.md「新字段必改清单」第 9 条（背景：docs/audit-wiring.md）', ...runRule3() },
+  { title: '规则 4 · 导出 API 必须有非测试外部调用者', doc: 'docs/audit-wiring.md §五（白名单登记哲学）', ...runRule4(allFiles) },
+  { title: '规则 5 · 未使用 import 检测', doc: 'docs/audit-wiring.md §五（白名单登记哲学）', ...runRule5(allFiles) },
+  { title: '规则 6 · custom_fields 键语义裸操作检测', doc: 'AGENTS.md 关键不变量 1（#14 教训；契约函数在 model/CustomField.ets）', ...runRule6(allFiles) },
+  // 规则 7 的违规信息本身已指名需同步的文档，不再附指针
+  { title: '规则 7 · 文档 .ets 路径存在性（文档→代码单向）', doc: null, ...runRule7() },
 ];
 
 let hasError = false;
@@ -621,6 +624,7 @@ for (const r of results) {
     for (const v of r.violations) {
       console.error(`     ${v}`);
     }
+    if (r.doc) console.error(`   详见 ${r.doc}`);
   } else {
     console.log(`✅ ${r.title}: 通过`);
   }

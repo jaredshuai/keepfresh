@@ -15,18 +15,21 @@ const rules = [
     pattern: /borderRadius\((?!0\))/,  // borderRadius(非0)
     exclude: /Theme\./,
     excludeComment: true,
+    doc: 'DESIGN.md（圆角/色值令牌统一在 common/Theme.ets，页面禁写死数值）',
   },
   {
     name: '硬编码色值',
     pattern: /#[0-9a-fA-F]{3,8}\b/,
     exclude: /Theme\.|import/,
     excludeComment: true,
+    doc: 'DESIGN.md（圆角/色值令牌统一在 common/Theme.ets，页面禁写死数值）',
   },
   {
     name: '写死 rgba',
     pattern: /rgba\(/,
     exclude: /Theme\./,
     excludeComment: true,
+    doc: 'DESIGN.md（圆角/色值令牌统一在 common/Theme.ets，页面禁写死数值）',
   },
 ];
 
@@ -203,6 +206,7 @@ for (const rule of rules) {
 
   if (allViolations.length > 0) {
     console.error(`❌ ${rule.name} (${allViolations.reduce((s, v) => s + v.violations.length, 0)} 处):`);
+    console.error(`   详见 ${rule.doc}`);
     for (const { file, violations } of allViolations.slice(0, 3)) {
       console.error(`   ${file}:`);
       for (const v of violations.slice(0, 3)) {
@@ -222,6 +226,7 @@ for (const rule of rules) {
   const { violations, whitelistHits } = checkShadowRule();
   if (violations.length > 0) {
     console.error(`❌ 硬阴影样板防回潮 (${violations.length} 处) —— 请改用 common/HardShadow.ets 组件:`);
+    console.error('   阴影层高度语义陷阱详见 docs/agents/arkui-pitfalls.md#percent-height-in-scroll');
     for (const v of violations.slice(0, 8)) {
       console.error(`     ${v.file}:L${v.line}: ${v.content}`);
     }

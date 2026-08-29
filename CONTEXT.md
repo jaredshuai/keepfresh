@@ -84,4 +84,4 @@ AddItem 表单页的扫码入口：ScanKit 扫码后按条形码匹配历史，�
 
 ## Guards（CI 守护链）
 
-`npm run ci` = design-guard（包豪斯视觉不变量）+ **wire-guard**（接线不变量，五规则+理由白名单）+ node --test。白名单每条附处置状态，登记项获得调用者后脚本提醒移除。
+`npm run ci` = design-guard（包豪斯视觉不变量）+ **wire-guard**（接线不变量，七规则+理由白名单）+ **docs-guard**（docs 可达性，防孤儿文档）+ node --test。白名单每条附处置状态，登记项获得调用者后脚本提醒移除。
