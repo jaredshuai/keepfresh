@@ -20,6 +20,8 @@ interface RouteParams {
 @Entry
 @Component
 struct ItemDetail {
+  @StorageProp('avoidTopVp') avoidTopVp: number = 0;
+  @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
   @State m: Material | undefined = undefined;
   @State customFieldsDefs: CustomField[] = [];
   @State loading: boolean = true;
@@ -195,6 +197,7 @@ struct ItemDetail {
     }
     .width('100%')
     .height('100%')
+    .padding({ top: this.avoidTopVp, bottom: this.avoidBottomVp })
     .backgroundColor(Theme.pageBg)
   }
 

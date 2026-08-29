@@ -63,6 +63,8 @@ struct SettingsRowComponent {
 @Entry
 @Component
 struct Settings {
+  @StorageProp('avoidTopVp') avoidTopVp: number = 0;
+  @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
   @State nearExpiryDaysStr: string = '7';
   @State nearExpiryError: string = '';
   @State reminderEnabled: boolean = true;
@@ -727,6 +729,7 @@ struct Settings {
     }
     .width('100%')
     .height('100%')
+    .padding({ top: this.avoidTopVp, bottom: this.avoidBottomVp })
     .backgroundColor(Theme.pageBg)
     .bindSheet($$this.showImportPreview, this.importPreviewSheet(), {
       height: SheetSize.FIT_CONTENT,

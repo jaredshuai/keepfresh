@@ -55,6 +55,8 @@ let notifiedThisSession: boolean = false;
 @Entry
 @Component
 struct Index {
+  @StorageProp('avoidTopVp') avoidTopVp: number = 0;
+  @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
   @State materials: Material[] = [];
   @State stats: ExpiryStats = { total: 0, expired: 0, near: 0, safe: 0 };
   @State groupedMaterials: GroupedMaterials = { expired: [], near: [], safe: [], handled: [] };
@@ -339,6 +341,7 @@ struct Index {
     }
     .width('100%')
     .height('100%')
+    .padding({ top: this.avoidTopVp, bottom: this.avoidBottomVp })
     .backgroundColor(Theme.pageBg)
     .bindSheet($$this.showSettingsDialog, this.reminderSettingsSheet(), {
       height: SheetSize.FIT_CONTENT,

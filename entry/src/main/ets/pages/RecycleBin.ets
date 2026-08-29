@@ -12,6 +12,8 @@ import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 @Entry
 @Component
 struct RecycleBin {
+  @StorageProp('avoidTopVp') avoidTopVp: number = 0;
+  @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
   @State deleted: Material[] = [];
   @State loading: boolean = true;
   @State restoringId: number = -1;
@@ -158,6 +160,7 @@ struct RecycleBin {
     }
     .width('100%')
     .height('100%')
+    .padding({ top: this.avoidTopVp, bottom: this.avoidBottomVp })
     .backgroundColor(Theme.pageBg)
   }
 

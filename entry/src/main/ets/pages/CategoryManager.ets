@@ -13,6 +13,8 @@ import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 @Entry
 @Component
 struct CategoryManager {
+  @StorageProp('avoidTopVp') avoidTopVp: number = 0;
+  @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
   @State activeKind: string = 'category';   // 'category' | 'location' | 'unit'
   @State defs: NameDef[] = [];              // 自定义定义（可编辑）
   @State effectiveNames: string[] = [];     // 有效名称（含预设与已使用）
@@ -284,6 +286,7 @@ struct CategoryManager {
     }
     .width('100%')
     .height('100%')
+    .padding({ top: this.avoidTopVp, bottom: this.avoidBottomVp })
     .backgroundColor(Theme.pageBg)
     .bindSheet($$this.showEditSheet, this.editSheet(), {
       height: SheetSize.FIT_CONTENT,

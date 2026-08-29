@@ -4,6 +4,7 @@ import { window } from '@kit.ArkUI';
 import { ReminderService } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
 import { UsageService } from '../service/UsageService';
+import { Theme } from '../common/Theme';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'EntryAbility';
@@ -53,7 +54,30 @@ export default class EntryAbility extends UIAbility {
         return;
       }
       hilog.info(DOMAIN, TAG, 'Succeeded in loading the content.');
+      this.setupImmersiveWindow(windowStage);
     });
+  }
+
+  /**
+   * 全面屏适配：内容延伸进系统栏区域（沉浸式），状态栏/导航条不再露系统白底。
+   * 避让高度写入 AppStorage，各页根容器用 @StorageProp 消费做 padding——
+   * 背景色铺满全屏，内容仍留在安全区内，FAB/底部按钮不会沉入手势条。
+   */
+  private setupImmersiveWindow(windowStage: window.WindowStage): void {
+    try {
+      const mainWindow = windowStage.getMainWindowSync();
+      mainWindow.setWindowLayoutFullScreen(true);
+      mainWindow.setWindowBackgroundColor(Theme.pageBg);
+      const sysArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+      const indicator = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+      const ui = mainWindow.getUIContext();
+      AppStorage.setOrCreate('avoidTopVp', ui.px2vp(sysArea.topRect.height));
+      // 底部两种导航模式互斥：手势条走 NAVIGATION_INDICATOR，三键导航走 TYPE_SYSTEM.bottomRect
+      const bottomPx = Math.max(sysArea.bottomRect.height, indicator.bottomRect.height);
+      AppStorage.setOrCreate('avoidBottomVp', ui.px2vp(bottomPx));
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'immersive window setup failed: %{public}s', JSON.stringify(e) ?? '');
+    }
   }
 
   onWindowStageDestroy(): void {

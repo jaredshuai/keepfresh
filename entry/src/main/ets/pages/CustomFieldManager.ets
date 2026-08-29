@@ -20,6 +20,8 @@ import { Theme } from '../common/Theme';
 @Entry
 @Component
 struct CustomFieldManager {
+  @StorageProp('avoidTopVp') avoidTopVp: number = 0;
+  @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
   @State customFields: CustomField[] = [];
   @State loading: boolean = true;
   @State showEditSheet: boolean = false;
@@ -498,6 +500,7 @@ struct CustomFieldManager {
     }
     .width('100%')
     .height('100%')
+    .padding({ top: this.avoidTopVp, bottom: this.avoidBottomVp })
     .backgroundColor(Theme.pageBg)
     .bindSheet($$this.showEditSheet, this.fieldEditSheet(), {
       height: SheetSize.FIT_CONTENT,
