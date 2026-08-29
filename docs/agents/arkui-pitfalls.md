@@ -148,3 +148,4 @@ bauhaus 审计修 ItemDetail 时（f98cf73）只迁了圆/方，三角因走 Can
 **修法**：静态几何图形一律用原生形状组件——三角形用 `Polygon({ width, height }).points([[x,y],...])`，
 坐标即 vp，随屏缩放、与 Circle/Rect 同盒对齐。Canvas 只留给真正需要自由绘制的场景（若必须用，
 路径坐标先做 vp→px 换算）。修复全仓库 4 处：Index geoShape/空态、ItemDetail geoShape、CustomFieldManager 空态。
+design-guard 规则 6 拦截 pages/ 内一切 `Canvas()`（豁免在 scripts/design-guard.js CANVAS_WHITELIST 文件级登记，须附理由）。

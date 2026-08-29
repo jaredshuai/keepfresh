@@ -188,6 +188,31 @@ function checkButtonRule() {
   return violations;
 }
 
+// 规则 6：Canvas 静态绘制防回潮（docs/agents/arkui-pitfalls.md#canvas-px-not-vp）
+// Canvas 路径坐标按物理像素解释、不随 vp 缩放，高分屏上静态几何图形画得又小又偏
+// （实测：3.3x 屏上三角只有约 1/3 大小且缩进不齐）。静态形状一律用原生组件
+// Circle / Rect / Polygon。白名单按文件级豁免，只留给真正需要自由绘制的场景
+// （须附理由，且路径坐标自行做 vp→px 换算），当前清零。
+const CANVAS_WHITELIST = [
+  // { file: /Xxx\.ets$/, reason: '真实自由绘制场景说明（vp→px 换算方式）' },
+];
+
+function checkCanvasRule() {
+  const violations = [];
+  const pattern = /\bCanvas\(\)/;
+  for (const file of etsFiles) {
+    const rel = path.relative(rootDir, file);
+    if (CANVAS_WHITELIST.some((w) => w.file.test(rel))) continue;
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const clean = stripLineComment(lines[i]);
+      if (!pattern.test(clean)) continue;
+      violations.push({ line: i + 1, content: lines[i].trim(), file: rel });
+    }
+  }
+  return violations;
+}
+
 // 主逻辑
 let hasError = false;
 const etsFiles = getEtsFiles(pagesDir);
@@ -251,6 +276,22 @@ for (const rule of rules) {
     hasError = true;
   } else {
     console.log('✅ Button 默认胶囊防回潮: 通过');
+  }
+}
+
+// 规则 6：Canvas 静态绘制防回潮
+{
+  const violations = checkCanvasRule();
+  if (violations.length > 0) {
+    console.error(`❌ Canvas 静态绘制 (${violations.length} 处) —— Canvas 路径坐标是物理像素、不随 vp 缩放，高分屏上静态几何图形会画小画偏（缩进不齐）。`);
+    console.error('   静态形状改用原生组件 Circle/Rect/Polygon；确需自由绘制在 CANVAS_WHITELIST 登记理由。详见 docs/agents/arkui-pitfalls.md#canvas-px-not-vp');
+    for (const v of violations.slice(0, 8)) {
+      console.error(`     ${v.file}:L${v.line}: ${v.content}`);
+    }
+    if (violations.length > 8) console.error(`     ... 还有 ${violations.length - 8} 处`);
+    hasError = true;
+  } else {
+    console.log('✅ Canvas 静态绘制防回潮: 通过');
   }
 }
 
