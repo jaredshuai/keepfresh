@@ -86,6 +86,8 @@ struct AddItem {
   @State shelfLifeStr: string = '30';
   @State shelfLifeMode: string = 'days';       // 'days' | 'months'
   @State shelfLifeMonthsStr: string = '';
+  @State dateMode: string = 'shelf';           // 'shelf'（生产日期+保质期推算）| 'direct'（包装只印到期日，直接录入）
+  @State directExpiryDate: string = todayStr(); // direct 模式的到期日期
   @State note: string = '';
   @State barcode: string = '';
   @State showScanSheet: boolean = false;
@@ -169,13 +171,20 @@ struct AddItem {
             this.unit = normalized.unit;
           }
           this.location = m.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2];
-          this.productionDate = m.productionDate;
-          if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
-            this.shelfLifeMode = 'months';
-            this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+          if (m.productionDate.length === 0) {
+            // direct 口径存量物品：包装只印到期日，直接回填到期日
+            this.dateMode = 'direct';
+            this.directExpiryDate = m.expiryDate;
           } else {
-            this.shelfLifeMode = 'days';
-            this.shelfLifeStr = m.shelfLifeDays.toString();
+            this.dateMode = 'shelf';
+            this.productionDate = m.productionDate;
+            if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
+              this.shelfLifeMode = 'months';
+              this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+            } else {
+              this.shelfLifeMode = 'days';
+              this.shelfLifeStr = m.shelfLifeDays.toString();
+            }
           }
           this.note = m.note;
           this.loadedCreatedAt = m.createdAt;
@@ -252,6 +261,7 @@ struct AddItem {
       this.shelfLifeStr = m.shelfLifeDays.toString();
     }
     this.productionDate = todayStr();
+    this.dateMode = 'shelf';
     this.suggestionApplied = true;
     this.nameSuggestion = undefined;
     this.toast('已按上次入库参数预填');
@@ -268,7 +278,21 @@ struct AddItem {
     });
   }
 
+  private pickDirectExpiryDate(): void {
+    this.getUIContext().showDatePickerDialog({
+      start: new Date('2020-01-01'),
+      end: new Date('2035-12-31'),
+      selected: parseDate(this.directExpiryDate),
+      onDateAccept: (value: Date) => {
+        this.directExpiryDate = toDateStr(value);
+      }
+    });
+  }
+
   private expiryPreview(): string {
+    if (this.dateMode === 'direct') {
+      return this.directExpiryDate;
+    }
     if (this.shelfLifeMode === 'months') {
       const months = parseNonNegativeInteger(this.shelfLifeMonthsStr);
       if (months === null || months < 1) {
@@ -355,6 +379,7 @@ struct AddItem {
     this.name = m.name;
     this.category = m.category;
     this.unit = m.unit;
+    this.dateMode = 'shelf';
     // 保质期口径还原：历史记录若按月数录入则保持月数模式（避免 365×n 天的错误近似）
     if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
       this.shelfLifeMode = 'months';
@@ -383,9 +408,11 @@ struct AddItem {
     // 数量归一化：支持 "500g" 混合输入自动拆分
     const normalizedQty = normalizeQuantityUnit(this.quantityStr, this.unit);
     const qtyNumber = Number(normalizedQty.quantity);
-    // 保质期：月数模式或天数模式
-    const months = this.shelfLifeMode === 'months' ? parseNonNegativeInteger(this.shelfLifeMonthsStr) : null;
-    const days = this.shelfLifeMode === 'months' ? 365 * (months ?? 1) : Number(this.shelfLifeStr);
+    // 日期口径：direct = 包装只印到期日；shelf = 生产日期+保质期推算
+    const direct = this.dateMode === 'direct';
+    // 保质期：月数模式或天数模式（direct 口径下不参与）
+    const months = !direct && this.shelfLifeMode === 'months' ? parseNonNegativeInteger(this.shelfLifeMonthsStr) : null;
+    const days = !direct && this.shelfLifeMode === 'months' ? 365 * (months ?? 1) : Number(this.shelfLifeStr);
 
     if (this.name.trim().length === 0) {
       this.errorMsg = '请输入物资名称';
@@ -395,7 +422,12 @@ struct AddItem {
       this.errorMsg = '数量需大于 0';
       return;
     }
-    if (this.shelfLifeMode === 'months') {
+    if (direct) {
+      if (this.directExpiryDate.length === 0) {
+        this.errorMsg = '请选择到期日期';
+        return;
+      }
+    } else if (this.shelfLifeMode === 'months') {
       if (months === null || months < 1) {
         this.errorMsg = '保质期需至少 1 个月';
         return;
@@ -424,12 +456,14 @@ struct AddItem {
       quantity: normalizedQty.quantity,
       unit: normalizedQty.unit.length > 0 ? normalizedQty.unit : this.unit,
       location: this.location,
-      productionDate: this.productionDate,
-      shelfLifeDays: Math.floor(days),
-      shelfLifeMonths: months ?? undefined,
-      expiryDate: months !== null && months >= 1
-        ? calcExpiryDate(this.productionDate, 0, months)
-        : calcExpiryDate(this.productionDate, Math.floor(days)),
+      productionDate: direct ? '' : this.productionDate,
+      shelfLifeDays: direct ? 0 : Math.floor(days),
+      shelfLifeMonths: direct ? undefined : (months ?? undefined),
+      expiryDate: direct
+        ? this.directExpiryDate
+        : (months !== null && months >= 1
+          ? calcExpiryDate(this.productionDate, 0, months)
+          : calcExpiryDate(this.productionDate, Math.floor(days))),
       note: this.note.trim(),
       status: this.isEdit ? this.loadedStatus : MaterialStatus.ACTIVE,
       handledType: this.isEdit ? this.loadedHandledType : undefined,
@@ -710,6 +744,48 @@ struct AddItem {
             Column({ space: Theme.elementGap }) {
               this.sectionTitle('日期与保质期', Theme.near)
 
+              // ── 日期口径切换：按保质期算（生产日期+保质期）/ 直接填到期日（包装只印到期日）──
+              Row({ space: Theme.smallGap }) {
+                Stack() {
+                  Column()
+                    .height(34)
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: 3, top: 3 })
+                  Text('按保质期算')
+                    .fontSize(Theme.textSmall)
+                    .fontWeight(this.dateMode === 'shelf' ? FontWeight.Bold : FontWeight.Medium)
+                    .fontColor(this.dateMode === 'shelf' ? Theme.textWhite : Theme.textPrimary)
+                    .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+                    .backgroundColor(this.dateMode === 'shelf' ? Theme.yellowDark : Theme.cardBg)
+                    .border(Theme.borderThin)
+                    .onClick(() => {
+                      this.dateMode = 'shelf';
+                    })
+                }
+                .padding({ right: 3, bottom: 3 })
+
+                Stack() {
+                  Column()
+                    .height(34)
+                    .backgroundColor(Theme.ink)
+                    .margin({ left: 3, top: 3 })
+                  Text('直接填到期日')
+                    .fontSize(Theme.textSmall)
+                    .fontWeight(this.dateMode === 'direct' ? FontWeight.Bold : FontWeight.Medium)
+                    .fontColor(this.dateMode === 'direct' ? Theme.textWhite : Theme.textPrimary)
+                    .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+                    .backgroundColor(this.dateMode === 'direct' ? Theme.yellowDark : Theme.cardBg)
+                    .border(Theme.borderThin)
+                    .onClick(() => {
+                      this.dateMode = 'direct';
+                    })
+                }
+                .padding({ right: 3, bottom: 3 })
+              }
+              .width('100%')
+              .justifyContent(FlexAlign.Start)
+
+              if (this.dateMode === 'shelf') {
               this.fieldLabel('生产日期 *')
               HardShadowCard({shadowMode: 0}) {
                 Row() {
@@ -819,12 +895,39 @@ struct AddItem {
                   .fontSize(Theme.textCaption)
                   .fontColor(Theme.textTertiary)
               }
+              } else {
+                this.fieldLabel('到期日期 *')
+                HardShadowCard({shadowMode: 0}) {
+                  Row() {
+                    Text(this.directExpiryDate)
+                      .fontSize(Theme.textBody)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor(Theme.textPrimary)
+                      .layoutWeight(1)
+                    SymbolGlyph($r('sys.symbol.calendar'))
+                      .fontSize(20)
+                      .fontColor([Theme.near])
+                  }
+                  .width('100%')
+                  .padding(Theme.cardPadding)
+                  .backgroundColor(Theme.inputBg)
+                  .border(Theme.borderThin)
+                  .borderRadius(Theme.inputRadius)
+                  .height(48)
+                  .onClick(() => {
+                    this.pickDirectExpiryDate();
+                  })
+                }
+                Text('包装上只印「保质期至 / 到期日」时用这个，应用只关心什么时候到期')
+                  .fontSize(Theme.textCaption)
+                  .fontColor(Theme.textTertiary)
+              }
 
               HardShadowCard({shadowMode: 0}) {
 
                 Row() {
                   Column({ space: Theme.tinyGap }) {
-                    Text('预计到期日')
+                    Text(this.dateMode === 'direct' ? '到期日' : '预计到期日')
                       .fontSize(Theme.textCaption)
                       .fontWeight(FontWeight.Medium)
                       .fontColor(Theme.textWhite)

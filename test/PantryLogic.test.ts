@@ -121,9 +121,9 @@ describe('状态机 getActualStatus', () => {
     assert.equal(getActualStatus(m), MaterialStatus.OPENED);
   });
 
-  it('17. 今天到期不算临期（0 天 → active 原样）', () => {
+  it('17. 今天到期算临期（0 天 → EXPIRING；与 levelOf/统计头/CONTEXT.md 临期定义对齐）', () => {
     const m = makeMaterial({ id: 6, name: '今天', expiryDate: today, status: MaterialStatus.ACTIVE });
-    assert.equal(getActualStatus(m), MaterialStatus.ACTIVE);
+    assert.equal(getActualStatus(m), DerivedStatus.EXPIRING);
   });
 });
 

@@ -28,6 +28,9 @@ TextInput 显式补 `.borderRadius(Theme.inputRadius)`。design-guard 规则「B
 
 **实例**：commit `554236e` —— AddItem 分类芯片高亮停滞（点药品存食品）；`0e56ad9` —— CFM 字段类型芯片、
 CFM/CategoryManager 上移下移箭头禁用态停滞。
+另一形态：**@Builder 计数参数凝滞** —— Index.ets `groupHeader('临期', level, count)` 把组内物品数作标量传入，
+组内增删后卡片列表（ForEach 直读数组）刷新了、计数停在旧值（实测：删 1 件后"临期 3"挂着但只有 2 张卡）。
+修法同 2：builder 体内按 level 读 `groupCountOf(level)` 直取 `this.groupedMaterials.*.length`。
 
 **修法**（二选一，项目内均有范本）：
 1. 独立 `@Component` + `@Prop` —— AddItem.ets 的 `ChipGroup` 是范本（@Prop 由父状态驱动，响应式有保证）；

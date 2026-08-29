@@ -428,8 +428,11 @@ struct ItemDetail {
 
         Divider().color(Theme.divider).strokeWidth(1)
 
-        this.infoRow('生产日期', this.m!.productionDate)
-        this.infoRow('保质期', this.shelfLifeText())
+        // direct 口径（productionDate 为空 = 包装只印到期日）没有生产口径可展示
+        if (this.m!.productionDate.length > 0) {
+          this.infoRow('生产日期', this.m!.productionDate)
+          this.infoRow('保质期', this.shelfLifeText())
+        }
         this.infoRow('到期日期', this.m!.expiryDate)
         this.infoRow('距到期', remainingText(this.m!))
 

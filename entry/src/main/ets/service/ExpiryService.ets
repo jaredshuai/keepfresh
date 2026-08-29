@@ -72,10 +72,12 @@ export function isExpired(m: Material): boolean {
   return remainingDays(m) < 0;
 }
 
-/** 0 < 剩余天数 <= 阈值（今天到期不算临期，算过期前最后一天） */
+/** 0 <= 剩余天数 <= 阈值。今天到期算临期：CONTEXT.md 临期定义即"剩余不大于阈值"，
+ *  levelOf/统计头一直按此口径；旧版此处排除 0 导致分组把今天到期的物品沉进"安全"组，
+ *  与统计头矛盾（直录到期日默认今天，一发现在就修） */
 export function isExpiringSoon(m: Material, customThreshold?: number): boolean {
   const left: number = remainingDays(m);
-  if (left <= 0) {
+  if (left < 0) {
     return false;
   }
   const th = customThreshold !== undefined ? customThreshold : cachedNearExpiryDays;

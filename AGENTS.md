@@ -21,7 +21,7 @@ This file provides guidance to AI coding agents when working with code in this r
 1. **custom_fields 的键 = CustomField.id（非字段名）**。键语义操作必须走 `entry/src/main/ets/model/CustomField.ets` 契约函数；pages/ 与 service/ 裸下标访问会被 wire-guard 规则 6 拦截（#14 教训：键语义错配曾导致跨设备恢复静默丢值）
 2. **软删除不入统计**：`is_deleted` 行不出现在首页/统计/提醒口径；备份导出为全集快照（含回收站行）
 3. **状态机终态保护**：EMPTY / DISCARDED 不可逆，只能恢复为 ACTIVE
-4. **到期日 = productionDate + shelfLife(Days|Months)**，分级与派生状态统一走 ExpiryService，页面不自算
+4. **到期日 = productionDate + shelfLife(Days|Months)**；包装只印到期日的物品走直录口径（`expiryDate` 直接来自用户输入，`productionDate` 为空串即 direct 口径标记）。两种口径统一由 ExpiryService 分级，页面不自算
 
 ## 踩坑沉淀地图（按场景触发，改代码前对号入座）
 

@@ -301,7 +301,7 @@ struct Index {
               } else {
                 // ─── 已过期组（红色圆形） ───
                 if (this.groupedMaterials.expired.length > 0) {
-                  this.groupHeader('已过期', ExpiryLevel.EXPIRED, this.groupedMaterials.expired.length)
+                  this.groupHeader('已过期', ExpiryLevel.EXPIRED)
                   Column({ space: Theme.smallGap }) {
                     ForEach(this.groupedMaterials.expired, (m: Material) => {
                       this.expiredCard(m)
@@ -312,7 +312,7 @@ struct Index {
 
                 // ─── 临期组（橙色三角形） ───
                 if (this.groupedMaterials.near.length > 0) {
-                  this.groupHeader('临期', ExpiryLevel.NEAR, this.groupedMaterials.near.length)
+                  this.groupHeader('临期', ExpiryLevel.NEAR)
                   Column({ space: Theme.smallGap }) {
                     ForEach(this.groupedMaterials.near, (m: Material) => {
                       this.materialCard(m)
@@ -323,7 +323,7 @@ struct Index {
 
                 // ─── 安全组（蓝绿正方形，可折叠） ───
                 if (this.groupedMaterials.safe.length > 0) {
-                  this.groupHeaderWithToggle('安全', ExpiryLevel.SAFE, this.groupedMaterials.safe.length)
+                  this.groupHeaderWithToggle('安全', ExpiryLevel.SAFE)
                   if (!this.safeCollapsed || this.isFiltering()) {
                     Column({ space: Theme.smallGap }) {
                       ForEach(this.groupedMaterials.safe, (m: Material) => {
@@ -336,7 +336,7 @@ struct Index {
 
                 // ─── 已处理组（用完/丢弃，可折叠，沉底） ───
                 if (this.groupedMaterials.handled.length > 0) {
-                  this.handledGroupHeader(this.groupedMaterials.handled.length)
+                  this.handledGroupHeader()
                   if (!this.handledCollapsed || this.isFiltering()) {
                     Column({ space: Theme.smallGap }) {
                       ForEach(this.groupedMaterials.handled, (m: Material) => {
@@ -604,7 +604,7 @@ struct Index {
    * 已处理组 header（已用完/已丢弃，黑灰几何，可折叠）
    * ============================================================ */
   @Builder
-  handledGroupHeader(count: number) {
+  handledGroupHeader() {
     Row() {
       Row({ space: Theme.smallGap }) {
         // 已处理：黑边白底方框（非几何三色）
@@ -617,7 +617,7 @@ struct Index {
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textSecondary)
           .letterSpacing(0.5)
-        Text(`${count}项`)
+        Text(`${this.groupedMaterials.handled.length}项`)
           .fontSize(Theme.textCaption)
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textTertiary)
@@ -694,9 +694,11 @@ struct Index {
 
   /* ============================================================
    * 分组 header
+   * 计数不能作标量参数传入（#builder-by-value：组内增删后停在旧值），
+   * builder 体内按 level 直读 this.groupedMaterials 建立状态依赖
    * ============================================================ */
   @Builder
-  groupHeader(title: string, level: ExpiryLevel, count: number) {
+  groupHeader(title: string, level: ExpiryLevel) {
     Row({ space: Theme.smallGap }) {
       this.geoShape(level)
       Text(title)
@@ -704,7 +706,7 @@ struct Index {
         .fontWeight(FontWeight.Bold)
         .fontColor(Theme.textPrimary)
         .letterSpacing(0.5)
-      Text(`${count}`)
+      Text(`${this.groupCountOf(level)}`)
         .fontSize(Theme.textCaption)
         .fontWeight(FontWeight.Bold)
         .fontColor(Theme.textTertiary)
@@ -714,7 +716,7 @@ struct Index {
   }
 
   @Builder
-  groupHeaderWithToggle(title: string, level: ExpiryLevel, count: number) {
+  groupHeaderWithToggle(title: string, level: ExpiryLevel) {
     Row() {
       Row({ space: Theme.smallGap }) {
         this.geoShape(level)
@@ -723,7 +725,7 @@ struct Index {
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textPrimary)
           .letterSpacing(0.5)
-        Text(`${count}项`)
+        Text(`${this.groupCountOf(level)}项`)
           .fontSize(Theme.textCaption)
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textTertiary)
@@ -744,6 +746,16 @@ struct Index {
     }
     .width('100%')
     .padding({ left: 4, top: Theme.smallGap, bottom: Theme.tinyGap })
+  }
+
+  private groupCountOf(level: ExpiryLevel): number {
+    if (level === ExpiryLevel.EXPIRED) {
+      return this.groupedMaterials.expired.length;
+    }
+    if (level === ExpiryLevel.NEAR) {
+      return this.groupedMaterials.near.length;
+    }
+    return this.groupedMaterials.safe.length;
   }
 
   /* ============================================================
