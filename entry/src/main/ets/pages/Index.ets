@@ -778,16 +778,12 @@ struct Index {
         .stroke(Theme.ink)
         .strokeWidth(2)
     } else if (level === ExpiryLevel.NEAR) {
-      // 等腰三角形：用 Polygon 或三个点路径
-      Canvas() {
-        Path()
-          .commands(`M ${Theme.geoSize / 2} 0 L ${Theme.geoSize} ${Theme.geoSize} L 0 ${Theme.geoSize} Z`)
-          .fill(Theme.near)
-          .stroke(Theme.ink)
-          .strokeWidth(2)
-      }
-      .width(Theme.geoSize)
-      .height(Theme.geoSize)
+      // 等腰三角形：原生 Polygon（画布坐标系不随 vp 缩放，高分屏上会画得又小又偏，勿回退 Canvas+Path）
+      Polygon({ width: Theme.geoSize, height: Theme.geoSize })
+        .points([[Theme.geoSize / 2, 0], [Theme.geoSize, Theme.geoSize], [0, Theme.geoSize]])
+        .fill(Theme.near)
+        .stroke(Theme.ink)
+        .strokeWidth(2)
     } else {
       // 正方形
       Rect({ width: Theme.geoSize, height: Theme.geoSize })
@@ -977,15 +973,12 @@ struct Index {
           .stroke(Theme.ink)
           .strokeWidth(2)
 
-        Canvas() {
-          Path()
-            .commands(`M 20 0 L 40 40 L 0 40 Z`)
-            .fill(Theme.near)
-            .stroke(Theme.ink)
-            .strokeWidth(2)
-        }
-        .width(40)
-        .height(40)
+        // 原生 Polygon：同 geoShape，Canvas+Path 在高分屏缩放失真
+        Polygon({ width: 40, height: 40 })
+          .points([[20, 0], [40, 40], [0, 40]])
+          .fill(Theme.near)
+          .stroke(Theme.ink)
+          .strokeWidth(2)
 
         Rect({ width: 40, height: 40 })
           .fill(Theme.safe)

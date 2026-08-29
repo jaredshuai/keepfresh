@@ -521,15 +521,12 @@ struct CustomFieldManager {
           .stroke(Theme.ink)
           .strokeWidth(2)
 
-        Canvas() {
-          Path()
-            .commands(`M 18 0 L 36 36 L 0 36 Z`)
-            .fill(Theme.near)
-            .stroke(Theme.ink)
-            .strokeWidth(2)
-        }
-        .width(36)
-        .height(36)
+        // 原生 Polygon：同 geoShape 惯例，Canvas+Path 在高分屏缩放失真
+        Polygon({ width: 36, height: 36 })
+          .points([[18, 0], [36, 36], [0, 36]])
+          .fill(Theme.near)
+          .stroke(Theme.ink)
+          .strokeWidth(2)
 
         Rect({ width: 36, height: 36 })
           .fill(Theme.safe)

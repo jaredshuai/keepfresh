@@ -136,3 +136,15 @@ does not exist`。
 **修法**：订阅与退订都 try/catch 吞掉错误码、降级为默认布局（FAB 右下角）；回调存组件属性；
 过渡态不处理。真机验证方法：`hilog | grep MotionManager` 看系统侧 HoldPostureStatus 是否活跃，
 app 侧无 "unavailable" 日志即订阅成功；模拟器只能验降级路径。
+
+## <a id="canvas-px-not-vp"></a>Canvas 坐标系是物理像素，不随 vp 缩放（`#canvas-px-not-vp`）
+
+**症状**：Canvas + Path 画的静态几何图形（三角形等）在高分屏上**又小又偏**——路径坐标按「数值 = 物理像素」解释，
+不经过 vp→px 换算，3.3x 屏上画出的图形只有预期的约 1/3 大小，且左上角对齐导致与相邻原生形状（Circle/Rect）不在同一缩进。
+
+**案例**：首页 `geoShape` 临期三角（用户实测：已过期红圆/安全绿方正常，临期三角小一圈且缩进不齐）。
+bauhaus 审计修 ItemDetail 时（f98cf73）只迁了圆/方，三角因走 Canvas 被漏掉。
+
+**修法**：静态几何图形一律用原生形状组件——三角形用 `Polygon({ width, height }).points([[x,y],...])`，
+坐标即 vp，随屏缩放、与 Circle/Rect 同盒对齐。Canvas 只留给真正需要自由绘制的场景（若必须用，
+路径坐标先做 vp→px 换算）。修复全仓库 4 处：Index geoShape/空态、ItemDetail geoShape、CustomFieldManager 空态。

@@ -373,15 +373,12 @@ struct ItemDetail {
         .stroke(Theme.ink)
         .strokeWidth(2)
     } else if (lv === ExpiryLevel.NEAR) {
-      Canvas() {
-        Path()
-          .commands(`M 28 0 L 56 56 L 0 56 Z`)
-          .fill(Theme.near)
-          .stroke(Theme.ink)
-          .strokeWidth(2)
-      }
-      .width(56)
-      .height(56)
+      // 原生 Polygon：Canvas+Path 坐标系不随 vp 缩放，高分屏上会画得又小又偏
+      Polygon({ width: 56, height: 56 })
+        .points([[28, 0], [56, 56], [0, 56]])
+        .fill(Theme.near)
+        .stroke(Theme.ink)
+        .strokeWidth(2)
     } else {
       Rect({ width: 56, height: 56 })
         .fill(Theme.safe)
