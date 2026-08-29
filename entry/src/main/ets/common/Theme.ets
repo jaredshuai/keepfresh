@@ -148,4 +148,11 @@ export class Theme {
   static readonly categoryMedicineBg: string = '#e0f2f0';// 药品 → 安全蓝绿浅底
   static readonly categoryDailyBg: string = '#fff8e0';   // 日用品 → 黄系浅底
   static readonly categoryBeautyBg: string = '#ffe5e7';  // 美妆护肤 → 过期红浅底
+  static readonly categoryMeatBg: string = '#ffdede';    // 肉类 → 红系浅底
+  static readonly categoryFruitBg: string = '#ffe9d1';   // 水果 → 橙系浅底
+  static readonly categoryVegBg: string = '#e0f3dd';     // 蔬菜 → 绿系浅底
+  static readonly categoryCondimentBg: string = '#f0e5fb';// 调味品 → 紫系浅底
+  static readonly categoryGrainBg: string = '#f6efd2';   // 谷物 → 麦黄浅底
+  static readonly categoryInstantBg: string = '#e2e8fa'; // 速食 → 靛蓝浅底
+  static readonly categoryDrinkBg: string = '#d8f0f5';   // 饮料 → 青系浅底
 }

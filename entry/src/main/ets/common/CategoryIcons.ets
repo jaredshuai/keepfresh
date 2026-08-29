@@ -31,6 +31,41 @@ export function getCategoryIcon(category: string): CategoryIconInfo {
         symbol: $r('sys.symbol.star'),
         bgColor: Theme.categoryBeautyBg
       };
+    case '肉类':
+      return {
+        symbol: $r('sys.symbol.fork_knife'),
+        bgColor: Theme.categoryMeatBg
+      };
+    case '水果':
+      return {
+        symbol: $r('sys.symbol.sun'),
+        bgColor: Theme.categoryFruitBg
+      };
+    case '蔬菜':
+      return {
+        symbol: $r('sys.symbol.leaf'),
+        bgColor: Theme.categoryVegBg
+      };
+    case '调味品':
+      return {
+        symbol: $r('sys.symbol.drop'),
+        bgColor: Theme.categoryCondimentBg
+      };
+    case '谷物':
+      return {
+        symbol: $r('sys.symbol.bag'),
+        bgColor: Theme.categoryGrainBg
+      };
+    case '速食':
+      return {
+        symbol: $r('sys.symbol.flame'),
+        bgColor: Theme.categoryInstantBg
+      };
+    case '饮料':
+      return {
+        symbol: $r('sys.symbol.cup'),
+        bgColor: Theme.categoryDrinkBg
+      };
     default:
       return {
         symbol: $r('sys.symbol.square'),
