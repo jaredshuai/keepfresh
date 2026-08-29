@@ -147,8 +147,8 @@ struct AddItem {
   @State scanSuggestions: Material[] = [];
   @State saving: boolean = false;
   @State errorMsg: string = '';
-  /** 同名复购建议（dogfood P0）：名称精确匹配最近一条在库记录时出现 */
-  @State nameSuggestion: Material | undefined = undefined;
+  /** 名称前缀联想候选（dogfood P0 演进）：输名称时按前缀匹配在库记录，点选预填 */
+  @State nameCandidates: Material[] = [];
   @State customFieldsDefs: CustomField[] = [];
   @State customFieldValues: Record<string, string> = {};
   private db: MaterialDb = MaterialDb.getInstance();
@@ -255,35 +255,30 @@ struct AddItem {
       });
   }
 
-  /** 同名复购建议：名称精确匹配最近一条在库记录（dogfood P0） */
-  private lookupSuggestion(v: string): void {
+  /** 名称前缀联想：输 1 字起按前缀查在库记录，每名取最近一条最多 3 条（dogfood P0 演进） */
+  private lookupNameCandidates(v: string): void {
     const trimmed = v.trim();
-    if (this.isEdit || trimmed.length < 2) {
-      this.nameSuggestion = undefined;
+    if (this.isEdit || trimmed.length < 1) {
+      this.nameCandidates = [];
       return;
     }
     const seq = ++this.nameQuerySeq;
-    this.db.findLatestByName(trimmed)
-      .then((m?: Material) => {
+    this.db.findActiveByNamePrefix(trimmed, 3)
+      .then((list: Material[]) => {
         if (seq !== this.nameQuerySeq) {
           return; // 过期查询，丢弃
         }
-        if (m && m.name === trimmed) {
-          if (this.nameSuggestion === undefined) {
-            UsageService.getInstance().logSuggestionShown(m.name);
-          }
-          this.nameSuggestion = m;
-        } else {
-          this.nameSuggestion = undefined;
+        if (list.length > 0 && this.nameCandidates.length === 0) {
+          UsageService.getInstance().logSuggestionShown(list[0].name);
         }
+        this.nameCandidates = list;
       })
       .catch((e: BusinessError) => {
-        console.error(`lookup suggestion failed: ${(e as BusinessError).message}`);
+        console.error(`lookup name candidates failed: ${(e as BusinessError).message}`);
       });
   }
 
-  private suggestionSummary(): string {
-    const m = this.nameSuggestion!;
+  private suggestionSummary(m: Material): string {
     const shelf = m.productionDate.length === 0
       ? `到期日 ${m.expiryDate}`
       : ((m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0)
@@ -293,12 +288,10 @@ struct AddItem {
     return `${m.category}${loc} · ${m.quantity}${m.unit} · ${shelf}`;
   }
 
-  private applySuggestion(): void {
-    const m = this.nameSuggestion;
-    if (!m) {
-      return;
-    }
+  private applyNameCandidate(m: Material): void {
     UsageService.getInstance().logSuggestionApplied(m.name);
+    // 联想候选名可能比已输入的长（输「脉」选「脉动零糖白桃」），名称必须回填完整
+    this.name = m.name;
     this.category = m.category;
     if (m.location && m.location.length > 0) {
       this.location = m.location;
@@ -326,7 +319,7 @@ struct AddItem {
       this.dateMode = DateEntryMode.SHELF;
     }
     this.suggestionApplied = true;
-    this.nameSuggestion = undefined;
+    this.nameCandidates = [];
     this.toast(m.productionDate.length === 0 ? '已按上次入库参数预填，请核对到期日' : '已按上次入库参数预填，请核对生产日期');
   }
 
@@ -458,7 +451,7 @@ struct AddItem {
         this.shelfLifeMode = 'days';
         this.shelfLifeStr = m.shelfLifeDays.toString();
       }
-      // 同 applySuggestion：生产日期预填历史值，不猜今天
+      // 同 applyNameCandidate：生产日期预填历史值，不猜今天
       this.productionDate = m.productionDate;
       this.dateMode = DateEntryMode.SHELF;
     }
@@ -730,42 +723,52 @@ struct AddItem {
                   .height(48)
                   .onChange((v: string) => {
                     this.name = v;
-                    this.lookupSuggestion(v);
+                    this.lookupNameCandidates(v);
                   })
               }
 
-              if (this.nameSuggestion) {
-                Row({ space: Theme.smallGap }) {
-                  Column({ space: 2 }) {
-                    Text(`复用上次「${this.nameSuggestion.name}」的参数`)
-                      .fontSize(Theme.textCaption)
-                      .fontWeight(FontWeight.Bold)
-                      .fontColor(Theme.textPrimary)
-                    Text(this.suggestionSummary())
-                      .fontSize(Theme.textCaption)
-                      .fontColor(Theme.textSecondary)
-                      .maxLines(1)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  }
-                  .alignItems(HorizontalAlign.Start)
-                  .layoutWeight(1)
+              if (this.nameCandidates.length > 0) {
+                Column({ space: Theme.tinyGap }) {
+                  ForEach(this.nameCandidates, (m: Material) => {
+                    Row({ space: Theme.smallGap }) {
+                      Column({ space: 2 }) {
+                        Text(m.name)
+                          .fontSize(Theme.textCaption)
+                          .fontWeight(FontWeight.Bold)
+                          .fontColor(Theme.textPrimary)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        Text(this.suggestionSummary(m))
+                          .fontSize(Theme.textCaption)
+                          .fontColor(Theme.textSecondary)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                      }
+                      .alignItems(HorizontalAlign.Start)
+                      .layoutWeight(1)
 
-                  Text('填入')
-                    .fontSize(Theme.textCaption)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor(Theme.textWhite)
-                    .padding({ left: 14, right: 14, top: 7, bottom: 7 })
-                    .backgroundColor(Theme.yellowDark)
+                      Text('填入')
+                        .fontSize(Theme.textCaption)
+                        .fontWeight(FontWeight.Bold)
+                        .fontColor(Theme.textWhite)
+                        .padding({ left: 14, right: 14, top: 7, bottom: 7 })
+                        .backgroundColor(Theme.yellowDark)
+                        .border(Theme.borderThin)
+                        .onClick(() => {
+                          this.applyNameCandidate(m);
+                        })
+                    }
+                    .width('100%')
+                    .padding({ left: Theme.cardPadding, right: Theme.cardPadding, top: 10, bottom: 10 })
+                    .backgroundColor(Theme.nearSoft)
                     .border(Theme.borderThin)
+                    .alignItems(VerticalAlign.Center)
                     .onClick(() => {
-                      this.applySuggestion();
+                      this.applyNameCandidate(m);
                     })
+                  }, (m: Material) => m.id.toString())
                 }
                 .width('100%')
-                .padding({ left: Theme.cardPadding, right: Theme.cardPadding, top: 10, bottom: 10 })
-                .backgroundColor(Theme.nearSoft)
-                .border(Theme.borderThin)
-                .alignItems(VerticalAlign.Center)
               }
 
               if (this.barcode.trim().length > 0) {

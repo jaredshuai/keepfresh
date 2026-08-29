@@ -508,32 +508,36 @@ export class MaterialDb {
     return list;
   }
 
-  /** 按名称取最近一条在库记录（同名复购预填用，ticket：dogfood P0）；排除软删除 */
-  async findLatestByName(name: string): Promise<Material | undefined> {
-    const trimmed = name.trim();
+  /** 名称前缀联想（复购建议用）：前缀匹配在库记录（排除软删除），每个不同名称取最近一条，最多 limit 条 */
+  async findActiveByNamePrefix(prefix: string, limit: number): Promise<Material[]> {
+    const trimmed = prefix.trim();
+    const list: Material[] = [];
     if (trimmed.length === 0) {
-      return undefined;
+      return list;
     }
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE);
-      predicates.equalTo('name', trimmed);
       predicates.equalTo('is_deleted', 0);
+      predicates.beginsWith('name', trimmed);
       predicates.orderByDesc('created_at');
       predicates.orderByDesc('id');
-      predicates.limitAs(1);
       const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
-      let m: Material | undefined = undefined;
+      const seen: Set<string> = new Set<string>();
       try {
-        if (rs.goToNextRow()) {
-          m = this.rowToMaterial(rs);
+        while (rs.goToNextRow() && seen.size < limit) {
+          const m: Material = this.rowToMaterial(rs);
+          if (!seen.has(m.name)) {
+            seen.add(m.name);
+            list.push(m);
+          }
         }
       } finally {
         rs.close();
       }
-      return m;
     } catch (e) {
-      this.rethrow(e, 'findLatestByName');
+      this.rethrow(e, 'findActiveByNamePrefix');
     }
+    return list;
   }
 
   /** 插入，返回新记录 rowId */
