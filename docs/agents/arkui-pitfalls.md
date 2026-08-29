@@ -81,3 +81,32 @@ Stack 子层的 `layoutWeight(1)` 直接删除。
 
 **修法**：列表类页面的垂直 Scroll 一律 `.align(Alignment.TopStart)`。注意 **`Alignment.Start` 不行**——
 它只是水平靠左，垂直仍是居中（踩过一次）。
+
+---
+
+## <a id="fullscreen-immersive"></a>全面屏沉浸式与系统栏避让（`#fullscreen-immersive`）
+
+**症状**：页面背景外圈（状态栏、底部手势条/三键导航区）露系统默认白边；或者调了
+`setWindowBackgroundColor` 白边纹丝不动；或者编译直接报 `Property 'TYPE_NAVIGATION_ESSENTIAL'
+does not exist`。
+
+**根因**（三连坑，逐层试错的记录）：
+1. 默认窗口避开系统栏区域，但**仅刷窗口背景色不会改变避让区的渲染**（模拟器截图像素采样实测不变色）——
+   必须 `setWindowLayoutFullScreen(true)` 让内容真正延伸进系统栏，再由页面自己把背景铺满、内容留在安全区。
+2. 本仓 SDK 的 `AvoidAreaType` 枚举**没有 `TYPE_NAVIGATION_ESSENTIAL`**（新版 API 才有，编译期才炸）。
+   底部避让：手势条在 `TYPE_NAVIGATION_INDICATOR`，三键导航在 `TYPE_SYSTEM.bottomRect`，两种模式互斥，
+   取 `Math.max` 兜底。
+3. UIAbility 里没有 UI 上下文，全局 `px2vp` 不可用，要走 `mainWindow.getUIContext().px2vp()`。
+
+**实例**：commit `78b1c5c` —— `entry/src/main/ets/entryability/EntryAbility.ets` 的
+`setupImmersiveWindow`（全屏布局 + 避让高度写入 AppStorage 的 `avoidTopVp`/`avoidBottomVp`），
+7 个页面根容器统一 `.padding({ top: this.avoidTopVp, bottom: this.avoidBottomVp })`；
+轻量方案（仅背景色）被模拟器像素采样证伪后废弃。
+
+**修法**：
+- 窗口层照抄 `setupImmersiveWindow`，且在 loadContent 成功回调后调用（窗口就绪后 avoid area 才有效）；
+- 新增页面照抄根容器尾部 padding + 两个 `@StorageProp` 字段（响应式，页面先 build 也能在值写入后刷新，
+  不可用 `AppStorage.get` 一次性读取替代）；
+- 不为此写正则守卫（「刷了背景色但没做全屏」静态分析分不出来），靠评审 + 本文档 +
+  **像素采样验证**：截图后用 PowerShell `System.Drawing` 的 `GetPixel` 对状态栏/手势条区域取色，
+  应等于 `Theme.pageBg`（#f2f0ea，JPEG 压缩下 ±5 容差）。
