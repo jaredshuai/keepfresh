@@ -320,12 +320,14 @@ struct AddItem {
         this.shelfLifeMode = 'days';
         this.shelfLifeStr = m.shelfLifeDays.toString();
       }
-      this.productionDate = todayStr();
+      // 生产日期预填历史值（同批次命中即免改；不同批次开选择器改，与留空成本相同）。
+      // 不预填今天：生产日期几乎不可能是录入当天，today 是必错默认
+      this.productionDate = m.productionDate;
       this.dateMode = DateEntryMode.SHELF;
     }
     this.suggestionApplied = true;
     this.nameSuggestion = undefined;
-    this.toast('已按上次入库参数预填');
+    this.toast(m.productionDate.length === 0 ? '已按上次入库参数预填，请核对到期日' : '已按上次入库参数预填，请核对生产日期');
   }
 
   /** 共用日期选择包装（#22 去重）：只差 selected 与写回目标 */
@@ -456,13 +458,16 @@ struct AddItem {
         this.shelfLifeMode = 'days';
         this.shelfLifeStr = m.shelfLifeDays.toString();
       }
+      // 同 applySuggestion：生产日期预填历史值，不猜今天
+      this.productionDate = m.productionDate;
+      this.dateMode = DateEntryMode.SHELF;
     }
     // 位置回填（历史记录有位置则带上；其位置已在 listEffectiveNames 合并结果内）
     if (m.location && m.location.length > 0) {
       this.location = m.location;
     }
     this.showScanSheet = false;
-    this.toast(m.productionDate.length === 0 ? '已预填，请核对到期日和数量' : '已预填，请补充生产日期和数量');
+    this.toast(m.productionDate.length === 0 ? '已预填，请核对到期日和数量' : '已预填同款生产日期，不同批次请改日期');
   }
 
   private discardScanSuggestions(): void {
