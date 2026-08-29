@@ -69,4 +69,9 @@ describe('buildReminderText 汇总提醒文案 Test Suite', () => {
     const text = buildReminderText(items, 1);
     assert.equal(text, '牛奶（剩6天）');
   });
+
+  it('6. 剩余 0 天显示「今天到期」（非「剩0天」）', () => {
+    const items = [mk(1, '酸奶', todayStr()), mk(2, '面包', addDays(todayStr(), 2))];
+    assert.equal(buildReminderText(items), '酸奶（今天到期）、面包（剩2天）');
+  });
 });

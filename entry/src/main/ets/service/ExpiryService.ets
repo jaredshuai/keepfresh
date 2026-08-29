@@ -353,7 +353,7 @@ export function buildReminderText(items: Material[], limit: number = 3): string 
   }
   for (let i = 0; i < nearSorted.length && remain > 0; i++) {
     const left: number = remainingDays(nearSorted[i]);
-    picked.push(`${nearSorted[i].name}（剩${left}天）`);
+    picked.push(left === 0 ? `${nearSorted[i].name}（今天到期）` : `${nearSorted[i].name}（剩${left}天）`);
     remain--;
   }
   const total: number = expired.length + near.length;

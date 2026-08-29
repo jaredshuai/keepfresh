@@ -231,9 +231,11 @@ struct AddItem {
 
   private suggestionSummary(): string {
     const m = this.nameSuggestion!;
-    const shelf = (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0)
-      ? `保质期${m.shelfLifeMonths}个月`
-      : `保质期${m.shelfLifeDays}天`;
+    const shelf = m.productionDate.length === 0
+      ? `到期日 ${m.expiryDate}`
+      : ((m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0)
+        ? `保质期${m.shelfLifeMonths}个月`
+        : `保质期${m.shelfLifeDays}天`);
     const loc = m.location && m.location.length > 0 ? ` · ${m.location}` : '';
     return `${m.category}${loc} · ${m.quantity}${m.unit} · ${shelf}`;
   }
@@ -253,15 +255,21 @@ struct AddItem {
     if (normalized.unit.length > 0) {
       this.unit = normalized.unit;
     }
-    if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
-      this.shelfLifeMode = 'months';
-      this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+    if (m.productionDate.length === 0) {
+      // direct 口径源记录：不带保质期字段，直接落到「直接填到期日」模式
+      this.dateMode = 'direct';
+      this.directExpiryDate = m.expiryDate;
     } else {
-      this.shelfLifeMode = 'days';
-      this.shelfLifeStr = m.shelfLifeDays.toString();
+      if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
+        this.shelfLifeMode = 'months';
+        this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+      } else {
+        this.shelfLifeMode = 'days';
+        this.shelfLifeStr = m.shelfLifeDays.toString();
+      }
+      this.productionDate = todayStr();
+      this.dateMode = 'shelf';
     }
-    this.productionDate = todayStr();
-    this.dateMode = 'shelf';
     this.suggestionApplied = true;
     this.nameSuggestion = undefined;
     this.toast('已按上次入库参数预填');
@@ -379,21 +387,27 @@ struct AddItem {
     this.name = m.name;
     this.category = m.category;
     this.unit = m.unit;
-    this.dateMode = 'shelf';
-    // 保质期口径还原：历史记录若按月数录入则保持月数模式（避免 365×n 天的错误近似）
-    if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
-      this.shelfLifeMode = 'months';
-      this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+    if (m.productionDate.length === 0) {
+      // direct 口径源记录：不带保质期字段，直接落到「直接填到期日」模式并带出原到期日
+      this.dateMode = 'direct';
+      this.directExpiryDate = m.expiryDate;
     } else {
-      this.shelfLifeMode = 'days';
-      this.shelfLifeStr = m.shelfLifeDays.toString();
+      this.dateMode = 'shelf';
+      // 保质期口径还原：历史记录若按月数录入则保持月数模式（避免 365×n 天的错误近似）
+      if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
+        this.shelfLifeMode = 'months';
+        this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
+      } else {
+        this.shelfLifeMode = 'days';
+        this.shelfLifeStr = m.shelfLifeDays.toString();
+      }
     }
     // 位置回填（历史记录有位置则带上；其位置已在 listEffectiveNames 合并结果内）
     if (m.location && m.location.length > 0) {
       this.location = m.location;
     }
     this.showScanSheet = false;
-    this.toast('已预填，请补充生产日期和数量');
+    this.toast(m.productionDate.length === 0 ? '已预填，请核对到期日和数量' : '已预填，请补充生产日期和数量');
   }
 
   private discardScanSuggestions(): void {
@@ -1151,7 +1165,9 @@ struct AddItem {
             .fontColor(Theme.textPrimary)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-          Text(`${m.category} · ${m.quantity}${m.unit} · 保质期${m.shelfLifeDays}天`)
+          Text(m.productionDate.length === 0
+            ? `${m.category} · ${m.quantity}${m.unit} · 到期日 ${m.expiryDate}`
+            : `${m.category} · ${m.quantity}${m.unit} · 保质期${m.shelfLifeDays}天`)
             .fontSize(Theme.textCaption)
             .fontColor(Theme.textSecondary)
             .margin({ top: Theme.tinyGap })

@@ -79,7 +79,9 @@ export async function scanForSuggestions(
 }
 
 /**
- * 搜索建议去重：预填字段组合（名称/分类/单位/保质期天数）相同的历史记录只保留最近入库的一条。
+ * 搜索建议去重：名称/位置/到期日 相同的历史记录只保留最近入库的一条。
+ * 去重键不含保质期字段——direct 口径记录 shelfLifeDays 恒为 0，
+ * name+location+expiryDate 对两种日期口径都稳定。
  * 入参须已按最近入库倒序。
  */
 function buildScanSuggestions(history: Material[]): Material[] {
@@ -87,7 +89,7 @@ function buildScanSuggestions(history: Material[]): Material[] {
   const suggestions: Material[] = [];
   for (let i = 0; i < history.length; i++) {
     const m: Material = history[i];
-    const key: string = `${m.name}|${m.category}|${m.unit}|${m.shelfLifeDays}`;
+    const key: string = `${m.name}|${m.location}|${m.expiryDate}`;
     if (!seen.has(key)) {
       seen.add(key);
       suggestions.push(m);

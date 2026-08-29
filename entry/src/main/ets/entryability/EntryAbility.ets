@@ -54,7 +54,7 @@ export default class EntryAbility extends UIAbility {
         return;
       }
       hilog.info(DOMAIN, TAG, 'Succeeded in loading the content.');
-      this.setupImmersiveWindow(windowStage);
+      void this.setupImmersiveWindow(windowStage);
     });
   }
 
@@ -63,11 +63,13 @@ export default class EntryAbility extends UIAbility {
    * 避让高度写入 AppStorage，各页根容器用 @StorageProp 消费做 padding——
    * 背景色铺满全屏，内容仍留在安全区内，FAB/底部按钮不会沉入手势条。
    */
-  private setupImmersiveWindow(windowStage: window.WindowStage): void {
+  private async setupImmersiveWindow(windowStage: window.WindowStage): Promise<void> {
     try {
       const mainWindow = windowStage.getMainWindowSync();
-      mainWindow.setWindowLayoutFullScreen(true);
+      await mainWindow.setWindowLayoutFullScreen(true);
       mainWindow.setWindowBackgroundColor(Theme.pageBg);
+      // 页面底色是浅色（Theme.pageBg），状态栏内容必须用深色，否则浅色图标机型上时间/电量不可见
+      mainWindow.setWindowSystemBarProperties({ statusBarContentColor: '#000000' });
       const sysArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
       const indicator = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
       const ui = mainWindow.getUIContext();
