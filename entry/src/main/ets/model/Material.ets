@@ -18,6 +18,12 @@ export enum DerivedStatus {
   EXPIRED = 'expired'     // 已过期
 }
 
+/** 录入页日期口径（仅表单状态，不入库；direct 口径的持久化标记是 productionDate === ''） */
+export enum DateEntryMode {
+  SHELF = 'shelf',    // 生产日期 + 保质期推算
+  DIRECT = 'direct'   // 直接录入到期日（包装只印到期日）
+}
+
 export interface Material {
   id: number;              // 新建时为 -1
   name: string;

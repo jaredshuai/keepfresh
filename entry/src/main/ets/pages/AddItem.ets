@@ -3,7 +3,7 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, MaterialStatus, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS, batchQuantitySum } from '../model/Material';
+import { Material, MaterialStatus, DateEntryMode, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS, batchQuantitySum } from '../model/Material';
 import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../service/ExpiryService';
@@ -86,7 +86,7 @@ struct AddItem {
   @State shelfLifeStr: string = '30';
   @State shelfLifeMode: string = 'days';       // 'days' | 'months'
   @State shelfLifeMonthsStr: string = '';
-  @State dateMode: string = 'shelf';           // 'shelf'（生产日期+保质期推算）| 'direct'（包装只印到期日，直接录入）
+  @State dateMode: DateEntryMode = DateEntryMode.SHELF; // SHELF=生产日期+保质期推算 | DIRECT=包装只印到期日，直接录入
   @State directExpiryDate: string = todayStr(); // direct 模式的到期日期
   @State note: string = '';
   @State barcode: string = '';
@@ -173,10 +173,10 @@ struct AddItem {
           this.location = m.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2];
           if (m.productionDate.length === 0) {
             // direct 口径存量物品：包装只印到期日，直接回填到期日
-            this.dateMode = 'direct';
+            this.dateMode = DateEntryMode.DIRECT;
             this.directExpiryDate = m.expiryDate;
           } else {
-            this.dateMode = 'shelf';
+            this.dateMode = DateEntryMode.SHELF;
             this.productionDate = m.productionDate;
             if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
               this.shelfLifeMode = 'months';
@@ -257,7 +257,7 @@ struct AddItem {
     }
     if (m.productionDate.length === 0) {
       // direct 口径源记录：不带保质期字段，直接落到「直接填到期日」模式
-      this.dateMode = 'direct';
+      this.dateMode = DateEntryMode.DIRECT;
       this.directExpiryDate = m.expiryDate;
     } else {
       if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
@@ -268,7 +268,7 @@ struct AddItem {
         this.shelfLifeStr = m.shelfLifeDays.toString();
       }
       this.productionDate = todayStr();
-      this.dateMode = 'shelf';
+      this.dateMode = DateEntryMode.SHELF;
     }
     this.suggestionApplied = true;
     this.nameSuggestion = undefined;
@@ -298,7 +298,7 @@ struct AddItem {
   }
 
   private expiryPreview(): string {
-    if (this.dateMode === 'direct') {
+    if (this.dateMode === DateEntryMode.DIRECT) {
       return this.directExpiryDate;
     }
     if (this.shelfLifeMode === 'months') {
@@ -389,10 +389,10 @@ struct AddItem {
     this.unit = m.unit;
     if (m.productionDate.length === 0) {
       // direct 口径源记录：不带保质期字段，直接落到「直接填到期日」模式并带出原到期日
-      this.dateMode = 'direct';
+      this.dateMode = DateEntryMode.DIRECT;
       this.directExpiryDate = m.expiryDate;
     } else {
-      this.dateMode = 'shelf';
+      this.dateMode = DateEntryMode.SHELF;
       // 保质期口径还原：历史记录若按月数录入则保持月数模式（避免 365×n 天的错误近似）
       if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
         this.shelfLifeMode = 'months';
@@ -423,7 +423,7 @@ struct AddItem {
     const normalizedQty = normalizeQuantityUnit(this.quantityStr, this.unit);
     const qtyNumber = Number(normalizedQty.quantity);
     // 日期口径：direct = 包装只印到期日；shelf = 生产日期+保质期推算
-    const direct = this.dateMode === 'direct';
+    const direct = this.dateMode === DateEntryMode.DIRECT;
     // 保质期：月数模式或天数模式（direct 口径下不参与）
     const months = !direct && this.shelfLifeMode === 'months' ? parseNonNegativeInteger(this.shelfLifeMonthsStr) : null;
     const days = !direct && this.shelfLifeMode === 'months' ? 365 * (months ?? 1) : Number(this.shelfLifeStr);
@@ -790,13 +790,13 @@ struct AddItem {
                     .margin({ left: 3, top: 3 })
                   Text('按保质期算')
                     .fontSize(Theme.textSmall)
-                    .fontWeight(this.dateMode === 'shelf' ? FontWeight.Bold : FontWeight.Medium)
-                    .fontColor(this.dateMode === 'shelf' ? Theme.textWhite : Theme.textPrimary)
+                    .fontWeight(this.dateMode === DateEntryMode.SHELF ? FontWeight.Bold : FontWeight.Medium)
+                    .fontColor(this.dateMode === DateEntryMode.SHELF ? Theme.textWhite : Theme.textPrimary)
                     .padding({ left: 14, right: 14, top: 7, bottom: 7 })
-                    .backgroundColor(this.dateMode === 'shelf' ? Theme.yellowDark : Theme.cardBg)
+                    .backgroundColor(this.dateMode === DateEntryMode.SHELF ? Theme.yellowDark : Theme.cardBg)
                     .border(Theme.borderThin)
                     .onClick(() => {
-                      this.dateMode = 'shelf';
+                      this.dateMode = DateEntryMode.SHELF;
                     })
                 }
                 .padding({ right: 3, bottom: 3 })
@@ -808,13 +808,13 @@ struct AddItem {
                     .margin({ left: 3, top: 3 })
                   Text('直接填到期日')
                     .fontSize(Theme.textSmall)
-                    .fontWeight(this.dateMode === 'direct' ? FontWeight.Bold : FontWeight.Medium)
-                    .fontColor(this.dateMode === 'direct' ? Theme.textWhite : Theme.textPrimary)
+                    .fontWeight(this.dateMode === DateEntryMode.DIRECT ? FontWeight.Bold : FontWeight.Medium)
+                    .fontColor(this.dateMode === DateEntryMode.DIRECT ? Theme.textWhite : Theme.textPrimary)
                     .padding({ left: 14, right: 14, top: 7, bottom: 7 })
-                    .backgroundColor(this.dateMode === 'direct' ? Theme.yellowDark : Theme.cardBg)
+                    .backgroundColor(this.dateMode === DateEntryMode.DIRECT ? Theme.yellowDark : Theme.cardBg)
                     .border(Theme.borderThin)
                     .onClick(() => {
-                      this.dateMode = 'direct';
+                      this.dateMode = DateEntryMode.DIRECT;
                     })
                 }
                 .padding({ right: 3, bottom: 3 })
@@ -822,7 +822,7 @@ struct AddItem {
               .width('100%')
               .justifyContent(FlexAlign.Start)
 
-              if (this.dateMode === 'shelf') {
+              if (this.dateMode === DateEntryMode.SHELF) {
               this.fieldLabel('生产日期 *')
               HardShadowCard({shadowMode: 0}) {
                 Row() {
@@ -964,7 +964,7 @@ struct AddItem {
 
                 Row() {
                   Column({ space: Theme.tinyGap }) {
-                    Text(this.dateMode === 'direct' ? '到期日' : '预计到期日')
+                    Text(this.dateMode === DateEntryMode.DIRECT ? '到期日' : '预计到期日')
                       .fontSize(Theme.textCaption)
                       .fontWeight(FontWeight.Medium)
                       .fontColor(Theme.textWhite)
