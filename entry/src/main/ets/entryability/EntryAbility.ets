@@ -59,6 +59,20 @@ export default class EntryAbility extends UIAbility {
   }
 
   /**
+   * 读取当前避让区并换算写入 AppStorage（#21：启动路径与 avoidAreaChange
+   * 回调共用同一换算，避免两处口径漂移）。
+   */
+  private applyAvoidArea(mainWindow: window.Window): void {
+    const sysArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+    const indicator = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+    const ui = mainWindow.getUIContext();
+    AppStorage.setOrCreate('avoidTopVp', ui.px2vp(sysArea.topRect.height));
+    // 底部两种导航模式互斥：手势条走 NAVIGATION_INDICATOR，三键导航走 TYPE_SYSTEM.bottomRect
+    const bottomPx = Math.max(sysArea.bottomRect.height, indicator.bottomRect.height);
+    AppStorage.setOrCreate('avoidBottomVp', ui.px2vp(bottomPx));
+  }
+
+  /**
    * 全面屏适配：内容延伸进系统栏区域（沉浸式），状态栏/导航条不再露系统白底。
    * 避让高度写入 AppStorage，各页根容器用 @StorageProp 消费做 padding——
    * 背景色铺满全屏，内容仍留在安全区内，FAB/底部按钮不会沉入手势条。
@@ -70,13 +84,16 @@ export default class EntryAbility extends UIAbility {
       mainWindow.setWindowBackgroundColor(Theme.pageBg);
       // 页面底色是浅色（Theme.pageBg），状态栏内容必须用深色，否则浅色图标机型上时间/电量不可见
       mainWindow.setWindowSystemBarProperties({ statusBarContentColor: '#000000' });
-      const sysArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
-      const indicator = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
-      const ui = mainWindow.getUIContext();
-      AppStorage.setOrCreate('avoidTopVp', ui.px2vp(sysArea.topRect.height));
-      // 底部两种导航模式互斥：手势条走 NAVIGATION_INDICATOR，三键导航走 TYPE_SYSTEM.bottomRect
-      const bottomPx = Math.max(sysArea.bottomRect.height, indicator.bottomRect.height);
-      AppStorage.setOrCreate('avoidBottomVp', ui.px2vp(bottomPx));
+      this.applyAvoidArea(mainWindow);
+      // 旋转/折叠态开合/三键↔手势导航切换后系统栏高度变化，动态刷新避让值（#21）；
+      // 注册失败不阻断启动路径，降级为仅启动时读取一次
+      try {
+        mainWindow.on('avoidAreaChange', () => {
+          this.applyAvoidArea(mainWindow);
+        });
+      } catch (e) {
+        hilog.error(DOMAIN, TAG, 'avoidAreaChange listener registration failed: %{public}s', JSON.stringify(e) ?? '');
+      }
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'immersive window setup failed: %{public}s', JSON.stringify(e) ?? '');
     }
