@@ -4,6 +4,7 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { motion } from '@kit.MultimodalAwarenessKit';
 import { Material, ExpiryLevel, MaterialStatus, DerivedStatus, DEFAULT_CATEGORIES } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
 import {
@@ -57,6 +58,8 @@ let notifiedThisSession: boolean = false;
 struct Index {
   @StorageProp('avoidTopVp') avoidTopVp: number = 0;
   @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
+  /** 智感握姿：左手握持时 FAB 换到左下角；默认右手（右下角）。不支持的机型保持默认 */
+  @State fabOnLeft: boolean = false;
   @State materials: Material[] = [];
   @State stats: ExpiryStats = { total: 0, expired: 0, near: 0, safe: 0 };
   @State groupedMaterials: GroupedMaterials = { expired: [], near: [], safe: [], handled: [] };
@@ -74,6 +77,33 @@ struct Index {
   @State categories: string[] = DEFAULT_CATEGORIES.slice();
   private db: MaterialDb = MaterialDb.getInstance();
   private scroller: Scroller = new Scroller();
+
+  private onHoldingHandChanged = (status: motion.HoldingHandStatus): void => {
+    if (status === motion.HoldingHandStatus.LEFT_HAND_HELD) {
+      this.fabOnLeft = true;
+    } else if (status === motion.HoldingHandStatus.RIGHT_HAND_HELD) {
+      this.fabOnLeft = false;
+    }
+    // NOT_HELD / BOTH_HANDS_HELD / UNKNOWN_STATUS 是过渡态，FAB 保持原位
+  };
+
+  aboutToAppear(): void {
+    // 智感握姿（HarmonyOS 6+ 部分机型）：on 必须 try/catch——未支持设备抛 801
+    // 不捕获会直接崩溃；201 = 权限未声明。模拟器恒 801，走默认右侧。
+    try {
+      motion.on('holdingHandChanged', this.onHoldingHandChanged);
+    } catch (e) {
+      console.info(`holdingHandChanged unavailable: code=${(e as BusinessError).code}`);
+    }
+  }
+
+  aboutToDisappear(): void {
+    try {
+      motion.off('holdingHandChanged', this.onHoldingHandChanged);
+    } catch (e) {
+      console.info(`holdingHandChanged off failed: code=${(e as BusinessError).code}`);
+    }
+  }
 
   onPageShow(): void {
     // 通知跳转：EntryAbility 已把 want.parameters.filterLevel 存入 AppStorage，
@@ -890,7 +920,8 @@ struct Index {
    * ============================================================ */
   @Builder
   hardShadowFab(onClick: () => void) {
-    Column() {
+    // 全宽 Row 承载 + 动态对齐：智感握姿识别左手握持时 FAB 换左下角，右手（默认）右下角
+    Row() {
       HardShadowBox({boxWidth: Theme.fabSize, boxHeight: Theme.fabSize, onBoxClick: onClick}) {
 
         Column() {
@@ -906,8 +937,10 @@ struct Index {
         .justifyContent(FlexAlign.Center)
       }
     }
-    // BottomEnd 贴角对齐下留出安全边距，避免按钮+阴影怼死屏幕角落
-    .margin({ right: Theme.pagePadding, bottom: Theme.pagePadding })
+    .width('100%')
+    .justifyContent(this.fabOnLeft ? FlexAlign.Start : FlexAlign.End)
+    // 底部安全边距：避免按钮+阴影怼死屏幕角落（手势条避让由根容器 padding 负责）
+    .padding({ left: Theme.pagePadding, right: Theme.pagePadding, bottom: Theme.pagePadding })
   }
 
   /* ============================================================

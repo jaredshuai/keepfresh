@@ -25,7 +25,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## 踩坑沉淀地图（按场景触发，改代码前对号入座）
 
-- 动 `pages/` 任何 UI → `docs/agents/arkui-pitfalls.md`（ArkUI 渲染陷阱：Button 胶囊 / @Builder 按值传参 / layoutWeight 轴向 / Scroll 居中等；design-guard 报错锚点即此文档条目）
+- 动 `pages/` 任何 UI → `docs/agents/arkui-pitfalls.md`（ArkUI 渲染陷阱：Button 胶囊 / @Builder 按值传参 / layoutWeight 轴向 / Scroll 居中 / 智感握姿 motion 等；design-guard 报错锚点即此文档条目）
 - 动系统栏/全面屏（EntryAbility 窗口、沉浸式、避让）→ `docs/agents/arkui-pitfalls.md#fullscreen-immersive`（只刷窗口背景色不生效，必须全屏布局 + 页内避让）
 - 新增/修改 Material 字段或 DB 表 → `CONTEXT.md`「新字段必改清单」；断链事故背景与修复记录见 `docs/audit-wiring.md`
 - 动视觉样式（色值/圆角/阴影/版式）→ `DESIGN.md`；包豪斯审计背景见 `docs/audit-bauhaus.md`

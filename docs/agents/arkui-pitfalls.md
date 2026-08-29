@@ -110,3 +110,26 @@ does not exist`。
 - 不为此写正则守卫（「刷了背景色但没做全屏」静态分析分不出来），靠评审 + 本文档 +
   **像素采样验证**：截图后用 PowerShell `System.Drawing` 的 `GetPixel` 对状态栏/手势条区域取色，
   应等于 `Theme.pageBg`（#f2f0ea，JPEG 压缩下 ±5 容差）。
+
+---
+
+## <a id="motion-holding-hand"></a>智感握姿 motion 订阅（`#motion-holding-hand`）
+
+**症状**：应用在模拟器/未支持机型上一启动就崩溃；或订阅成功但回调永不触发，误判功能坏了。
+
+**根因**：
+1. `motion.on('holdingHandChanged')`（API 20+，HarmonyOS 6 起部分机型支持）在**不支持设备上抛
+   801（能力不支持）或 31500002（订阅失败）**，不 try/catch 直接崩溃。模拟器恒失败（实测 31500002）；
+   真机 HarmonyOS 7 订阅成功（系统 `msdp/MotionManager` 有 HoldPostureStatus 活跃上报）。
+2. 权限 `ohos.permission.DETECT_GESTURE` 是 system_grant 免弹窗，但**必须声明在 module.json5
+   的 requestPermissions**，否则抛 201。
+3. `motion.off()` 要传**同一个回调引用**才退订得掉——回调必须存成组件属性，不能是内联箭头函数。
+4. `HoldingHandStatus.UNKNOWN_STATUS = 16` 不是 0；且 NOT_HELD / BOTH_HANDS_HELD / UNKNOWN_STATUS
+   都是过渡态，UI 侧应忽略保持原状，而不是把布局复位。
+
+**实例**：Index.ets `onHoldingHandChanged` + `aboutToAppear/aboutToDisappear` 订阅对 +
+`hardShadowFab` 全宽 Row 动态 justifyContent 实现 FAB 左右手换边。
+
+**修法**：订阅与退订都 try/catch 吞掉错误码、降级为默认布局（FAB 右下角）；回调存组件属性；
+过渡态不处理。真机验证方法：`hilog | grep MotionManager` 看系统侧 HoldPostureStatus 是否活跃，
+app 侧无 "unavailable" 日志即订阅成功；模拟器只能验降级路径。
