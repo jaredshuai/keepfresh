@@ -837,12 +837,18 @@ struct Index {
         .margin({ right: Theme.elementGap })
 
         Column({ space: Theme.tinyGap }) {
-          Text(m.name)
-            .fontSize(Theme.textBody)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(Theme.textWhite)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Row({ space: Theme.smallGap }) {
+            Text(m.name)
+              .fontSize(Theme.textBody)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Theme.textWhite)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .layoutWeight(1)
+            if (m.status === MaterialStatus.OPENED) {
+              this.openedBadge()
+            }
+          }
           Text(`${m.category} · ${m.quantity}${m.unit} · ${m.expiryDate}`)
             .fontSize(Theme.textCaption)
             .fontColor(Theme.textWhiteDim)
@@ -868,6 +874,20 @@ struct Index {
       .backgroundColor(Theme.expired)
       .border(Theme.borderThin)
     }
+  }
+
+  /* ============================================================
+   * 开封标记：开封物品在卡片名称行尾部显示（黄底黑边小方标）
+   * ============================================================ */
+  @Builder
+  openedBadge() {
+    Text('开封')
+      .fontSize(Theme.textTiny)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(Theme.ink)
+      .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+      .backgroundColor(Theme.yellowDark)
+      .border(Theme.borderThin)
   }
 
   /* ============================================================
@@ -899,12 +919,18 @@ struct Index {
         .margin({ right: Theme.elementGap })
 
         Column({ space: Theme.tinyGap }) {
-          Text(m.name)
-            .fontSize(Theme.textBody)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(Theme.textPrimary)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Row({ space: Theme.smallGap }) {
+            Text(m.name)
+              .fontSize(Theme.textBody)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Theme.textPrimary)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .layoutWeight(1)
+            if (m.status === MaterialStatus.OPENED) {
+              this.openedBadge()
+            }
+          }
           Text(m.location.length > 0
             ? `${m.category} · ${m.location} · ${m.quantity}${m.unit}`
             : `${m.category} · ${m.quantity}${m.unit}`)
