@@ -3,7 +3,7 @@
 Branch: `feat/offline-daily-reminders`
 Plan: `docs/superpowers/plans/2026-08-19-offline-reminder.md`
 Spec: `docs/superpowers/specs/2026-08-19-offline-reminder-design.md`
-ADR: `docs/adr/0001-daily-summary-offline-reminder.md`
+ADR: `docs/adr/0004-daily-summary-offline-reminder.md`
 
 - [x] Task 1: 权限声明与首选项配置层 (`module.json5`, `ReminderService.ets`) - commit 2536a41
 - [x] Task 2: 封装 `reminderAgentManager` 代理提醒注册与 WantAgent (`ReminderService.ets`) - commit f669f9f

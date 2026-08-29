@@ -1,10 +1,12 @@
 // 接线守护脚本 - 固化「跨层接线审计」不变量为 CI 规则（Node.js 原生实现，跨平台）
-// 五条规则：
+// 七条规则（详见各 runRule 函数头注释）：
 //   规则 1 · Material 字段 ⇄ DB 行 双向映射完整性（toRow 写入 / rowToMaterial 读取）
 //   规则 2 · 建表列（CREATE_TABLE_V2_SQL + migrate ALTER）⊆ toRow 写入键 ∪ 白名单
 //   规则 3 · pages 层硬编码预设数据源检测（防陈旧源：合法上下文之外一律违规）
 //   规则 4 · 导出 API 必须有非测试外部调用者（零调用者必须进白名单并附理由）
 //   规则 5 · 未使用 import 检测（存量进白名单待清理）
+//   规则 6 · custom_fields 键语义裸操作检测（pages/service 必须走契约函数）
+//   规则 7 · 文档 ⇄ 代码 .ets 双向校验（引用路径存在 + 文件全部登记）
 // 风格对齐 scripts/design-guard.js：✅/❌ + 中文输出 + 结尾汇总。
 import fs from 'fs';
 import path from 'path';
@@ -577,8 +579,9 @@ function runRule6(allFiles) {
   return { violations, whitelistHits: [], stat };
 }
 
-// 规则 7：AGENTS.md 与 docs/agents/code-structure.md 引用的 .ets 路径必须真实存在（ticket #17，文档→代码单向）
-// 只校验存在性，不要求「代码文件必须写进文档」——反向会劝退小改动。
+// 规则 7：文档 ⇄ 代码双向校验（ticket #17 正向 + aihero 审计补反向）
+// 正向：AGENTS.md 与 docs/agents/code-structure.md 引用的 .ets 路径必须真实存在
+// 反向：每个 .ets 文件必须登记进 docs/agents/code-structure.md（新增文件漏登记即红）
 function runRule7() {
   const violations = [];
   const docFiles = ['AGENTS.md', 'docs/agents/code-structure.md'];
@@ -596,7 +599,15 @@ function runRule7() {
       }
     }
   }
-  const stat = `校验 ${docFiles.join(' + ')} 中 ${count} 个 .ets 引用路径（单向：文档→代码）`;
+  const structureDoc = fs.readFileSync(path.join(rootDir, 'docs/agents/code-structure.md'), 'utf8');
+  const etsFiles = getEtsFiles(etsRoot);
+  for (const f of etsFiles) {
+    const rel = path.relative(rootDir, f).split(path.sep).join('/');
+    if (!structureDoc.includes(rel)) {
+      violations.push(`${rel} 未登记进 docs/agents/code-structure.md（新增文件需同步清单）`);
+    }
+  }
+  const stat = `正向校验 ${docFiles.join(' + ')} 中 ${count} 个 .ets 引用；反向校验 ${etsFiles.length} 个 .ets 文件登记完整性`;
   return { violations, whitelistHits: [], stat };
 }
 
@@ -607,14 +618,14 @@ console.log('🔍 跨层接线守护检查（固化接线审计不变量）...\n
 const allFiles = getEtsFiles(etsRoot).map(readEts);
 
 const results = [
-  { title: '规则 1 · Material 字段 ⇄ DB 行双向映射完整性', doc: 'CONTEXT.md「新字段必改清单」（背景：docs/audit-wiring.md）', ...runRule1() },
-  { title: '规则 2 · 建表列 ⊆ toRow 写入键', doc: 'CONTEXT.md「新字段必改清单」', ...runRule2() },
-  { title: '规则 3 · pages 硬编码预设数据源检测', doc: 'CONTEXT.md「新字段必改清单」第 9 条（背景：docs/audit-wiring.md）', ...runRule3() },
+  { title: '规则 1 · Material 字段 ⇄ DB 行双向映射完整性', doc: 'docs/agents/wiring-checklist.md（背景：docs/audit-wiring.md）', ...runRule1() },
+  { title: '规则 2 · 建表列 ⊆ toRow 写入键', doc: 'docs/agents/wiring-checklist.md', ...runRule2() },
+  { title: '规则 3 · pages 硬编码预设数据源检测', doc: 'docs/agents/wiring-checklist.md 第 9 条（背景：docs/audit-wiring.md）', ...runRule3() },
   { title: '规则 4 · 导出 API 必须有非测试外部调用者', doc: 'docs/audit-wiring.md §五（白名单登记哲学）', ...runRule4(allFiles) },
   { title: '规则 5 · 未使用 import 检测', doc: 'docs/audit-wiring.md §五（白名单登记哲学）', ...runRule5(allFiles) },
   { title: '规则 6 · custom_fields 键语义裸操作检测', doc: 'AGENTS.md 关键不变量 1（#14 教训；契约函数在 model/CustomField.ets）', ...runRule6(allFiles) },
   // 规则 7 的违规信息本身已指名需同步的文档，不再附指针
-  { title: '规则 7 · 文档 .ets 路径存在性（文档→代码单向）', doc: null, ...runRule7() },
+  { title: '规则 7 · 文档 ⇄ 代码 .ets 双向校验', doc: null, ...runRule7() },
 ];
 
 let hasError = false;

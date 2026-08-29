@@ -4,9 +4,7 @@
 
 > 范围变更（2026-08-24，pantry-logic 移植）：物资生命周期管理升级——引入状态机（在库/开封/用完/丢弃）与软删除；数量与位置管理增强。核心不变量保持：一条记录对应一件实物、端侧、无云端。
 
-## Design
-
-UI 设计系统：**包豪斯**（暖白纸底 + 三原色几何 + 硬阴影 + 零圆角），详见 `DESIGN.md`。原型文件在 `keepfresh-ui-preview.design/final/15-*.html`。
+本文件只是领域词汇表。决策记录见 `docs/adr/`；新增字段接线见 `docs/agents/wiring-checklist.md`；视觉设计见 `DESIGN.md`。
 
 ## Language
 
@@ -58,39 +56,7 @@ AddItem 表单页的扫码入口：ScanKit 扫码后按条形码匹配历史，�
 
 **拍照入库**:
 首页独立入口：拍照后由端侧识别生成表单预填，用户确认后才入库。识别结果一律进表单待确认，绝不自动入库。
+（注：该功能已放弃，见 ADR-0002；词条保留以解释历史代码与文档中的引用。）
 
 **端侧**:
 识别能力全部在本机执行的属性。KeepFresh 的所有 AI/识别功能必须端侧，禁止任何云端调用。
-
-## Decisions（pantry-logic 移植，2026-08-24）
-
-移植来源：the-ai-menu 项目 Pantry 模块（`D:\a-code\github\the-ai-menu`）。抄逻辑与页面骨架，不抄视觉风格——所有 UI 继续走包豪斯令牌。
-
-| # | 决策 | 结论 | 理由（长远利益优先） |
-|---|---|---|---|
-| 1 | quantity 类型 | **string**（TEXT 列） | 支持混合输入"500g"；规避 REAL 浮点精度坑；对齐 normalizeQuantityUnit 解析链路。DB 迁移 REAL→TEXT 一次性成本可接受 |
-| 2 | AddItem 形态 | **保持整页表单** | 表单含扫码+自定义字段+月数切换，复杂度高，整页承载更稳；Sheet 化收益不抵重写风险 |
-| 3 | 状态操作入口 | **详情页按钮** | 与现有编辑/删除入口模式一致，改动集中单页 |
-| 4 | 回收站 | **Settings 子页** | 软删除物资列表 + 恢复/彻底删除，独立页面不污染主流程 |
-| 5 | 分类/位置管理 | **完整 CRUD** | 新增/重命名/删除/拖拽排序，用户不缺时间金钱，一步到位 |
-| 6 | 测试 | **纯函数单测** | node --test 复用 test/ 目录现有模式，还 issue #9 的 ExpiryService 测试债 |
-
-**关键不变量**：旧数据兼容（新列全部可空/有默认值）；月数与天数并存时月数优先；终态（已用完/已丢弃）不被过期状态覆盖；软删除不进入任何统计与列表。
-
-## 新字段必改清单（Wiring Checklist）
-
-新增 Material 字段（或新 DB 表）时**必改**的接线点，漏任何一处即产生断链（背景见 `docs/audit-wiring.md`；规则 1/2/5 由 `npm run wire:check` 机器拦截，其余靠本清单）：
-
-1. `model/Material.ets` 接口字段
-2. `db/MaterialDb.ets`：建表 SQL / migrate() ALTER + `toRow` 写入键 + `rowToMaterial` 读取列
-3. 写入方：`pages/AddItem.ets` 表单（含编辑回填 + 扫码预填 `applyScanSuggestion`）
-4. 渲染消费：`pages/Index.ets` 卡片 / `pages/ItemDetail.ets` 信息行
-5. 派生计算：`service/ExpiryService.ets`（若参与分级/排序/统计）
-6. 提醒链路：`service/ReminderService.ets`（若影响提醒口径）
-7. 备份闭环：`service/BackupService.ets` 导出序列化（注意 JSON.stringify 丢弃 undefined 可选字段）**+** 导入还原 `mapImportedMaterial`
-8. 测试：`test/PantryLogic.test.ts` 或对应测试文件
-9. 新表另需：管理页 CRUD + 数据消费方改走查询 API（禁硬编码 DEFAULT_* 数据源，wire-guard 规则 3 拦截）
-
-## Guards（CI 守护链）
-
-`npm run ci` = design-guard（包豪斯视觉不变量）+ **wire-guard**（接线不变量，七规则+理由白名单）+ **docs-guard**（docs 可达性，防孤儿文档）+ node --test。白名单每条附处置状态，登记项获得调用者后脚本提醒移除。

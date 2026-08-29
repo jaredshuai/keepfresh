@@ -1,7 +1,7 @@
 # 代码结构（entry/src/main/ets/）
 
 > 从根 AGENTS.md 外迁（渐进式披露：需要文件级清单时才加载本文件）。
-> 本文件由实际文件枚举生成（2026-08-28，25 个 .ets）。wire-guard 规则 7 校验本文档列出的 .ets 路径真实存在（文档→代码单向）；**新增/删除文件时同步本文件，删除文件而忘改文档会直接 CI 红**。
+> 本文件由实际文件枚举生成（2026-08-28 首版 25 个 .ets，2026-08-29 补登记 UsageService 后 26 个）。wire-guard 规则 7 双向校验：本文档列出的 .ets 路径必须真实存在，且每个 .ets 文件必须登记在本文档；**新增/删除文件时同步本文件，漏改任一方向都会直接 CI 红**。
 
 **model/（领域模型，纯逻辑）**
 - `entry/src/main/ets/model/Material.ets` — 物资数据模型、状态机（active/opened/empty/discarded）、分类/位置/单位预设、临期阈值常量
@@ -27,6 +27,7 @@
 - `entry/src/main/ets/service/NotificationService.ets` — 通知授权与临期通知发布
 - `entry/src/main/ets/service/BackupService.ets` — 备份导出/导入（JSON schema v2，DocumentViewPicker 免权限）
 - `entry/src/main/ets/service/ScanService.ets` — 扫码快填（ScanKit + 条码历史建议）
+- `entry/src/main/ets/service/UsageService.ets` — dogfood 使用日志（端侧 JSONL 追加写，写失败静默；检索见 docs/dogfood.md）。补登记于 2026-08-29 规则 7 反向校验上线时
 
 **pages/（UI，7 页，全部走 Theme 令牌）**
 - `entry/src/main/ets/pages/Index.ets` — 首页：状态分组列表 + 搜索筛选 + 提醒设置入口

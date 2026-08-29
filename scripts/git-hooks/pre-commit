@@ -1,0 +1,20 @@
+#!/bin/sh
+# 提交闸门：提交前跑全量 CI 链（design + wire + docs + test，约 4 秒）。
+# 钩子源文件在版本库内；新克隆需执行安装（见文件尾注释或 AGENTS.md）。
+
+if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+  # Windows + fnm 环境：git GUI 客户端拉起钩子时可能没有登录 shell 的 PATH
+  export PATH="$HOME/AppData/Roaming/fnm:$PATH"
+  eval "$(fnm env 2>/dev/null)" 2>/dev/null || true
+fi
+
+if ! command -v npm >/dev/null 2>&1; then
+  echo "pre-commit: 找不到 node/npm，提交被阻断。请安装 node 或修正 PATH（fnm: export PATH=\"\$HOME/AppData/Roaming/fnm:\$PATH\"; eval \"\$(fnm env)\"）。" >&2
+  exit 1
+fi
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+npm run ci
+
+# 安装方法（新克隆一次性执行）：
+#   cp scripts/git-hooks/pre-commit .git/hooks/pre-commit

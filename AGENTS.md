@@ -14,7 +14,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## 代码结构（entry/src/main/ets/）
 
-分层：model（领域模型，纯逻辑）/ common（无 `@kit` 依赖纯工具，Node 测试唯一可 import 层）/ db（RelationalStore 封装）/ service（平台绑定业务服务）/ pages（UI，全走 Theme 令牌）/ entryability（入口）。文件级清单见 `docs/agents/code-structure.md`（wire-guard 规则 7 校验其 .ets 路径真实性，增删文件需同步该文件，否则 CI 红）。
+分层：model（领域模型，纯逻辑）/ common（无 `@kit` 依赖纯工具，Node 测试唯一可 import 层）/ db（RelationalStore 封装）/ service（平台绑定业务服务）/ pages（UI，全走 Theme 令牌）/ entryability（入口）。文件级清单见 `docs/agents/code-structure.md`（wire-guard 规则 7 双向校验：引用的 .ets 路径必须存在、每个 .ets 文件必须登记，增删文件需同步该文件，否则 CI 红）。
 
 ## 关键不变量（改动前必读）
 
@@ -27,16 +27,15 @@ This file provides guidance to AI coding agents when working with code in this r
 
 - 动 `pages/` 任何 UI → `docs/agents/arkui-pitfalls.md`（ArkUI 渲染陷阱：Button 胶囊 / @Builder 按值传参 / layoutWeight 轴向 / Scroll 居中 / 智感握姿 motion 等；design-guard 报错锚点即此文档条目）
 - 动系统栏/全面屏（EntryAbility 窗口、沉浸式、避让）→ `docs/agents/arkui-pitfalls.md#fullscreen-immersive`（只刷窗口背景色不生效，必须全屏布局 + 页内避让）
-- 新增/修改 Material 字段或 DB 表 → `CONTEXT.md`「新字段必改清单」；断链事故背景与修复记录见 `docs/audit-wiring.md`
+- 新增/修改 Material 字段或 DB 表 → `docs/agents/wiring-checklist.md`；断链事故背景与修复记录见 `docs/audit-wiring.md`
 - 动视觉样式（色值/圆角/阴影/版式）→ `DESIGN.md`；包豪斯审计背景见 `docs/audit-bauhaus.md`
 - 好奇"为什么这么决策" → `docs/adr/`
 
 ## 测试与工具链
 
-- `npm run ci` = design:check + wire:check + docs:check + test，提交前必跑
+- `npm run ci` = design:check + wire:check + docs:check + test（约 4 秒）。提交闸门已机制化：pre-commit 钩子自动执行，钩子源在 `scripts/git-hooks/pre-commit`（新克隆安装：`cp scripts/git-hooks/pre-commit .git/hooks/pre-commit`）
+- **ArkTS 编译/类型闸门是 `npm run build`**（分钟级，不在 ci 内）：动到 @kit 层（pages / service / db / entryability）必须另跑 build 验证；`npm run build:release` 为发布包
 - **Node 测试仅能 import 无 `@kit.*` 依赖的纯模块**（test/loader.mjs 限制）：需测的逻辑应下沉 common/ 与 model/；service 层直接 import 会失败
-- `npm run build` / `npm run build:release` — hvigor 自动探测（本项目本地 / DevEco 默认 / `DEVECO_HOME`）
-- `npm run test` / `npm run design:check` / `npm run wire:check` / `npm run docs:check` 可单独执行
 
 ## Agent skills
 

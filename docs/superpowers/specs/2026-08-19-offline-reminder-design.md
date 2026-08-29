@@ -2,7 +2,7 @@
 
 - **日期**：2026-08-19
 - **状态**：已批准 (Approved)
-- **对应 ADR**：[ADR 0001](file:///E:/codespace/keepfresh/docs/adr/0001-daily-summary-offline-reminder.md)
+- **对应 ADR**：[ADR 0001](file:///E:/codespace/keepfresh/docs/adr/0004-daily-summary-offline-reminder.md)
 
 ---
 
