@@ -24,6 +24,15 @@ import { getCategoryIcon } from '../common/CategoryIcons';
 import { UsageService } from '../service/UsageService';
 import { filterByKeyword } from '../common/SearchFilter';
 
+/**
+ * 分组列表 ForEach 的 key：id 之外编入可变展示字段（status/updatedAt）。
+ * ArkUI ForEach 同 key 复用旧组件不重绘——状态翻转不改 id，卡片会凝滞
+ * （详情改开封→返回首页徽标不更新，实测；详见坑文档 #crosspage-write-read-race）
+ */
+function materialCardKey(m: Material): string {
+  return `${m.id}_${m.status}_${m.updatedAt}`;
+}
+
 interface TimePickerResult {
   hour?: number;
   minute?: number;
@@ -58,6 +67,9 @@ let notifiedThisSession: boolean = false;
 struct Index {
   @StorageProp('avoidTopVp') avoidTopVp: number = 0;
   @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
+  // 详情页写库完成后自增此版本号，@Watch 立即重查——兜住「用户在 await 写完成前
+  // 按返回，onPageShow 的 refresh 读到写提交前的旧状态」的跨页竞速（卡片凝滞）
+  @StorageProp('materialsVersion') @Watch('onMaterialsVersionChange') materialsVersion: number = 0;
   /** 智感握姿：左手握持时 FAB 换到左下角；默认右手（右下角）。不支持的机型保持默认 */
   @State fabOnLeft: boolean = false;
   @State materials: Material[] = [];
@@ -198,6 +210,11 @@ struct Index {
     }
   }
 
+  /** 物资数据版本变化（详情页状态写入完成）→ 立即重查首页 */
+  onMaterialsVersionChange(): void {
+    this.refresh();
+  }
+
   async refresh(): Promise<void> {
     try {
       const list: Material[] = await this.db.listAll();
@@ -305,7 +322,7 @@ struct Index {
                   Column({ space: Theme.smallGap }) {
                     ForEach(this.groupedMaterials.expired, (m: Material) => {
                       this.expiredCard(m)
-                    }, (m: Material) => m.id.toString())
+                    }, materialCardKey)
                   }
                   .width('100%')
                 }
@@ -316,7 +333,7 @@ struct Index {
                   Column({ space: Theme.smallGap }) {
                     ForEach(this.groupedMaterials.near, (m: Material) => {
                       this.materialCard(m)
-                    }, (m: Material) => m.id.toString())
+                    }, materialCardKey)
                   }
                   .width('100%')
                 }
@@ -328,7 +345,7 @@ struct Index {
                     Column({ space: Theme.smallGap }) {
                       ForEach(this.groupedMaterials.safe, (m: Material) => {
                         this.materialCard(m)
-                      }, (m: Material) => m.id.toString())
+                      }, materialCardKey)
                     }
                     .width('100%')
                   }
@@ -341,7 +358,7 @@ struct Index {
                     Column({ space: Theme.smallGap }) {
                       ForEach(this.groupedMaterials.handled, (m: Material) => {
                         this.handledCard(m)
-                      }, (m: Material) => m.id.toString())
+                      }, materialCardKey)
                     }
                     .width('100%')
                   }

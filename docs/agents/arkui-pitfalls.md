@@ -149,3 +149,13 @@ bauhaus 审计修 ItemDetail 时（f98cf73）只迁了圆/方，三角因走 Can
 坐标即 vp，随屏缩放、与 Circle/Rect 同盒对齐。Canvas 只留给真正需要自由绘制的场景（若必须用，
 路径坐标先做 vp→px 换算）。修复全仓库 4 处：Index geoShape/空态、ItemDetail geoShape、CustomFieldManager 空态。
 design-guard 规则 6 拦截 pages/ 内一切 `Canvas()`（豁免在 scripts/design-guard.js CANVAS_WHITELIST 文件级登记，须附理由）。
+
+## <a id="crosspage-write-read-race"></a>跨页写读竞速：onPageShow refresh 撞上未完成的 await 写（`#crosspage-write-read-race`）
+
+**症状**：详情页改状态（开封/用完）后**立刻**按返回，首页卡片不更新（徽标缺失/分组不动），再进再出才恢复；等待片刻再返回则一切正常。
+
+**根因**：`applyStatus` 里 `await db.updateStatus` 是异步提交；用户按返回时首页 `onPageShow → refresh()` 可能在写提交**之前**执行 `listAll()`，读到旧状态渲染。此后无任何触发再刷新——凝滞到下次 onPageShow。代码序（await 后再 back）防不住用户手势抢跑。
+
+**修法**：写方在 await 完成后 `AppStorage.setOrCreate('materialsVersion', 旧值+1)`；首页 `@StorageProp('materialsVersion') @Watch` 收到即重查（Index 在路由栈底被覆盖时 @Watch 照样触发）。onPageShow refresh 保留兜底。要点：**版本自增必须在写提交之后**，否则重查仍可能读旧。
+
+**第二层（渲染凝滞）**：数据刷对了卡片也可能不重绘——ForEach key 只用 `m.id` 时，状态翻转不改 key，ArkUI 复用旧组件不重跑 item builder，徽标/文案凝滞（切筛选 Tab 往返才恢复）。修法：key 编入可变展示字段（`materialCardKey = id_status_updatedAt`）。判别实验：改完状态切 Tab 再切回，卡片若恢复即此层。

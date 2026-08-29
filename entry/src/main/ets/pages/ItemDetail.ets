@@ -121,6 +121,9 @@ struct ItemDetail {
       this.toast(toastMsg);
       const fresh: Material | undefined = await this.db.getById(this.itemId);
       this.m = fresh;
+      // 写库完成后自增物资版本：首页 @StorageProp @Watch 收到即重查，兜住用户在
+      // await 完成前按返回、onPageShow refresh 读到旧状态的跨页竞速（卡片凝滞）
+      AppStorage.setOrCreate('materialsVersion', (AppStorage.get<number>('materialsVersion') ?? 0) + 1);
     } catch (e) {
       console.error(`update status failed: ${(e as BusinessError).message}`);
       this.toast('操作失败，请重试');
