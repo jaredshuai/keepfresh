@@ -8,7 +8,7 @@ import { CustomField, readCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { levelOf, levelText, remainingDays, remainingText } from '../common/ExpiryService';
 import { shelfLifeText } from '../common/MaterialForm';
-import { ReminderService } from '../service/ReminderService';
+import { MaterialWriteService } from '../service/MaterialWriteService';
 import { UsageService } from '../service/UsageService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
@@ -28,6 +28,7 @@ struct ItemDetail {
   @State loading: boolean = true;
   @State updatingStatus: boolean = false;
   private db: MaterialDb = MaterialDb.getInstance();
+  private writer: MaterialWriteService = MaterialWriteService.getInstance();
   private itemId: number = -1;
 
   private toast(message: string): void {
@@ -89,13 +90,9 @@ struct ItemDetail {
 
   private async doDelete(): Promise<void> {
     try {
-      await this.db.remove(this.itemId);
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      try {
-        await ReminderService.getInstance().syncDailyReminder(ctx);
-      } catch (e) {
-        console.error(`sync reminder failed: ${(e as BusinessError).message}`);
-      }
+      await this.writer.init(ctx);
+      await this.writer.softDelete(this.itemId);
       this.toast('已移入回收站');
       this.getUIContext().getRouter().back();
     } catch (e) {
@@ -110,21 +107,16 @@ struct ItemDetail {
     }
     this.updatingStatus = true;
     try {
-      await this.db.updateStatus(this.itemId, status, handledType);
-      UsageService.getInstance().init(this.getUIContext().getHostContext() as common.UIAbilityContext);
+      // 写路径统一（C2）：状态写入 + 版本自增 + 提醒重算一个接口
+      // （版本自增兜住用户在 await 完成前按返回、onPageShow refresh 读到旧状态的跨页竞速）
+      const ctx0 = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      await this.writer.init(ctx0);
+      await this.writer.markStatus(this.itemId, status, handledType);
+      UsageService.getInstance().init(ctx0);
       UsageService.getInstance().logStatusChanged(this.m?.name ?? '', status);
-      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      try {
-        await ReminderService.getInstance().syncDailyReminder(ctx);
-      } catch (e) {
-        console.error(`sync reminder failed: ${(e as BusinessError).message}`);
-      }
       this.toast(toastMsg);
       const fresh: Material | undefined = await this.db.getById(this.itemId);
       this.m = fresh;
-      // 写库完成后自增物资版本：首页 @StorageProp @Watch 收到即重查，兜住用户在
-      // await 完成前按返回、onPageShow refresh 读到旧状态的跨页竞速（卡片凝滞）
-      AppStorage.setOrCreate('materialsVersion', (AppStorage.get<number>('materialsVersion') ?? 0) + 1);
     } catch (e) {
       console.error(`update status failed: ${(e as BusinessError).message}`);
       this.toast('操作失败，请重试');

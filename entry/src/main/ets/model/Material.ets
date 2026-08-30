@@ -65,6 +65,15 @@ export const SHELF_PRESET_DAYS: number[] = [7, 30, 90, 180, 365];
 
 export const SHELF_PRESET_MONTHS: number[] = [1, 3, 6, 12, 18, 24];
 
+/**
+ * 物资列表 ForEach 的 key：id 之外编入可变展示字段（status/updatedAt）。
+ * ArkUI ForEach 同 key 复用旧组件不重绘——状态翻转不改 id，卡片会凝滞
+ * （#crosspage-write-read-race 实测）；所有物资列表（首页分组/回收站/建议单）必须共用。
+ */
+export function materialCardKey(m: Material): string {
+  return `${m.id}_${m.status}_${m.updatedAt}`;
+}
+
 /* ============================================================
  * 同批次合并：同名+同位置+同到期日+同单位 的在库记录 = 同一批次，
  * 新增入库自动并入（数量求和）而非另起一条；启动时对存量无损重复做一次并条。

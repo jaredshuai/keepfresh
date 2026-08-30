@@ -3,7 +3,7 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, MaterialStatus, DateEntryMode, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS } from '../model/Material';
+import { Material, MaterialStatus, DateEntryMode, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS, materialCardKey } from '../model/Material';
 import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../common/ExpiryService';
@@ -12,8 +12,8 @@ import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUni
 import { UsageService } from '../service/UsageService';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
-import { dateParamsFromMaterial, shelfLifeText, buildMaterialFromForm, mergeIntoBatch, MaterialFormInput, FormEditContext } from '../common/MaterialForm';
-import { ReminderService } from '../service/ReminderService';
+import { dateParamsFromMaterial, shelfLifeText, buildMaterialFromForm, MaterialFormInput, FormEditContext } from '../common/MaterialForm';
+import { MaterialWriteService } from '../service/MaterialWriteService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 
@@ -153,6 +153,7 @@ struct AddItem {
   @State customFieldsDefs: CustomField[] = [];
   @State customFieldValues: Record<string, string> = {};
   private db: MaterialDb = MaterialDb.getInstance();
+  private writer: MaterialWriteService = MaterialWriteService.getInstance();
   private editId: number = -1;
   private pageOpenAt: number = Date.now();
   private nameQuerySeq: number = 0;
@@ -491,26 +492,12 @@ struct AddItem {
     this.saving = true;
     try {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      await this.db.init(ctx);
-      let mergeToast = '';
-      if (this.isEdit) {
-        await this.db.update(material);
-      } else {
-        // 同批次并条（编辑不并入：编辑语义是改这条本身）：策略唯一实现 common/MaterialForm.mergeIntoBatch
-        const twin = await this.db.findActiveBatchMatch(material);
-        const merged = twin ? mergeIntoBatch(twin, material, now) : null;
-        if (merged) {
-          await this.db.update(merged);
-          mergeToast = `已并入现有记录，数量合并为 ${formatQuantityUnit(merged.quantity, material.unit, '')}`;
-        } else {
-          await this.db.insert(material);
-        }
-      }
-      try {
-        await ReminderService.getInstance().syncDailyReminder(ctx);
-      } catch (e) {
-        console.error(`sync reminder failed: ${(e as BusinessError).message}`);
-      }
+      await this.writer.init(ctx);
+      // 写路径统一（C2）：落库 + 版本自增 + 提醒重算一个接口；并条策略在 MaterialWriteService 内
+      const result = await this.writer.save(material, this.isEdit);
+      const mergeToast = result.outcome === 'merged'
+        ? `已并入现有记录，数量合并为 ${formatQuantityUnit(result.quantity, material.unit, '')}`
+        : '';
       const viaBarcode = this.barcode.trim().length > 0;
       UsageService.getInstance().logItemAdded(
         this.name.trim(),
@@ -700,7 +687,7 @@ struct AddItem {
                     .onClick(() => {
                       this.applyNameCandidate(m);
                     })
-                  }, (m: Material) => m.id.toString())
+                  }, materialCardKey)
                 }
                 .width('100%')
               }
@@ -1107,7 +1094,7 @@ struct AddItem {
           ListItem() {
             this.suggestionRow(m)
           }
-        }, (m: Material) => m.id.toString())
+        }, materialCardKey)
       }
       .width('100%')
       .constraintSize({ maxHeight: 320 })

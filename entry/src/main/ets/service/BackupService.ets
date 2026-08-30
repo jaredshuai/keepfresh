@@ -19,6 +19,7 @@ import { CustomField, generateCustomFieldId, BackupDefNameIndex, buildBackupDefN
 import { SettingsService } from './SettingsService';
 import { ReminderService, ReminderSettings } from './ReminderService';
 import { todayStr } from '../common/DateUtils';
+import { MaterialWriteService } from './MaterialWriteService';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'BackupService';
@@ -362,7 +363,9 @@ export class BackupService {
 
       // ── 4. 同步每日提醒：失败时不中断导入，写入 warnings 给 UI 可见提示
       try {
-        await ReminderService.getInstance().syncDailyReminder(context);
+        // 写路径统一（C2）：批量导入收尾 = 版本自增 + 提醒重算
+        await MaterialWriteService.getInstance().init(context);
+        await MaterialWriteService.getInstance().batchDone();
       } catch (e) {
         const err = e as BusinessError;
         const msg = `每日提醒同步失败：${err.code ?? ''} ${err.message}`;

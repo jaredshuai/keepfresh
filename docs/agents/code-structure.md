@@ -26,6 +26,7 @@
 **service/（平台绑定业务服务）**
 - `entry/src/main/ets/service/SettingsService.ets` — 用户配置持久化（临期阈值等，Preferences）
 - `entry/src/main/ets/service/ReminderService.ets` — 代理提醒（ReminderKit 每日汇总调度）
+- `entry/src/main/ets/service/MaterialWriteService.ets` — 物资写路径统一（落库+版本自增+提醒重算一个接口；并条决策在 common/MaterialForm）
 - `entry/src/main/ets/service/NotificationService.ets` — 通知授权与临期通知发布
 - `entry/src/main/ets/service/BackupService.ets` — 备份导出/导入（JSON schema v2，DocumentViewPicker 免权限）
 - `entry/src/main/ets/service/ScanService.ets` — 扫码快填（ScanKit + 条码历史建议）

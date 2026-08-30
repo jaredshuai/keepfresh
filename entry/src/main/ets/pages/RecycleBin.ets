@@ -4,8 +4,9 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, MaterialStatus } from '../model/Material';
+import { Material, MaterialStatus, materialCardKey } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
+import { MaterialWriteService } from '../service/MaterialWriteService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 
@@ -18,6 +19,7 @@ struct RecycleBin {
   @State loading: boolean = true;
   @State restoringId: number = -1;
   private db: MaterialDb = MaterialDb.getInstance();
+  private writer: MaterialWriteService = MaterialWriteService.getInstance();
 
   private toast(message: string): void {
     try {
@@ -55,7 +57,10 @@ struct RecycleBin {
     }
     this.restoringId = id;
     try {
-      await this.db.restore(id);
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      await this.writer.init(ctx);
+      // 写路径统一（C2）：恢复过期/临期行后提醒口径随 afterWrite 重算（此前漏算是活缺陷）
+      await this.writer.restore(id);
       this.toast('已恢复');
       this.load();
     } catch (e) {
@@ -87,7 +92,9 @@ struct RecycleBin {
 
   private async doPurge(m: Material): Promise<void> {
     try {
-      await this.db.purge(m.id);
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      await this.writer.init(ctx);
+      await this.writer.purge(m.id);
       this.toast('已彻底删除');
       this.load();
     } catch (e) {
@@ -146,7 +153,7 @@ struct RecycleBin {
               .width('100%')
             ForEach(this.deleted, (m: Material) => {
               this.deletedCard(m)
-            }, (m: Material) => m.id.toString())
+            }, materialCardKey)
             Column().width('100%').height(24)
           }
           .width('100%')

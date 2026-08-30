@@ -5,7 +5,7 @@
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { motion } from '@kit.MultimodalAwarenessKit';
-import { Material, ExpiryLevel, MaterialStatus, DEFAULT_CATEGORIES } from '../model/Material';
+import { Material, ExpiryLevel, MaterialStatus, DEFAULT_CATEGORIES, materialCardKey } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
 import {
   ExpiryStats,
@@ -22,14 +22,6 @@ import { getCategoryIcon } from '../common/CategoryIcons';
 import { UsageService } from '../service/UsageService';
 import { applyListFilters, groupByStatus, GroupedMaterials } from '../common/SearchFilter';
 
-/**
- * 分组列表 ForEach 的 key：id 之外编入可变展示字段（status/updatedAt）。
- * ArkUI ForEach 同 key 复用旧组件不重绘——状态翻转不改 id，卡片会凝滞
- * （详情改开封→返回首页徽标不更新，实测；详见坑文档 #crosspage-write-read-race）
- */
-function materialCardKey(m: Material): string {
-  return `${m.id}_${m.status}_${m.updatedAt}`;
-}
 
 /**
  * 分组头组件（已过期/临期/安全/已处理 四组共用，C4 三胞胎合一）。
