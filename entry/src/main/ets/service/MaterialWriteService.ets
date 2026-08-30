@@ -55,22 +55,23 @@ export class MaterialWriteService {
    * 命中则并条（数量求和+空位补齐），否则新插。并条策略唯一实现 common/MaterialForm。
    */
   async save(material: Material, isEdit: boolean): Promise<SaveResult> {
+    let result: SaveResult;
     if (isEdit) {
       await this.db.update(material);
-      await this.afterWrite();
-      return { outcome: 'updated', quantity: material.quantity };
+      result = { outcome: 'updated', quantity: material.quantity };
+    } else {
+      const twin = await this.db.findActiveBatchMatch(material);
+      const merged = twin ? mergeIntoBatch(twin, material, material.updatedAt) : null;
+      if (merged) {
+        await this.db.update(merged);
+        result = { outcome: 'merged', quantity: merged.quantity };
+      } else {
+        await this.db.insert(material);
+        result = { outcome: 'inserted', quantity: material.quantity };
+      }
     }
-    const twin = await this.db.findActiveBatchMatch(material);
-    const now: string = material.updatedAt;
-    const merged = twin ? mergeIntoBatch(twin, material, now) : null;
-    if (merged) {
-      await this.db.update(merged);
-      await this.afterWrite();
-      return { outcome: 'merged', quantity: merged.quantity };
-    }
-    await this.db.insert(material);
     await this.afterWrite();
-    return { outcome: 'inserted', quantity: material.quantity };
+    return result;
   }
 
   /** 生命周期状态变更（开封/用完/丢弃/恢复在库） */

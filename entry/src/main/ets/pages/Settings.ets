@@ -176,6 +176,16 @@ struct Settings {
       this.toast(await this.reminderService.editSettings(ctx, settings));
     } catch (e) {
       console.error(`save reminder settings failed: ${(e as BusinessError).message}`);
+      // 失败后回滚 UI 状态到持久化值并给出提示，避免开关/时间看起来成功但未保存（评审找回）
+      try {
+        const saved: ReminderSettings = await this.reminderService.getSettings();
+        this.reminderEnabled = saved.enabled;
+        this.reminderHour = saved.hour;
+        this.reminderMinute = saved.minute;
+      } catch (_) {
+        /* 回滚失败至少给出失败提示 */
+      }
+      this.toast('提醒设置保存失败，请重试');
     }
   }
 

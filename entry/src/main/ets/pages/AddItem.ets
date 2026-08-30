@@ -12,7 +12,7 @@ import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUni
 import { UsageService } from '../service/UsageService';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
-import { dateParamsFromMaterial, shelfLifeText, buildMaterialFromForm, MaterialFormInput, FormEditContext } from '../common/MaterialForm';
+import { dateParamsFromMaterial, shelfLifeText, buildMaterialFromForm, MaterialFormInput, FormEditContext, DateParams } from '../common/MaterialForm';
 import { MaterialWriteService } from '../service/MaterialWriteService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
@@ -227,13 +227,7 @@ struct AddItem {
           }
           this.location = m.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2];
           // 日期口径回填（与联想/扫码共用唯一映射，common/MaterialForm）
-          const dp = dateParamsFromMaterial(m);
-          this.dateMode = dp.dateMode;
-          this.productionDate = dp.productionDate;
-          this.shelfLifeMode = dp.shelfLifeMode;
-          this.shelfLifeStr = dp.shelfLifeStr;
-          this.shelfLifeMonthsStr = dp.shelfLifeMonthsStr;
-          this.directExpiryDate = dp.directExpiryDate;
+          this.applyDateParams(dateParamsFromMaterial(m));
           this.note = m.note;
           this.loadedCreatedAt = m.createdAt;
           this.loadedStatus = m.status ?? MaterialStatus.ACTIVE;
@@ -296,16 +290,20 @@ struct AddItem {
     }
     // 日期口径跟随源记录（与编辑回填/扫码共用唯一映射，common/MaterialForm；
     // 生产日期预填历史值而非今天——今天对生产日期是必错默认）
-    const dp = dateParamsFromMaterial(m);
+    this.applyDateParams(dateParamsFromMaterial(m));
+    this.suggestionApplied = true;
+    this.nameCandidates = [];
+    this.toast(m.productionDate.length === 0 ? '已按上次入库参数预填，请核对到期日' : '已按上次入库参数预填，请核对生产日期');
+  }
+
+  /** 历史记录日期参数落表单（三水合入口共用，dp 来自 dateParamsFromMaterial） */
+  private applyDateParams(dp: DateParams): void {
     this.dateMode = dp.dateMode;
     this.productionDate = dp.productionDate;
     this.shelfLifeMode = dp.shelfLifeMode;
     this.shelfLifeStr = dp.shelfLifeStr;
     this.shelfLifeMonthsStr = dp.shelfLifeMonthsStr;
     this.directExpiryDate = dp.directExpiryDate;
-    this.suggestionApplied = true;
-    this.nameCandidates = [];
-    this.toast(m.productionDate.length === 0 ? '已按上次入库参数预填，请核对到期日' : '已按上次入库参数预填，请核对生产日期');
   }
 
   /** 共用日期选择包装（#22 去重）：只差 selected 与写回目标 */
@@ -423,13 +421,7 @@ struct AddItem {
     this.category = m.category;
     this.unit = m.unit;
     // 日期口径跟随源记录（三入口共用唯一映射，common/MaterialForm；月数优先还原，避免 365×n 近似）
-    const dp = dateParamsFromMaterial(m);
-    this.dateMode = dp.dateMode;
-    this.productionDate = dp.productionDate;
-    this.shelfLifeMode = dp.shelfLifeMode;
-    this.shelfLifeStr = dp.shelfLifeStr;
-    this.shelfLifeMonthsStr = dp.shelfLifeMonthsStr;
-    this.directExpiryDate = dp.directExpiryDate;
+    this.applyDateParams(dateParamsFromMaterial(m));
     // 位置回填（历史记录有位置则带上；其位置已在 listEffectiveNames 合并结果内）
     if (m.location && m.location.length > 0) {
       this.location = m.location;
@@ -446,15 +438,6 @@ struct AddItem {
   async save(): Promise<void> {
     if (this.saving) {
       return;
-    }
-    // 自定义字段校验（依赖字段定义列表，留在页面层）
-    for (const def of this.customFieldsDefs) {
-      const val = this.customFieldValues[def.id] || '';
-      const err = validateCustomFieldValue(def, val);
-      if (err) {
-        this.errorMsg = err;
-        return;
-      }
     }
     // 名称/数量/日期口径校验 + 物资构造：唯一实现 common/MaterialForm（Node 可测）
     const now = todayStr();
@@ -486,6 +469,15 @@ struct AddItem {
     if (built.error.length > 0 || !built.material) {
       this.errorMsg = built.error;
       return;
+    }
+    // 自定义字段校验（依赖字段定义列表，留在页面层；顺序沿旧例：基础校验之后）
+    for (const def of this.customFieldsDefs) {
+      const val = this.customFieldValues[def.id] || '';
+      const err = validateCustomFieldValue(def, val);
+      if (err) {
+        this.errorMsg = err;
+        return;
+      }
     }
     const material: Material = built.material;
     this.errorMsg = '';
