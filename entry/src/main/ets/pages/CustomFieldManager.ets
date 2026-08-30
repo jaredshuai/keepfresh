@@ -778,8 +778,9 @@ struct CustomFieldManager {
 
       Row({ space: Theme.elementGap }) {
         Stack() {
+          // 墨影层与 Stack 同宽（Stack 子层 layoutWeight 是哑弹——#layoutweight-axis）
           Column()
-            .layoutWeight(1)
+            .width('100%')
             .height(48)
             .backgroundColor(Theme.ink)
             .margin({ left: 4, top: 4 })
@@ -801,8 +802,9 @@ struct CustomFieldManager {
         .padding({ right: 4, bottom: 4 })
 
         Stack() {
+          // 墨影层与 Stack 同宽（Stack 子层 layoutWeight 是哑弹——#layoutweight-axis）
           Column()
-            .layoutWeight(1)
+            .width('100%')
             .height(48)
             .backgroundColor(Theme.ink)
             .margin({ left: 4, top: 4 })

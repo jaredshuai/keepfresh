@@ -782,8 +782,9 @@ struct Settings {
   @Builder
   secondaryButton(label: string, onClick: () => void) {
     Stack() {
+      // 墨影层与 Stack 同宽（Stack 子层不参与父 weight 分配，layoutWeight 是哑弹——#layoutweight-axis）
       Column()
-        .layoutWeight(1)
+        .width('100%')
         .height(40)
         .backgroundColor(Theme.ink)
         .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
@@ -812,8 +813,9 @@ struct Settings {
   @Builder
   primaryButton(label: string, onClick: () => void) {
     Stack() {
+      // 墨影层与 Stack 同宽（Stack 子层不参与父 weight 分配，layoutWeight 是哑弹——#layoutweight-axis）
       Column()
-        .layoutWeight(1)
+        .width('100%')
         .height(44)
         .backgroundColor(Theme.ink)
         .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
