@@ -80,6 +80,28 @@ export class ReminderService {
     }
   }
 
+  /**
+   * 编辑提醒设置（唯一入口，C5）：持久化 + 按开关重算/取消 + 返回 toast 文案。
+   * 此前 Index/Settings 各养一份保存管线且已分叉（失败提示/关闭文案不一致）。
+   */
+  public async editSettings(context: Context, settings: ReminderSettings): Promise<string> {
+    await this.init(context);
+    await this.updateSettings(settings);
+    if (!settings.enabled) {
+      await this.cancelAllReminders();
+      return '已关闭后台提醒';
+    }
+    let hint: string = '';
+    try {
+      await this.syncDailyReminder(context);
+    } catch (syncErr) {
+      // 设置已持久化；仅同步发布失败（如未授予通知权限）附提示
+      console.error(`reminder settings saved but sync failed: ${(syncErr as BusinessError).message}`);
+      hint = '，但提醒同步失败（检查通知权限）';
+    }
+    return `已更新提醒设置${hint}`;
+  }
+
   public async cancelAllReminders(): Promise<void> {
     try {
       await reminderAgentManager.cancelAllReminders();

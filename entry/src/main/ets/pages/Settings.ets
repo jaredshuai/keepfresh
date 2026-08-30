@@ -167,39 +167,15 @@ struct Settings {
   private async saveReminderSettings(): Promise<void> {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     try {
-      await this.reminderService.init(ctx);
       const settings: ReminderSettings = {
         enabled: this.reminderEnabled,
         hour: this.reminderHour,
         minute: this.reminderMinute
       };
-      await this.reminderService.updateSettings(settings);
-      if (this.reminderEnabled) {
-        let reminderHint = '';
-        try {
-          await this.reminderService.syncDailyReminder(ctx);
-        } catch (syncErr) {
-          // 提醒配置已持久化；仅同步发布失败（如未授予通知权限）只附提示
-          console.error(`reminder settings saved but sync failed: ${(syncErr as BusinessError).message}`);
-          reminderHint = '，但提醒同步失败（检查通知权限）';
-        }
-        this.toast(`已更新提醒设置${reminderHint}`);
-      } else {
-        await this.reminderService.cancelAllReminders();
-        this.toast('已关闭后台提醒');
-      }
+      // 编辑管线唯一入口在 ReminderService.editSettings（与首页共用，C5）
+      this.toast(await this.reminderService.editSettings(ctx, settings));
     } catch (e) {
       console.error(`save reminder settings failed: ${(e as BusinessError).message}`);
-      // 失败后回滚 UI 状态到持久化值并给出提示，避免开关/时间看起来成功但未保存
-      try {
-        const saved: ReminderSettings = await this.reminderService.getSettings();
-        this.reminderEnabled = saved.enabled;
-        this.reminderHour = saved.hour;
-        this.reminderMinute = saved.minute;
-      } catch (_) {
-        /* 回滚失败至少给出失败提示 */
-      }
-      this.toast('提醒设置保存失败，请重试');
     }
   }
 

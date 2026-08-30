@@ -245,15 +245,14 @@ struct Index {
   private async saveReminderSettings(): Promise<void> {
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     try {
-      await ReminderService.getInstance().init(ctx);
       const settings: ReminderSettings = {
         enabled: this.reminderEnabled,
         hour: this.reminderHour,
         minute: this.reminderMinute
       };
-      await ReminderService.getInstance().updateSettings(settings);
-      await ReminderService.getInstance().syncDailyReminder(ctx);
-      this.getUIContext().getPromptAction().showToast({ message: '已更新提醒设置' });
+      // 编辑管线唯一入口在 ReminderService.editSettings（与 Settings 页共用，C5）
+      const msg: string = await ReminderService.getInstance().editSettings(ctx, settings);
+      this.getUIContext().getPromptAction().showToast({ message: msg });
     } catch (e) {
       console.error(`save reminder settings failed: ${(e as BusinessError).message}`);
     }
