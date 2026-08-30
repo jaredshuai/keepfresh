@@ -18,6 +18,7 @@
 - `entry/src/main/ets/common/CategoryIcons.ets` — 分类图标映射
 - `entry/src/main/ets/common/HardShadow.ets` — 硬阴影容器组件（pages/ 禁手写阴影样板，design-guard 规则 4 执法）
 - `entry/src/main/ets/common/ScanSuggest.ets` — 扫码建议挑选（在库优先，全删条码以最近已删行兜底历史模板；条码管身份）
+- `entry/src/main/ets/common/MaterialForm.ets` — 录入决策（历史→表单日期参数 / 表单→物资构造 / 同批次并条 / 保质期展示，三入口唯一实现）
 
 **db/（存储层）**
 - `entry/src/main/ets/db/MaterialDb.ets` — RelationalStore 封装（materials V2 / custom_field_defs / name_defs 三表 CRUD、迁移、软删除，单例；唯一允许裸 JSON 编解码 custom_fields 列之处）

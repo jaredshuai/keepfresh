@@ -3,7 +3,7 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Material, MaterialStatus, DateEntryMode, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS, batchQuantitySum } from '../model/Material';
+import { Material, MaterialStatus, DateEntryMode, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS } from '../model/Material';
 import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../common/ExpiryService';
@@ -12,6 +12,7 @@ import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUni
 import { UsageService } from '../service/UsageService';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
+import { dateParamsFromMaterial, shelfLifeText, buildMaterialFromForm, mergeIntoBatch, MaterialFormInput, FormEditContext } from '../common/MaterialForm';
 import { ReminderService } from '../service/ReminderService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
@@ -224,21 +225,14 @@ struct AddItem {
             this.unit = normalized.unit;
           }
           this.location = m.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2];
-          if (m.productionDate.length === 0) {
-            // direct 口径存量物品：包装只印到期日，直接回填到期日
-            this.dateMode = DateEntryMode.DIRECT;
-            this.directExpiryDate = m.expiryDate;
-          } else {
-            this.dateMode = DateEntryMode.SHELF;
-            this.productionDate = m.productionDate;
-            if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
-              this.shelfLifeMode = 'months';
-              this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
-            } else {
-              this.shelfLifeMode = 'days';
-              this.shelfLifeStr = m.shelfLifeDays.toString();
-            }
-          }
+          // 日期口径回填（与联想/扫码共用唯一映射，common/MaterialForm）
+          const dp = dateParamsFromMaterial(m);
+          this.dateMode = dp.dateMode;
+          this.productionDate = dp.productionDate;
+          this.shelfLifeMode = dp.shelfLifeMode;
+          this.shelfLifeStr = dp.shelfLifeStr;
+          this.shelfLifeMonthsStr = dp.shelfLifeMonthsStr;
+          this.directExpiryDate = dp.directExpiryDate;
           this.note = m.note;
           this.loadedCreatedAt = m.createdAt;
           this.loadedStatus = m.status ?? MaterialStatus.ACTIVE;
@@ -281,9 +275,7 @@ struct AddItem {
   private suggestionSummary(m: Material): string {
     const shelf = m.productionDate.length === 0
       ? `到期日 ${m.expiryDate}`
-      : ((m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0)
-        ? `保质期${m.shelfLifeMonths}个月`
-        : `保质期${m.shelfLifeDays}天`);
+      : shelfLifeText(m);
     const loc = m.location && m.location.length > 0 ? ` · ${m.location}` : '';
     return `${m.category}${loc} · ${m.quantity}${m.unit} · ${shelf}`;
   }
@@ -301,23 +293,15 @@ struct AddItem {
     if (normalized.unit.length > 0) {
       this.unit = normalized.unit;
     }
-    if (m.productionDate.length === 0) {
-      // direct 口径源记录：不带保质期字段，直接落到「直接填到期日」模式
-      this.dateMode = DateEntryMode.DIRECT;
-      this.directExpiryDate = m.expiryDate;
-    } else {
-      if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
-        this.shelfLifeMode = 'months';
-        this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
-      } else {
-        this.shelfLifeMode = 'days';
-        this.shelfLifeStr = m.shelfLifeDays.toString();
-      }
-      // 生产日期预填历史值（同批次命中即免改；不同批次开选择器改，与留空成本相同）。
-      // 不预填今天：生产日期几乎不可能是录入当天，today 是必错默认
-      this.productionDate = m.productionDate;
-      this.dateMode = DateEntryMode.SHELF;
-    }
+    // 日期口径跟随源记录（与编辑回填/扫码共用唯一映射，common/MaterialForm；
+    // 生产日期预填历史值而非今天——今天对生产日期是必错默认）
+    const dp = dateParamsFromMaterial(m);
+    this.dateMode = dp.dateMode;
+    this.productionDate = dp.productionDate;
+    this.shelfLifeMode = dp.shelfLifeMode;
+    this.shelfLifeStr = dp.shelfLifeStr;
+    this.shelfLifeMonthsStr = dp.shelfLifeMonthsStr;
+    this.directExpiryDate = dp.directExpiryDate;
     this.suggestionApplied = true;
     this.nameCandidates = [];
     this.toast(m.productionDate.length === 0 ? '已按上次入库参数预填，请核对到期日' : '已按上次入库参数预填，请核对生产日期');
@@ -437,24 +421,14 @@ struct AddItem {
     this.name = m.name;
     this.category = m.category;
     this.unit = m.unit;
-    if (m.productionDate.length === 0) {
-      // direct 口径源记录：不带保质期字段，直接落到「直接填到期日」模式并带出原到期日
-      this.dateMode = DateEntryMode.DIRECT;
-      this.directExpiryDate = m.expiryDate;
-    } else {
-      this.dateMode = DateEntryMode.SHELF;
-      // 保质期口径还原：历史记录若按月数录入则保持月数模式（避免 365×n 天的错误近似）
-      if (m.shelfLifeMonths !== undefined && m.shelfLifeMonths !== null && m.shelfLifeMonths > 0) {
-        this.shelfLifeMode = 'months';
-        this.shelfLifeMonthsStr = m.shelfLifeMonths.toString();
-      } else {
-        this.shelfLifeMode = 'days';
-        this.shelfLifeStr = m.shelfLifeDays.toString();
-      }
-      // 同 applyNameCandidate：生产日期预填历史值，不猜今天
-      this.productionDate = m.productionDate;
-      this.dateMode = DateEntryMode.SHELF;
-    }
+    // 日期口径跟随源记录（三入口共用唯一映射，common/MaterialForm；月数优先还原，避免 365×n 近似）
+    const dp = dateParamsFromMaterial(m);
+    this.dateMode = dp.dateMode;
+    this.productionDate = dp.productionDate;
+    this.shelfLifeMode = dp.shelfLifeMode;
+    this.shelfLifeStr = dp.shelfLifeStr;
+    this.shelfLifeMonthsStr = dp.shelfLifeMonthsStr;
+    this.directExpiryDate = dp.directExpiryDate;
     // 位置回填（历史记录有位置则带上；其位置已在 listEffectiveNames 合并结果内）
     if (m.location && m.location.length > 0) {
       this.location = m.location;
@@ -472,39 +446,7 @@ struct AddItem {
     if (this.saving) {
       return;
     }
-    // 数量归一化：支持 "500g" 混合输入自动拆分
-    const normalizedQty = normalizeQuantityUnit(this.quantityStr, this.unit);
-    const qtyNumber = Number(normalizedQty.quantity);
-    // 日期口径：direct = 包装只印到期日；shelf = 生产日期+保质期推算
-    const direct = this.dateMode === DateEntryMode.DIRECT;
-    // 保质期：月数模式或天数模式（direct 口径下不参与）
-    const months = !direct && this.shelfLifeMode === 'months' ? parseNonNegativeInteger(this.shelfLifeMonthsStr) : null;
-    const days = !direct && this.shelfLifeMode === 'months' ? 365 * (months ?? 1) : Number(this.shelfLifeStr);
-
-    if (this.name.trim().length === 0) {
-      this.errorMsg = '请输入物资名称';
-      return;
-    }
-    if (normalizedQty.quantity === '' || Number.isNaN(qtyNumber) || qtyNumber <= 0) {
-      this.errorMsg = '数量需大于 0';
-      return;
-    }
-    if (direct) {
-      if (this.directExpiryDate.length === 0) {
-        this.errorMsg = '请选择到期日期';
-        return;
-      }
-    } else if (this.shelfLifeMode === 'months') {
-      if (months === null || months < 1) {
-        this.errorMsg = '保质期需至少 1 个月';
-        return;
-      }
-    } else {
-      if (this.shelfLifeStr === '' || Number.isNaN(days) || days < 1) {
-        this.errorMsg = '保质期需至少 1 天';
-        return;
-      }
-    }
+    // 自定义字段校验（依赖字段定义列表，留在页面层）
     for (const def of this.customFieldsDefs) {
       const val = this.customFieldValues[def.id] || '';
       const err = validateCustomFieldValue(def, val);
@@ -513,34 +455,40 @@ struct AddItem {
         return;
       }
     }
-    this.errorMsg = '';
-    this.saving = true;
+    // 名称/数量/日期口径校验 + 物资构造：唯一实现 common/MaterialForm（Node 可测）
     const now = todayStr();
-    const material: Material = {
-      id: this.editId,
-      name: this.name.trim(),
+    const form: MaterialFormInput = {
+      name: this.name,
       category: this.category,
-      quantity: normalizedQty.quantity,
-      unit: normalizedQty.unit.length > 0 ? normalizedQty.unit : this.unit,
+      quantityStr: this.quantityStr,
+      unit: this.unit,
       location: this.location,
-      productionDate: direct ? '' : this.productionDate,
-      shelfLifeDays: direct ? 0 : Math.floor(days),
-      shelfLifeMonths: direct ? undefined : (months ?? undefined),
-      expiryDate: direct
-        ? this.directExpiryDate
-        : (months !== null && months >= 1
-          ? calcExpiryDate(this.productionDate, 0, months)
-          : calcExpiryDate(this.productionDate, Math.floor(days))),
-      note: this.note.trim(),
-      status: this.isEdit ? this.loadedStatus : MaterialStatus.ACTIVE,
-      handledType: this.isEdit ? this.loadedHandledType : undefined,
-      handledAt: this.isEdit ? this.loadedHandledAt : undefined,
-      isDeleted: false,
-      createdAt: this.isEdit ? this.loadedCreatedAt : now,
-      updatedAt: now,
-      barcode: this.barcode.trim().length > 0 ? this.barcode.trim() : undefined,
+      dateMode: this.dateMode,
+      productionDate: this.productionDate,
+      shelfLifeMode: this.shelfLifeMode,
+      shelfLifeStr: this.shelfLifeStr,
+      shelfLifeMonthsStr: this.shelfLifeMonthsStr,
+      directExpiryDate: this.directExpiryDate,
+      note: this.note,
+      barcode: this.barcode,
       customFields: this.customFieldValues
     };
+    const editCtx: FormEditContext = {
+      isEdit: this.isEdit,
+      editId: this.editId,
+      loadedCreatedAt: this.loadedCreatedAt,
+      loadedStatus: this.loadedStatus,
+      loadedHandledType: this.loadedHandledType,
+      loadedHandledAt: this.loadedHandledAt
+    };
+    const built = buildMaterialFromForm(form, editCtx, now);
+    if (built.error.length > 0 || !built.material) {
+      this.errorMsg = built.error;
+      return;
+    }
+    const material: Material = built.material;
+    this.errorMsg = '';
+    this.saving = true;
     try {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       await this.db.init(ctx);
@@ -548,26 +496,12 @@ struct AddItem {
       if (this.isEdit) {
         await this.db.update(material);
       } else {
-        // 同批次并条：同名+同位置+同到期日+同单位的在库记录已存在 → 数量求和，不另起新条
-        // （编辑保存不并入：编辑语义是改这条本身，1:1 落库）
+        // 同批次并条（编辑不并入：编辑语义是改这条本身）：策略唯一实现 common/MaterialForm.mergeIntoBatch
         const twin = await this.db.findActiveBatchMatch(material);
-        const sum = twin ? batchQuantitySum(twin.quantity, material.quantity) : null;
-        if (twin && sum !== null) {
-          twin.quantity = sum;
-          twin.updatedAt = now;
-          // 并条只补空位，不覆盖既有信息（新填的备注/条码/自定义字段仅在原记录为空时带上）
-          if (twin.note.length === 0 && material.note.length > 0) {
-            twin.note = material.note;
-          }
-          if ((!twin.barcode || twin.barcode.length === 0) && material.barcode) {
-            twin.barcode = material.barcode;
-          }
-          if ((!twin.customFields || Object.keys(twin.customFields).length === 0)
-            && material.customFields && Object.keys(material.customFields).length > 0) {
-            twin.customFields = material.customFields;
-          }
-          await this.db.update(twin);
-          mergeToast = `已并入现有记录，数量合并为 ${formatQuantityUnit(sum, material.unit, '')}`;
+        const merged = twin ? mergeIntoBatch(twin, material, now) : null;
+        if (merged) {
+          await this.db.update(merged);
+          mergeToast = `已并入现有记录，数量合并为 ${formatQuantityUnit(merged.quantity, material.unit, '')}`;
         } else {
           await this.db.insert(material);
         }
@@ -1229,7 +1163,7 @@ struct AddItem {
           .width('100%')
           Text(m.productionDate.length === 0
             ? `${m.category} · ${m.quantity}${m.unit} · 到期日 ${m.expiryDate}`
-            : `${m.category} · ${m.quantity}${m.unit} · 保质期${m.shelfLifeDays}天`)
+            : `${m.category} · ${m.quantity}${m.unit} · ${shelfLifeText(m)}`)
             .fontSize(Theme.textCaption)
             .fontColor(Theme.textSecondary)
             .margin({ top: Theme.tinyGap })

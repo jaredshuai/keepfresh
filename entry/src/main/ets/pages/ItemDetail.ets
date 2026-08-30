@@ -7,6 +7,7 @@ import { Material, ExpiryLevel, MaterialStatus } from '../model/Material';
 import { CustomField, readCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { levelOf, levelText, remainingDays, remainingText } from '../common/ExpiryService';
+import { shelfLifeText } from '../common/MaterialForm';
 import { ReminderService } from '../service/ReminderService';
 import { UsageService } from '../service/UsageService';
 import { Theme } from '../common/Theme';
@@ -439,7 +440,7 @@ struct ItemDetail {
         // direct 口径（productionDate 为空 = 包装只印到期日）没有生产口径可展示
         if (this.m!.productionDate.length > 0) {
           this.infoRow('生产日期', this.m!.productionDate)
-          this.infoRow('保质期', this.shelfLifeText())
+          this.infoRow('保质期', shelfLifeText(this.m!))
         }
         this.infoRow('到期日期', this.m!.expiryDate)
         this.infoRow('距到期', remainingText(this.m!))
@@ -488,14 +489,6 @@ struct ItemDetail {
       return false;
     }
     return readCustomFieldValue(this.m.customFields, fieldId).trim().length > 0;
-  }
-
-  /** 保质期显示：月数优先展示（保留原始录入口径） */
-  private shelfLifeText(): string {
-    if (this.m!.shelfLifeMonths !== undefined && this.m!.shelfLifeMonths !== null && this.m!.shelfLifeMonths > 0) {
-      return `${this.m!.shelfLifeMonths} 个月`;
-    }
-    return `${this.m!.shelfLifeDays} 天`;
   }
 
   private getCustomFieldValue(fieldId: string): string {
