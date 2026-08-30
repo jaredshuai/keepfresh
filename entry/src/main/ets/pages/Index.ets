@@ -14,7 +14,7 @@ import {
   sortByExpirationAsc,
   statsOf,
   getActualStatus
-} from '../service/ExpiryService';
+} from '../common/ExpiryService';
 import { ensureNotificationEnabled, publishExpiryAlert, requestNotificationEnable } from '../service/NotificationService';
 import { ReminderService, ReminderSettings } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';

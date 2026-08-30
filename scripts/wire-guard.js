@@ -54,8 +54,6 @@ const RULE3_WHITELIST = [
 //（test/ 目录不算调用者；定义文件内部互调不算外部调用者，如 softDelete 被 remove 调）
 const RULE4_WHITELIST = {
   MaterialDb: {
-    listLocations: '已被 listEffectiveNames 取代，清理候选',
-    getCustomFieldById: '零调用，清理候选',
     softDelete: 'remove() 内部转发的语义核心，保留 public',
     consolidateDuplicateBatches: 'init() 启动并条钩子内部调用的语义核心，保留 public（测试无法触达 db 层）',
   },
@@ -67,8 +65,6 @@ const RULE4_WHITELIST = {
     sortByRiskAndExpiration: '预留分页/统计，测试覆盖',
     sortByCreatedDesc: '预留分页/统计，测试覆盖',
     buildOverview: '预留分页/统计，测试覆盖',
-    levelSoftColor: '预留徽标色，清理候选',
-    levelBadgeTextColor: '预留徽标色，清理候选',
   },
   common: {
     normalizeNullableText: '预留',
@@ -465,7 +461,7 @@ function collectApis(allFiles) {
       continue; // MaterialDb 的 class 方法已在上面单独处理
     }
     const rel = relPath(fi.file);
-    const group = rel === 'service/ExpiryService.ets' ? 'ExpiryService'
+    const group = rel === 'common/ExpiryService.ets' ? 'ExpiryService'
       : rel.startsWith('common/') ? 'common'
         : rel.replace(/\.ets$/, '');
     // 含 export async function（可选 async 修饰符），防止异步导出 API 漏检

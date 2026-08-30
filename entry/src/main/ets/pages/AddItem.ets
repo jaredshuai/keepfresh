@@ -6,7 +6,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, MaterialStatus, DateEntryMode, DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_UNITS, SHELF_PRESET_DAYS, SHELF_PRESET_MONTHS, batchQuantitySum } from '../model/Material';
 import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
-import { calcExpiryDate } from '../service/ExpiryService';
+import { calcExpiryDate } from '../common/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
 import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUnit';
 import { UsageService } from '../service/UsageService';

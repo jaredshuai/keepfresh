@@ -12,6 +12,8 @@ import { normalizeText, normalizeNullableText, normalizeNonNegativeInteger, pars
 import { filterByKeyword } from '../entry/src/main/ets/common/SearchFilter.ets';
 import {
   getActualStatus,
+  splitByAlertLevel,
+  statsOf,
   riskOrderOf,
   sortByRiskAndExpiration,
   sortByCreatedDesc,
@@ -19,7 +21,7 @@ import {
   buildOverview,
   calcExpiryDate,
   setNearExpiryThreshold
-} from '../entry/src/main/ets/service/ExpiryService.ets';
+} from '../entry/src/main/ets/common/ExpiryService.ets';
 
 const MaterialStatus = { ACTIVE: 'active', OPENED: 'opened', EMPTY: 'empty', DISCARDED: 'discarded' } as const;
 const DerivedStatus = { EXPIRING: 'expiring', EXPIRED: 'expired' } as const;
@@ -341,6 +343,39 @@ describe('同批次并条（同名+同位置+同到期日+同单位 = 同一批�
     assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 2, status: MaterialStatus.OPENED })), false);
     assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 2, status: MaterialStatus.DISCARDED })), false);
     assert.equal(isLosslessDuplicate(a, makeMaterial({ ...base, id: 1 })), false);
+  });
+});
+
+
+describe('预警资格唯一判定 splitByAlertLevel', () => {
+  it('50. 终态沉 terminal 不入临期/过期；软删除整行跳过；其余按 levelOf 分桶', () => {
+    const t = todayStr();
+    const list: Material[] = [
+      makeMaterial({ id: 1, name: '过期', expiryDate: addDays(t, -1) }),
+      makeMaterial({ id: 2, name: '临期', expiryDate: addDays(t, 3) }),
+      makeMaterial({ id: 3, name: '安全', expiryDate: addDays(t, 30) }),
+      makeMaterial({ id: 4, name: '用完', status: MaterialStatus.EMPTY }),
+      makeMaterial({ id: 5, name: '丢弃', status: MaterialStatus.DISCARDED }),
+      makeMaterial({ id: 6, name: '已删', expiryDate: addDays(t, -1), isDeleted: true })
+    ];
+    const s = splitByAlertLevel(list);
+    assert.deepEqual(s.expired.map(m => m.name), ['过期']);
+    assert.deepEqual(s.near.map(m => m.name), ['临期']);
+    assert.deepEqual(s.other.map(m => m.name), ['安全']);
+    assert.deepEqual(s.terminal.map(m => m.name).sort(), ['丢弃', '用完']);
+  });
+
+  it('51. statsOf 与分桶同源：total=过期+临期+other，safe=other', () => {
+    const t = todayStr();
+    const list: Material[] = [
+      makeMaterial({ id: 1, name: '过期', expiryDate: addDays(t, -1) }),
+      makeMaterial({ id: 2, name: '安全', expiryDate: addDays(t, 30) }),
+      makeMaterial({ id: 3, name: '用完', status: MaterialStatus.EMPTY })
+    ];
+    const stats = statsOf(list);
+    assert.equal(stats.total, 2);
+    assert.equal(stats.expired, 1);
+    assert.equal(stats.safe, 1);
   });
 });
 

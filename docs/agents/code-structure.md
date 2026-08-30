@@ -12,6 +12,7 @@
 - `entry/src/main/ets/common/InputNormalize.ets` — 输入归一化（文本/非负整数/可空文本）
 - `entry/src/main/ets/common/QuantityUnit.ets` — 数量单位解析与格式化
 - `entry/src/main/ets/common/SearchFilter.ets` — 关键词过滤（跨 name/category/location/note）
+- `entry/src/main/ets/common/ExpiryService.ets` — 到期计算、临期分级、状态机派生、统计、风险排序（纯函数，零 @kit；预警资格唯一判定 splitByAlertLevel）
 - `entry/src/main/ets/common/Validation.ets` — 输入校验纯函数（临期天数范围常量 + 校验；service 层同名方法只转发）
 - `entry/src/main/ets/common/Theme.ets` — 包豪斯设计令牌（页面禁写死色值/圆角，design-guard 执法）
 - `entry/src/main/ets/common/CategoryIcons.ets` — 分类图标映射
@@ -22,7 +23,6 @@
 - `entry/src/main/ets/db/MaterialDb.ets` — RelationalStore 封装（materials V2 / custom_field_defs / name_defs 三表 CRUD、迁移、软删除，单例；唯一允许裸 JSON 编解码 custom_fields 列之处）
 
 **service/（平台绑定业务服务）**
-- `entry/src/main/ets/service/ExpiryService.ets` — 到期计算、临期分级、状态机派生、统计、风险排序
 - `entry/src/main/ets/service/SettingsService.ets` — 用户配置持久化（临期阈值等，Preferences）
 - `entry/src/main/ets/service/ReminderService.ets` — 代理提醒（ReminderKit 每日汇总调度）
 - `entry/src/main/ets/service/NotificationService.ets` — 通知授权与临期通知发布

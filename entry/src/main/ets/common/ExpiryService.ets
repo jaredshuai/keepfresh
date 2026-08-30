@@ -2,7 +2,6 @@ import type { Material } from '../model/Material';
 import { ExpiryLevel, MaterialStatus, DerivedStatus } from '../model/Material';
 import { addDays, addMonths, diffDays, todayStr } from '../common/DateUtils';
 import { NEAR_EXPIRY_DAYS_MIN, NEAR_EXPIRY_DAYS_MAX } from '../common/Validation';
-import { Theme } from '../common/Theme';
 
 export const DEFAULT_NEAR_EXPIRY_DAYS: number = 7;
 
@@ -234,38 +233,6 @@ export function buildOverview(list: Material[], customThreshold?: number): Mater
   return overview;
 }
 
-export function levelColor(level: ExpiryLevel): string {
-  if (level === ExpiryLevel.EXPIRED) {
-    return Theme.expired;
-  }
-  if (level === ExpiryLevel.NEAR) {
-    return Theme.near;
-  }
-  return Theme.safe;
-}
-
-/** 状态色浅色背景（用于徽标、卡片装饰条） */
-export function levelSoftColor(level: ExpiryLevel): string {
-  if (level === ExpiryLevel.EXPIRED) {
-    return Theme.expiredSoft;
-  }
-  if (level === ExpiryLevel.NEAR) {
-    return Theme.nearSoft;
-  }
-  return Theme.safeSoft;
-}
-
-/** 状态徽标文字颜色：过期/临期用自身主色，安全用主色 */
-export function levelBadgeTextColor(level: ExpiryLevel): string {
-  if (level === ExpiryLevel.EXPIRED) {
-    return Theme.expired;
-  }
-  if (level === ExpiryLevel.NEAR) {
-    return Theme.near;
-  }
-  return Theme.safe;
-}
-
 /** 列表徽标短文案 */
 export function levelText(level: ExpiryLevel, left: number): string {
   if (level === ExpiryLevel.EXPIRED) {
@@ -289,34 +256,52 @@ export function remainingText(m: Material): string {
   return `${left} 天`;
 }
 
-export function statsOf(list: Material[], customThreshold?: number): ExpiryStats {
-  let expired: number = 0;
-  let near: number = 0;
-  let total: number = 0;
-  const th = customThreshold !== undefined ? customThreshold : cachedNearExpiryDays;
+/**
+ * 预警资格分桶 —— 「谁进入临期/过期口径」的唯一判定（统计头/提醒文案/提醒触发/首页分组共用）。
+ * 跳过软删除（不变量 2）与终态（终态不被过期覆盖）；其余按 levelOf 分桶。
+ * other = 在库/开封且未临期；terminal 收集终态行供分组沉底用。
+ */
+export interface AlertSplit {
+  expired: Material[];
+  near: Material[];
+  other: Material[];
+  terminal: Material[];
+}
+
+export function splitByAlertLevel(list: Material[], customThreshold?: number): AlertSplit {
+  const split: AlertSplit = { expired: [], near: [], other: [], terminal: [] };
   for (let i = 0; i < list.length; i++) {
     const m: Material = list[i];
     if (m.isDeleted) {
       continue;
     }
-    // 终态（已用完/已丢弃）不计入临期/过期统计
     const persisted: string = m.status ?? MaterialStatus.ACTIVE;
     if (persisted === MaterialStatus.EMPTY || persisted === MaterialStatus.DISCARDED) {
+      split.terminal.push(m);
       continue;
     }
-    total++;
-    const lv: ExpiryLevel = levelOf(m, th);
+    const lv: ExpiryLevel = levelOf(m, customThreshold);
     if (lv === ExpiryLevel.EXPIRED) {
-      expired++;
+      split.expired.push(m);
     } else if (lv === ExpiryLevel.NEAR) {
-      near++;
+      split.near.push(m);
+    } else {
+      split.other.push(m);
     }
   }
+  return split;
+}
+
+export function statsOf(list: Material[], customThreshold?: number): ExpiryStats {
+  const s: AlertSplit = splitByAlertLevel(list, customThreshold);
+  const expired: number = s.expired.length;
+  const near: number = s.near.length;
+  const total: number = expired + near + s.other.length;
   const stats: ExpiryStats = {
     total: total,
     expired: expired,
     near: near,
-    safe: total - expired - near
+    safe: s.other.length
   };
   return stats;
 }
@@ -325,25 +310,12 @@ export function statsOf(list: Material[], customThreshold?: number): ExpiryStats
  * 过期优先、按剩余天数升序，最多点名 limit 件；其余以件数概括。
  * 无过期/临期时返回空串（调用方据此取消提醒或不发通知）。 */
 export function buildReminderText(items: Material[], limit: number = 3): string {
-  const expired: Material[] = [];
-  const near: Material[] = [];
-  for (let i = 0; i < items.length; i++) {
-    const persisted: string = items[i].status ?? MaterialStatus.ACTIVE;
-    if (persisted === MaterialStatus.EMPTY || persisted === MaterialStatus.DISCARDED) {
-      continue;
-    }
-    const lv: ExpiryLevel = levelOf(items[i]);
-    if (lv === ExpiryLevel.EXPIRED) {
-      expired.push(items[i]);
-    } else if (lv === ExpiryLevel.NEAR) {
-      near.push(items[i]);
-    }
-  }
-  if (expired.length + near.length === 0) {
+  const s: AlertSplit = splitByAlertLevel(items);
+  if (s.expired.length + s.near.length === 0) {
     return '';
   }
-  const expiredSorted = sortByExpirationAsc(expired);
-  const nearSorted = sortByExpirationAsc(near);
+  const expiredSorted = sortByExpirationAsc(s.expired);
+  const nearSorted = sortByExpirationAsc(s.near);
   const picked: string[] = [];
   let remain: number = limit;
   for (let i = 0; i < expiredSorted.length && remain > 0; i++) {
@@ -356,7 +328,7 @@ export function buildReminderText(items: Material[], limit: number = 3): string 
     picked.push(left === 0 ? `${nearSorted[i].name}（今天到期）` : `${nearSorted[i].name}（剩${left}天）`);
     remain--;
   }
-  const total: number = expired.length + near.length;
+  const total: number = s.expired.length + s.near.length;
   let text: string = picked.join('、');
   if (total > picked.length) {
     text = `${text} 等${total}件`;

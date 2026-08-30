@@ -5,7 +5,7 @@ import { notificationManager } from '@kit.NotificationKit';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Material } from '../model/Material';
-import { buildReminderText } from './ExpiryService';
+import { buildReminderText } from '../common/ExpiryService';
 
 const NOTIFICATION_ID: number = 1001;
 

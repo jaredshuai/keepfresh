@@ -6,7 +6,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { Material, ExpiryLevel, MaterialStatus } from '../model/Material';
 import { CustomField, readCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
-import { levelOf, levelColor, levelText, remainingDays, remainingText } from '../service/ExpiryService';
+import { levelOf, levelText, remainingDays, remainingText } from '../common/ExpiryService';
 import { ReminderService } from '../service/ReminderService';
 import { UsageService } from '../service/UsageService';
 import { Theme } from '../common/Theme';
@@ -282,7 +282,15 @@ struct ItemDetail {
     if (this.isTerminal()) {
       return Theme.textSecondary;
     }
-    return levelColor(levelOf(this.m!));
+    // 呈现映射留在页面：分级模块（common/ExpiryService）不携带 Theme 令牌
+    const lv = levelOf(this.m!);
+    if (lv === ExpiryLevel.EXPIRED) {
+      return Theme.expired;
+    }
+    if (lv === ExpiryLevel.NEAR) {
+      return Theme.near;
+    }
+    return Theme.safe;
   }
 
   /* ============================================================

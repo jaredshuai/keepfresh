@@ -7,7 +7,7 @@ import {
   setNearExpiryThreshold,
   getNearExpiryThreshold,
   DEFAULT_NEAR_EXPIRY_DAYS
-} from '../entry/src/main/ets/service/ExpiryService.ets';
+} from '../entry/src/main/ets/common/ExpiryService.ets';
 import { addDays, todayStr } from '../entry/src/main/ets/common/DateUtils.ets';
 import { validateNearExpiryDays } from '../entry/src/main/ets/common/Validation.ets';
 

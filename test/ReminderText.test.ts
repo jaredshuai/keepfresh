@@ -5,7 +5,7 @@
 import test, { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Material } from '../entry/src/main/ets/model/Material.ets';
-import { buildReminderText } from '../entry/src/main/ets/service/ExpiryService.ets';
+import { buildReminderText } from '../entry/src/main/ets/common/ExpiryService.ets';
 import { addDays, addMonths, todayStr } from '../entry/src/main/ets/common/DateUtils.ets';
 
 function mk(id: number, name: string, expiryDate: string): Material {

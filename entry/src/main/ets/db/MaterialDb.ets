@@ -437,32 +437,6 @@ export class MaterialDb {
     }
   }
 
-  /** 从现有物资的 location 字段提取去重位置列表（升序） */
-  async listLocations(): Promise<string[]> {
-    const locations: Set<string> = new Set<string>();
-    try {
-      const predicates = new relationalStore.RdbPredicates(TABLE);
-      predicates.equalTo('is_deleted', 0);
-      const rs: relationalStore.ResultSet = await this.getStore().query(predicates, ['location']);
-      try {
-        while (rs.goToNextRow()) {
-          const locIndex: number = rs.getColumnIndex('location');
-          if (locIndex >= 0 && !rs.isColumnNull(locIndex)) {
-            const loc: string = rs.getString(locIndex).trim();
-            if (loc.length > 0) {
-              locations.add(loc);
-            }
-          }
-        }
-      } finally {
-        rs.close();
-      }
-    } catch (e) {
-      this.rethrow(e, 'listLocations');
-    }
-    return Array.from(locations).sort();
-  }
-
   async getById(id: number): Promise<Material | undefined> {
     let m: Material | undefined = undefined;
     try {
@@ -704,26 +678,6 @@ export class MaterialDb {
       this.rethrow(e, 'listCustomFields');
     }
     return list;
-  }
-
-  /** 按 ID 获取单个自定义字段 */
-  async getCustomFieldById(id: string): Promise<CustomField | undefined> {
-    let field: CustomField | undefined = undefined;
-    try {
-      const predicates = new relationalStore.RdbPredicates(CUSTOM_FIELDS_TABLE);
-      predicates.equalTo('id', id);
-      const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
-      try {
-        if (rs.goToNextRow()) {
-          field = this.rowToCustomField(rs);
-        }
-      } finally {
-        rs.close();
-      }
-    } catch (e) {
-      this.rethrow(e, 'getCustomFieldById');
-    }
-    return field;
   }
 
   /** 插入自定义字段定义 */

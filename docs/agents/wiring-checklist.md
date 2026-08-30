@@ -7,7 +7,7 @@
 2. `db/MaterialDb.ets`：建表 SQL / migrate() ALTER + `toRow` 写入键 + `rowToMaterial` 读取列
 3. 写入方：`pages/AddItem.ets` 表单（含编辑回填 + 扫码预填 `applyScanSuggestion`）
 4. 渲染消费：`pages/Index.ets` 卡片 / `pages/ItemDetail.ets` 信息行
-5. 派生计算：`service/ExpiryService.ets`（若参与分级/排序/统计）
+5. 派生计算：`common/ExpiryService.ets`（若参与分级/排序/统计）
 6. 提醒链路：`service/ReminderService.ets`（若影响提醒口径）
 7. 备份闭环：`service/BackupService.ets` 导出序列化（注意 JSON.stringify 丢弃 undefined 可选字段）**+** 导入还原 `mapImportedMaterial`
 8. 测试：`test/PantryLogic.test.ts` 或对应测试文件

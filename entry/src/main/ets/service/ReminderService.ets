@@ -7,9 +7,9 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { reminderAgentManager } from '@kit.BackgroundTasksKit';
 import { MaterialDb } from '../db/MaterialDb';
-import { levelOf, buildReminderText } from './ExpiryService';
+import { buildReminderText, splitByAlertLevel } from '../common/ExpiryService';
 import { UsageService } from './UsageService';
-import { Material, ExpiryLevel, MaterialStatus } from '../model/Material';
+import { Material } from '../model/Material';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'ReminderService';
@@ -103,21 +103,10 @@ export class ReminderService {
     await db.init(context);
     const materials: Material[] = await db.listAll();
 
-    let expiredCount: number = 0;
-    let nearCount: number = 0;
-    for (const m of materials) {
-      // 终态（已用完/已丢弃）物资不再触发临期提醒
-      const persisted: string = m.status ?? MaterialStatus.ACTIVE;
-      if (persisted === MaterialStatus.EMPTY || persisted === MaterialStatus.DISCARDED) {
-        continue;
-      }
-      const level: ExpiryLevel = levelOf(m);
-      if (level === ExpiryLevel.EXPIRED) {
-        expiredCount++;
-      } else if (level === ExpiryLevel.NEAR) {
-        nearCount++;
-      }
-    }
+    // 预警资格唯一判定（与统计头/提醒文案/首页分组同一口径）
+    const split = splitByAlertLevel(materials);
+    const expiredCount: number = split.expired.length;
+    const nearCount: number = split.near.length;
 
     if (expiredCount === 0 && nearCount === 0) {
       await this.cancelAllReminders();

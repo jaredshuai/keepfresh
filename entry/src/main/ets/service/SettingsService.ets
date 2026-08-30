@@ -6,7 +6,7 @@ import { Context } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { ReminderService, ReminderSettings } from './ReminderService';
-import { setNearExpiryThreshold, DEFAULT_NEAR_EXPIRY_DAYS } from './ExpiryService';
+import { setNearExpiryThreshold, DEFAULT_NEAR_EXPIRY_DAYS } from '../common/ExpiryService';
 import { NEAR_EXPIRY_DAYS_MIN, NEAR_EXPIRY_DAYS_MAX, validateNearExpiryDays } from '../common/Validation';
 
 const DOMAIN: number = 0x0000;
