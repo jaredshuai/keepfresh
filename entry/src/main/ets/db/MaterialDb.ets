@@ -484,8 +484,8 @@ export class MaterialDb {
 
   /**
    * 按条形码查历史入库记录，按最近入库倒序（created_at，同日再按 id 倒序）。
-   * 排除软删除：回收站行是用户已处理掉的录入，不应再作扫码建议预填
-   * （否则改名/重录后旧名幽灵候选反复出现，2026-08-30 真机实测）。
+   * 含软删除行：已删记录保留「快速再录入」的模板价值；在库优先/兜底分层
+   * 由 common/ScanSuggest.selectScanSuggestions 决定（回收站行不直接外漏）。
    */
   async findByBarcode(barcode: string): Promise<Material[]> {
     const list: Material[] = [];
@@ -496,7 +496,6 @@ export class MaterialDb {
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE);
       predicates.equalTo('barcode', code);
-      predicates.equalTo('is_deleted', 0);
       predicates.orderByDesc('created_at');
       predicates.orderByDesc('id');
       const rs: relationalStore.ResultSet = await this.getStore().query(predicates);

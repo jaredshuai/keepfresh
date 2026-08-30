@@ -9,6 +9,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { MaterialDb } from '../db/MaterialDb';
 import { Material } from '../model/Material';
+import { selectScanSuggestions } from '../common/ScanSuggest';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'ScanService';
@@ -67,6 +68,7 @@ export async function scanForSuggestions(
   }
   let history: Material[] = [];
   try {
+    // 含软删除行：全删条码靠已删行兜底历史模板；在库优先的挑选在 selectScanSuggestions
     history = await db.findByBarcode(barcode);
   } catch (dbErr) {
     hilog.warn(DOMAIN, TAG, 'query history by barcode failed: %{public}s', JSON.stringify(dbErr));
@@ -74,26 +76,6 @@ export async function scanForSuggestions(
   return {
     ok: true,
     barcode: barcode,
-    suggestions: buildScanSuggestions(history)
+    suggestions: selectScanSuggestions(history)
   };
-}
-
-/**
- * 搜索建议去重：名称/位置/到期日 相同的历史记录只保留最近入库的一条。
- * 去重键不含保质期字段——direct 口径记录 shelfLifeDays 恒为 0，
- * name+location+expiryDate 对两种日期口径都稳定。
- * 入参须已按最近入库倒序。
- */
-function buildScanSuggestions(history: Material[]): Material[] {
-  const seen: Set<string> = new Set<string>();
-  const suggestions: Material[] = [];
-  for (let i = 0; i < history.length; i++) {
-    const m: Material = history[i];
-    const key: string = `${m.name}|${m.location}|${m.expiryDate}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      suggestions.push(m);
-    }
-  }
-  return suggestions;
 }

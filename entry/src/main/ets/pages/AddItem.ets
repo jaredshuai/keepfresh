@@ -1209,12 +1209,24 @@ struct AddItem {
 
       Row() {
         Column() {
-          Text(m.name)
-            .fontSize(Theme.textBody)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(Theme.textPrimary)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Row({ space: Theme.smallGap }) {
+            Text(m.name)
+              .fontSize(Theme.textBody)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Theme.textPrimary)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .layoutWeight(1)
+            if (m.isDeleted) {
+              // 回收站模板兜底标记：该条码已无在库行，此候选来自删除历史（仅预填，不复活）
+              Text('已删')
+                .fontSize(Theme.textTiny)
+                .fontColor(Theme.textTertiary)
+                .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+                .border({ width: 1, color: Theme.textTertiary })
+            }
+          }
+          .width('100%')
           Text(m.productionDate.length === 0
             ? `${m.category} · ${m.quantity}${m.unit} · 到期日 ${m.expiryDate}`
             : `${m.category} · ${m.quantity}${m.unit} · 保质期${m.shelfLifeDays}天`)
