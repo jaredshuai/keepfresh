@@ -482,7 +482,11 @@ export class MaterialDb {
     return m;
   }
 
-  /** 按条形码查历史入库记录，按最近入库倒序（created_at，同日再按 id 倒序） */
+  /**
+   * 按条形码查历史入库记录，按最近入库倒序（created_at，同日再按 id 倒序）。
+   * 排除软删除：回收站行是用户已处理掉的录入，不应再作扫码建议预填
+   * （否则改名/重录后旧名幽灵候选反复出现，2026-08-30 真机实测）。
+   */
   async findByBarcode(barcode: string): Promise<Material[]> {
     const list: Material[] = [];
     const code: string = barcode.trim();
@@ -492,6 +496,7 @@ export class MaterialDb {
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE);
       predicates.equalTo('barcode', code);
+      predicates.equalTo('is_deleted', 0);
       predicates.orderByDesc('created_at');
       predicates.orderByDesc('id');
       const rs: relationalStore.ResultSet = await this.getStore().query(predicates);
