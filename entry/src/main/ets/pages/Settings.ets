@@ -781,8 +781,9 @@ struct Settings {
    * ============================================================ */
   @Builder
   secondaryButton(label: string, onClick: () => void) {
-    Stack() {
-      // 墨影层与 Stack 同宽（Stack 子层不参与父 weight 分配，layoutWeight 是哑弹——#layoutweight-axis）
+    // Stack 子层一律 width('100%')（layoutWeight 在 Stack 子层是哑弹，面层会缩成文字宽——#layoutweight-axis）；
+    // TopStart 锚定 + 墨影 margin 偏移，几何确定（与 ItemDetail primaryBtn 同款写法）
+    Stack({ alignContent: Alignment.TopStart }) {
       Column()
         .width('100%')
         .height(40)
@@ -795,7 +796,7 @@ struct Settings {
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textPrimary)
       }
-      .layoutWeight(1)
+      .width('100%')
       .height(40)
       .backgroundColor(Theme.cardBg)
       .border(Theme.borderThin)
@@ -812,8 +813,8 @@ struct Settings {
    * ============================================================ */
   @Builder
   primaryButton(label: string, onClick: () => void) {
-    Stack() {
-      // 墨影层与 Stack 同宽（Stack 子层不参与父 weight 分配，layoutWeight 是哑弹——#layoutweight-axis）
+    // 同 secondaryButton：Stack 子层 width('100%') + TopStart（#layoutweight-axis）
+    Stack({ alignContent: Alignment.TopStart }) {
       Column()
         .width('100%')
         .height(44)
@@ -826,7 +827,7 @@ struct Settings {
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.textWhite)
       }
-      .layoutWeight(1)
+      .width('100%')
       .height(44)
       .backgroundColor(Theme.yellowDark)
       .border(Theme.borderThin)

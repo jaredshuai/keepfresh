@@ -57,19 +57,25 @@ CategoryManager、RecycleBin 共 5 处生成整屏黑板，且详情页"生命�
 
 ## <a id="layoutweight-axis"></a>layoutWeight 轴向（`#layoutweight-axis`）
 
-**症状**：按钮被拉伸成占满剩余屏幕的巨大色块/死白区（约 300vp 级）。
+**症状**：两类。① 按钮被拉伸成占满剩余屏幕的巨大色块/死白区（约 300vp 级）；
+② 硬阴影按钮渲染成**大黑块**——墨影层 full-width 可见、白色面层缩成文字宽悬在中间
+（设置页导出/导入按钮事故：commit `d4e755f` 只修了墨影层，面层哑弹漏网）。
 
 **根因**：`layoutWeight(1)` 的含义随父容器轴向变化——在 Row 里是"平分剩余**宽度**"（按钮对的常见正用），
 在 Column 里是"吃掉剩余**高度**"。含 `layoutWeight(1)` 的复用按钮 builder 若被裸 Column 包裹复用，
-按钮会被拉伸到视口剩余高度。另外：`layoutWeight` 写在 **Stack 子层**是无效写法（不参与该父容器的
-weight 分配），属良性哑弹，清理时随手删。
+按钮会被拉伸到视口剩余高度。另外：`layoutWeight` 写在 **Stack 子层**是**静默哑弹**（Stack 不做
+weight 分配，写了等于没写）——它并不良性：哑弹层宽度退化为内容宽，层间尺寸脱钩；一旦墨影层
+被改成 `width('100%')` 而面层还是哑弹，落差直接暴露为大黑块。
 
-**实例**：Settings 备份卡的 dogfood 按钮被拉高约 300vp 死白（`secondaryButton` 内含 layoutWeight(1)，
-被裸 Column 包裹复用；commit `554236e` 修复）。同族哑弹：Settings `secondaryButton`/`primaryButton`、
-ItemDetail `primaryBtn`、CFM 弹窗按钮对的外层墨影 Column 里的 Stack 子层 layoutWeight（未清理，见 issue）。
+**实例**：① Settings 备份卡 dogfood 按钮被拉高约 300vp 死白（commit `554236e` 修复）。
+② 设置页备份卡三按钮渲染成大黑块：`secondaryButton`/`primaryButton` 面层 Row 的哑弹在
+`d4e755f`（只改墨影层）中漏网；同族还有 CFM 弹窗按钮对面层 Button、AddItem `actionCapsule`
+双层全哑弹（墨影 0 宽不可见，伪装成"无阴影胶囊"）。design-guard 规则 7 已机制化拦截。
 
-**修法**：复用含 weight 的按钮 builder 时，包一层 **Row**（让 weight 作用回横向宽度）；
-Stack 子层的 `layoutWeight(1)` 直接删除。
+**修法**：复用含 weight 的按钮 builder 时，包一层 **Row**（让 weight 作用回横向宽度）。
+**Stack 内一律禁写 layoutWeight**：子层用 `.width('100%')` + `alignContent: Alignment.TopStart`
+锚定几何（默认 Center 时 margin 偏移层的对齐不确定），weight 只写在 Stack 自身（作为
+Row/Column 子层时才有效）。CI 闸门：`scripts/design-guard.js` 规则 7。
 
 ---
 

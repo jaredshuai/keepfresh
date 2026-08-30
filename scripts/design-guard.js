@@ -213,6 +213,51 @@ function checkCanvasRule() {
   return violations;
 }
 
+// 规则 7：Stack 子层 layoutWeight 哑弹防回潮（docs/agents/arkui-pitfalls.md#layoutweight-axis）
+// layoutWeight 只在 Row/Column/Flex 的直接子层参与 weight 分配；Stack 不做 weight 分配，
+// 子层写了 layoutWeight 等于没写：面层缩成内容宽、墨影层宽 '100%' 时视觉碎裂
+// （实测 #19 整改只修了墨影层，面层漏网 → 设置页按钮渲染成大黑块）。
+// 实现：行级容器嵌套栈——容器名 + 花括号深度入栈/出栈，layoutWeight 行的
+// 最近宿主容器是 Stack 即违规（属父容器自身的链式 .layoutWeight 已先弹出，不误伤）。
+const CONTAINER_OPEN = /\b(Stack|Row|Column|Flex|Grid|GridRow|List|Scroll|Swiper|RelativeContainer)\s*\(/;
+
+function checkStackWeightRule() {
+  const violations = [];
+  for (const file of etsFiles) {
+    const rel = path.relative(rootDir, file);
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    // 嵌套栈：{ name, depth }，depth = 该容器 lambda 的花括号深度
+    const frames = [];
+    let depth = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const clean = stripLineComment(lines[i]);
+      // 1) 先按本行 `}` 收缩深度并弹出已关闭的容器 lambda（链式 .layoutWeight 属容器自身，不误判）
+      let net = 0;
+      for (const ch of clean) {
+        if (ch === '{') net++;
+        else if (ch === '}') net--;
+      }
+      depth += net < 0 ? net : 0; // 先应用收缩部分
+      while (frames.length > 0 && depth < frames[frames.length - 1].depth) frames.pop();
+      if (net > 0) depth += net;  // 展开部分在弹出判定之后计入
+
+      // 2) 本行 layoutWeight：最近宿主是 Stack 直接子层 → 哑弹
+      if (/\.layoutWeight\(/.test(clean) && frames.length > 0
+        && frames[frames.length - 1].name === 'Stack'
+        && depth === frames[frames.length - 1].depth) {
+        violations.push({ line: i + 1, content: lines[i].trim(), file: rel });
+      }
+
+      // 3) 本行容器开括号（取最后一个，链式声明风格一行至多一个容器开 lambda）
+      const m = clean.match(CONTAINER_OPEN);
+      if (m && net > 0) {
+        frames.push({ name: m[1], depth });
+      }
+    }
+  }
+  return violations;
+}
+
 // 主逻辑
 let hasError = false;
 const etsFiles = getEtsFiles(pagesDir);
@@ -292,6 +337,22 @@ for (const rule of rules) {
     hasError = true;
   } else {
     console.log('✅ Canvas 静态绘制防回潮: 通过');
+  }
+}
+
+// 规则 7：Stack 子层 layoutWeight 哑弹防回潮
+{
+  const violations = checkStackWeightRule();
+  if (violations.length > 0) {
+    console.error(`❌ Stack 子层 layoutWeight 哑弹 (${violations.length} 处) —— Stack 不参与 weight 分配，子层 layoutWeight 等于没写：面层缩成内容宽、墨影 full-width 时渲染成大黑块（设置页按钮事故）。`);
+    console.error('   修法：Stack 子层一律 .width(\'100%\')（+ alignContent TopStart 定几何），weight 只写在 Stack 自身（作为 Row/Column 子层时）。详见 docs/agents/arkui-pitfalls.md#layoutweight-axis');
+    for (const v of violations.slice(0, 8)) {
+      console.error(`     ${v.file}:L${v.line}: ${v.content}`);
+    }
+    if (violations.length > 8) console.error(`     ... 还有 ${violations.length - 8} 处`);
+    hasError = true;
+  } else {
+    console.log('✅ Stack 子层 layoutWeight 哑弹防回潮: 通过');
   }
 }
 

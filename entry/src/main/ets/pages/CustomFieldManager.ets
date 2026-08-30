@@ -777,8 +777,8 @@ struct CustomFieldManager {
       }
 
       Row({ space: Theme.elementGap }) {
-        Stack() {
-          // 墨影层与 Stack 同宽（Stack 子层 layoutWeight 是哑弹——#layoutweight-axis）
+        // Stack 子层一律 width('100%') + TopStart（layoutWeight 在 Stack 子层是哑弹——#layoutweight-axis）
+        Stack({ alignContent: Alignment.TopStart }) {
           Column()
             .width('100%')
             .height(48)
@@ -786,7 +786,7 @@ struct CustomFieldManager {
             .margin({ left: 4, top: 4 })
 
           Button('取消', { type: ButtonType.Normal, stateEffect: true })
-            .layoutWeight(1)
+            .width('100%')
             .height(48)
             .borderRadius(Theme.buttonRadius)
             .backgroundColor(Theme.cardBg)
@@ -801,8 +801,7 @@ struct CustomFieldManager {
         .height(52)
         .padding({ right: 4, bottom: 4 })
 
-        Stack() {
-          // 墨影层与 Stack 同宽（Stack 子层 layoutWeight 是哑弹——#layoutweight-axis）
+        Stack({ alignContent: Alignment.TopStart }) {
           Column()
             .width('100%')
             .height(48)
@@ -810,7 +809,7 @@ struct CustomFieldManager {
             .margin({ left: 4, top: 4 })
 
           Button(this.isEditing ? '保存' : '创建', { type: ButtonType.Normal, stateEffect: true })
-            .layoutWeight(1)
+            .width('100%')
             .height(48)
             .borderRadius(Theme.buttonRadius)
             .backgroundColor(Theme.yellowDark)

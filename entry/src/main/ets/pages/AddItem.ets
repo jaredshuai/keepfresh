@@ -1015,9 +1015,10 @@ struct AddItem {
 
   @Builder
   actionCapsule(symbol: Resource, label: string, bgColor: string, textColor: string, onClick: () => void) {
-    Stack() {
+    // Stack 子层一律 width('100%') + TopStart（layoutWeight 在 Stack 子层是哑弹——#layoutweight-axis）
+    Stack({ alignContent: Alignment.TopStart }) {
       Row()
-        .layoutWeight(1)
+        .width('100%')
         .height(Theme.primaryBtnHeight)
         .backgroundColor(Theme.ink)
         .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
@@ -1033,7 +1034,7 @@ struct AddItem {
             .fontColor(textColor)
         }
       }
-      .layoutWeight(1)
+      .width('100%')
       .height(Theme.primaryBtnHeight)
       .backgroundColor(bgColor)
       .border(Theme.borderThin)
@@ -1041,6 +1042,7 @@ struct AddItem {
       .onClick(onClick)
     }
     .layoutWeight(1)
+    .height(Theme.primaryBtnHeight + Theme.hardShadowOffset)
     .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
   }
 
