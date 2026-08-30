@@ -5,15 +5,13 @@
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { motion } from '@kit.MultimodalAwarenessKit';
-import { Material, ExpiryLevel, MaterialStatus, DerivedStatus, DEFAULT_CATEGORIES } from '../model/Material';
+import { Material, ExpiryLevel, MaterialStatus, DEFAULT_CATEGORIES } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
 import {
   ExpiryStats,
   levelOf,
   remainingDays,
-  sortByExpirationAsc,
-  statsOf,
-  getActualStatus
+  statsOf
 } from '../common/ExpiryService';
 import { ensureNotificationEnabled, publishExpiryAlert, requestNotificationEnable } from '../service/NotificationService';
 import { ReminderService, ReminderSettings } from '../service/ReminderService';
@@ -22,7 +20,7 @@ import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
 import { getCategoryIcon } from '../common/CategoryIcons';
 import { UsageService } from '../service/UsageService';
-import { filterByKeyword } from '../common/SearchFilter';
+import { applyListFilters, groupByStatus, GroupedMaterials } from '../common/SearchFilter';
 
 /**
  * 分组列表 ForEach 的 key：id 之外编入可变展示字段（status/updatedAt）。
@@ -33,16 +31,86 @@ function materialCardKey(m: Material): string {
   return `${m.id}_${m.status}_${m.updatedAt}`;
 }
 
+/**
+ * 分组头组件（已过期/临期/安全/已处理 四组共用，C4 三胞胎合一）。
+ * 独立组件而非 @Builder：计数/折叠态是父页面状态，@Prop 由父驱动响应式
+ * （#builder-by-value：按值传参不随状态刷新，组计数会凝滞——c48823d 教训）。
+ * 视觉沿旧例：非折叠组计数裸数字；折叠组计数带「项」+ 右侧开关
+ * （安全组开关描边 safe 色、已处理组 textSecondary；已处理标题用次级色）。
+ */
+@Component
+struct GroupHeader {
+  @Prop shape: string = 'safe';   // 'expired' | 'near' | 'safe' | 'handled'
+  @Prop title: string = '';
+  @Prop count: number = 0;
+  @Prop collapsible: boolean = false;
+  @Prop collapsed: boolean = false;
+  @Prop showToggle: boolean = true;  // 筛选态由父隐藏开关
+  onToggle: () => void = () => {};
+
+  build() {
+    Row() {
+      Row({ space: Theme.smallGap }) {
+        this.shapeMark()
+        Text(this.title)
+          .fontSize(Theme.textBody)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.shape === 'handled' ? Theme.textSecondary : Theme.textPrimary)
+          .letterSpacing(0.5)
+        Text(this.collapsible ? `${this.count}项` : `${this.count}`)
+          .fontSize(Theme.textCaption)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Theme.textTertiary)
+      }
+      .layoutWeight(1)
+
+      if (this.collapsible && this.showToggle) {
+        Text(this.collapsed ? '展开' : '收起')
+          .fontSize(Theme.textSmall)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.shape === 'safe' ? Theme.safe : Theme.textSecondary)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .border({ width: 2, color: this.shape === 'safe' ? Theme.safe : Theme.textSecondary })
+          .onClick(() => {
+            this.onToggle();
+          })
+      }
+    }
+    .width('100%')
+    .padding({ left: 4, top: Theme.smallGap, bottom: Theme.tinyGap })
+  }
+
+  /** 组头形状标记：过期红圆/临期橙三角/安全蓝绿方/已处理黑边白底方（同 geoShape 惯例，原生组件） */
+  @Builder
+  shapeMark() {
+    if (this.shape === 'expired') {
+      Circle({ width: Theme.geoSize, height: Theme.geoSize })
+        .fill(Theme.expired)
+        .stroke(Theme.ink)
+        .strokeWidth(2)
+    } else if (this.shape === 'near') {
+      Polygon({ width: Theme.geoSize, height: Theme.geoSize })
+        .points([[Theme.geoSize / 2, 0], [Theme.geoSize, Theme.geoSize], [0, Theme.geoSize]])
+        .fill(Theme.near)
+        .stroke(Theme.ink)
+        .strokeWidth(2)
+    } else if (this.shape === 'handled') {
+      Rect({ width: Theme.geoSize, height: Theme.geoSize })
+        .fill(Theme.cardBg)
+        .stroke(Theme.ink)
+        .strokeWidth(2)
+    } else {
+      Rect({ width: Theme.geoSize, height: Theme.geoSize })
+        .fill(Theme.safe)
+        .stroke(Theme.ink)
+        .strokeWidth(2)
+    }
+  }
+}
+
 interface TimePickerResult {
   hour?: number;
   minute?: number;
-}
-
-interface GroupedMaterials {
-  expired: Material[];
-  near: Material[];
-  safe: Material[];
-  handled: Material[];
 }
 
 /** 状态 Tab 定义（骨架来自 the-ai-menu PantryView 状态筛选） */
@@ -234,42 +302,12 @@ struct Index {
     }
   }
 
-  /** 筛选链路（移植自 the-ai-menu applyPantryListControls）：关键词 → 分类 → 状态 Tab → 分组排序 */
+  /** 筛选链路（下沉 common/SearchFilter）：关键词 → 分类 → 状态 Tab → 分组排序 */
   private applyFilters(): void {
     this.scroller.scrollTo({ xOffset: 0, yOffset: 0 });
-    let filtered: Material[] = this.materials;
-    filtered = filterByKeyword(filtered, this.searchKeyword);
-    if (this.selectedCategory.length > 0) {
-      filtered = filtered.filter((m: Material): boolean => m.category === this.selectedCategory);
-    }
-    if (this.activeStatusTab !== 'all') {
-      filtered = filtered.filter((m: Material): boolean => getActualStatus(m) === this.activeStatusTab);
-    }
-    this.groupedMaterials = this.groupByStatus(filtered);
-  }
-
-  /** 状态机分组：过期 → 临期 → 安全（在库+开封）→ 已处理（终态沉底） */
-  private groupByStatus(list: Material[]): GroupedMaterials {
-    const expired: Material[] = [];
-    const near: Material[] = [];
-    const safe: Material[] = [];
-    const handled: Material[] = [];
-    for (let i = 0; i < list.length; i++) {
-      const m = list[i];
-      const actual = getActualStatus(m);
-      if (actual === DerivedStatus.EXPIRED) expired.push(m);
-      else if (actual === DerivedStatus.EXPIRING) near.push(m);
-      else if (actual === MaterialStatus.EMPTY || actual === MaterialStatus.DISCARDED) handled.push(m);
-      else safe.push(m);
-    }
-    // 组内按到期日升序（无到期日靠后）——接线 ExpiryService.sortByExpirationAsc
-    const result: GroupedMaterials = {
-      expired: sortByExpirationAsc(expired),
-      near: sortByExpirationAsc(near),
-      safe: sortByExpirationAsc(safe),
-      handled: sortByExpirationAsc(handled)
-    };
-    return result;
+    const filtered: Material[] = applyListFilters(
+      this.materials, this.searchKeyword, this.selectedCategory, this.activeStatusTab);
+    this.groupedMaterials = groupByStatus(filtered);
   }
 
   /** 当前筛选结果总数（空态判断用） */
@@ -318,7 +356,11 @@ struct Index {
               } else {
                 // ─── 已过期组（红色圆形） ───
                 if (this.groupedMaterials.expired.length > 0) {
-                  this.groupHeader('已过期', ExpiryLevel.EXPIRED)
+                  GroupHeader({
+                    shape: 'expired',
+                    title: '已过期',
+                    count: this.groupedMaterials.expired.length
+                  })
                   Column({ space: Theme.smallGap }) {
                     ForEach(this.groupedMaterials.expired, (m: Material) => {
                       this.expiredCard(m)
@@ -329,7 +371,11 @@ struct Index {
 
                 // ─── 临期组（橙色三角形） ───
                 if (this.groupedMaterials.near.length > 0) {
-                  this.groupHeader('临期', ExpiryLevel.NEAR)
+                  GroupHeader({
+                    shape: 'near',
+                    title: '临期',
+                    count: this.groupedMaterials.near.length
+                  })
                   Column({ space: Theme.smallGap }) {
                     ForEach(this.groupedMaterials.near, (m: Material) => {
                       this.materialCard(m)
@@ -340,7 +386,17 @@ struct Index {
 
                 // ─── 安全组（蓝绿正方形，可折叠） ───
                 if (this.groupedMaterials.safe.length > 0) {
-                  this.groupHeaderWithToggle('安全', ExpiryLevel.SAFE)
+                  GroupHeader({
+                    shape: 'safe',
+                    title: '安全',
+                    count: this.groupedMaterials.safe.length,
+                    collapsible: true,
+                    collapsed: this.safeCollapsed,
+                    showToggle: !this.isFiltering(),
+                    onToggle: () => {
+                      this.safeCollapsed = !this.safeCollapsed;
+                    }
+                  })
                   if (!this.safeCollapsed || this.isFiltering()) {
                     Column({ space: Theme.smallGap }) {
                       ForEach(this.groupedMaterials.safe, (m: Material) => {
@@ -353,7 +409,17 @@ struct Index {
 
                 // ─── 已处理组（用完/丢弃，可折叠，沉底） ───
                 if (this.groupedMaterials.handled.length > 0) {
-                  this.handledGroupHeader()
+                  GroupHeader({
+                    shape: 'handled',
+                    title: '已处理',
+                    count: this.groupedMaterials.handled.length,
+                    collapsible: true,
+                    collapsed: this.handledCollapsed,
+                    showToggle: !this.isFiltering(),
+                    onToggle: () => {
+                      this.handledCollapsed = !this.handledCollapsed;
+                    }
+                  })
                   if (!this.handledCollapsed || this.isFiltering()) {
                     Column({ space: Theme.smallGap }) {
                       ForEach(this.groupedMaterials.handled, (m: Material) => {
@@ -617,45 +683,6 @@ struct Index {
     .justifyContent(FlexAlign.Center)
   }
 
-  /* ============================================================
-   * 已处理组 header（已用完/已丢弃，黑灰几何，可折叠）
-   * ============================================================ */
-  @Builder
-  handledGroupHeader() {
-    Row() {
-      Row({ space: Theme.smallGap }) {
-        // 已处理：黑边白底方框（非几何三色）
-        Rect({ width: Theme.geoSize, height: Theme.geoSize })
-          .fill(Theme.cardBg)
-          .stroke(Theme.ink)
-          .strokeWidth(2)
-        Text('已处理')
-          .fontSize(Theme.textBody)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.textSecondary)
-          .letterSpacing(0.5)
-        Text(`${this.handledCount()}项`)
-          .fontSize(Theme.textCaption)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.textTertiary)
-      }
-      .layoutWeight(1)
-
-      if (!this.isFiltering()) {
-        Text(this.handledCollapsed ? '展开' : '收起')
-          .fontSize(Theme.textSmall)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Theme.textSecondary)
-          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-          .border({ width: 2, color: Theme.textSecondary })
-          .onClick(() => {
-            this.handledCollapsed = !this.handledCollapsed;
-          })
-      }
-    }
-    .width('100%')
-    .padding({ left: 4, top: Theme.smallGap, bottom: Theme.tinyGap })
-  }
 
   /* ============================================================
    * 已处理物资卡片：白底黑边 + 状态标签（已用完/已丢弃）
@@ -709,80 +736,10 @@ struct Index {
     }
   }
 
-  /* ============================================================
-   * 分组 header
-   * 计数不能作标量参数传入（#builder-by-value：组内增删后停在旧值），
-   * builder 体内按 level 直读 this.groupedMaterials 建立状态依赖
-   * ============================================================ */
-  @Builder
-  groupHeader(title: string, level: ExpiryLevel) {
-    Row({ space: Theme.smallGap }) {
-      this.geoShape(level)
-      Text(title)
-        .fontSize(Theme.textBody)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(Theme.textPrimary)
-        .letterSpacing(0.5)
-      Text(`${this.groupCountOf(level)}`)
-        .fontSize(Theme.textCaption)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(Theme.textTertiary)
-    }
-    .width('100%')
-    .padding({ left: 4, top: Theme.smallGap, bottom: Theme.tinyGap })
-  }
 
   @Builder
-  groupHeaderWithToggle(title: string, level: ExpiryLevel) {
-    Row() {
-      Row({ space: Theme.smallGap }) {
-        this.geoShape(level)
-        Text(title)
-          .fontSize(Theme.textBody)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.textPrimary)
-          .letterSpacing(0.5)
-        Text(`${this.groupCountOf(level)}项`)
-          .fontSize(Theme.textCaption)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.textTertiary)
-      }
-      .layoutWeight(1)
 
-      if (!this.isFiltering()) {
-        Text(this.safeCollapsed ? '展开' : '收起')
-          .fontSize(Theme.textSmall)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Theme.safe)
-          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-          .border({ width: 2, color: Theme.safe })
-          .onClick(() => {
-            this.safeCollapsed = !this.safeCollapsed;
-          })
-      }
-    }
-    .width('100%')
-    .padding({ left: 4, top: Theme.smallGap, bottom: Theme.tinyGap })
-  }
 
-  private groupCountOf(level: ExpiryLevel): number {
-    if (level === ExpiryLevel.EXPIRED) {
-      return this.groupedMaterials.expired.length;
-    }
-    if (level === ExpiryLevel.NEAR) {
-      return this.groupedMaterials.near.length;
-    }
-    if (level === ExpiryLevel.SAFE) {
-      return this.groupedMaterials.safe.length;
-    }
-    // 契约收窄：未知 level 快速失败，不静默兜底 safe 计数（防未来新增 level 时隐蔽数据错误）
-    throw new Error(`groupCountOf: unknown ExpiryLevel ${level}`);
-  }
-
-  /** 已处理组计数（用完/丢弃）：与 groupCountOf 同为组计数唯一入口 */
-  private handledCount(): number {
-    return this.groupedMaterials.handled.length;
-  }
 
   /* ============================================================
    * 几何状态形状：过期=红圆 / 临期=橙三角 / 安全=蓝绿方

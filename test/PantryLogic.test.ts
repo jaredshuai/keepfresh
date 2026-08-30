@@ -9,7 +9,7 @@ import { batchQuantitySum, isLosslessDuplicate } from '../entry/src/main/ets/mod
 import { addDays, todayStr, addMonths } from '../entry/src/main/ets/common/DateUtils.ets';
 import { normalizeQuantityUnit, formatQuantityUnit } from '../entry/src/main/ets/common/QuantityUnit.ets';
 import { normalizeText, normalizeNullableText, normalizeNonNegativeInteger, parseNonNegativeInteger } from '../entry/src/main/ets/common/InputNormalize.ets';
-import { filterByKeyword } from '../entry/src/main/ets/common/SearchFilter.ets';
+import { filterByKeyword, applyListFilters, groupByStatus } from '../entry/src/main/ets/common/SearchFilter.ets';
 import {
   getActualStatus,
   splitByAlertLevel,
@@ -376,6 +376,41 @@ describe('预警资格唯一判定 splitByAlertLevel', () => {
     assert.equal(stats.total, 2);
     assert.equal(stats.expired, 1);
     assert.equal(stats.safe, 1);
+  });
+});
+
+
+describe('筛选管线（common/SearchFilter 下沉）', () => {
+  it('52. applyListFilters 全链：关键词 → 分类 → 状态 Tab', () => {
+    const t = todayStr();
+    const list: Material[] = [
+      makeMaterial({ id: 1, name: '脉动白桃', category: '饮料', expiryDate: addDays(t, -1) }),
+      makeMaterial({ id: 2, name: '脉动柠檬', category: '饮料', expiryDate: addDays(t, 30) }),
+      makeMaterial({ id: 3, name: '牛奶', category: '谷物', expiryDate: addDays(t, 3) })
+    ];
+    // 仅关键词
+    assert.equal(applyListFilters(list, '脉动', '', 'all').length, 2);
+    // 关键词 + 分类
+    assert.equal(applyListFilters(list, '脉动', '谷物', 'all').length, 0);
+    // 状态 Tab：临期派生口径
+    const near = applyListFilters(list, '', '', 'expiring');
+    assert.deepEqual(near.map(m => m.name), ['牛奶']);
+    const expired = applyListFilters(list, '', '', 'expired');
+    assert.deepEqual(expired.map(m => m.name), ['脉动白桃']);
+  });
+
+  it('53. groupByStatus：预警分桶 + 组内到期升序 + 终态沉底', () => {
+    const t = todayStr();
+    const list: Material[] = [
+      makeMaterial({ id: 1, name: '安全晚', expiryDate: addDays(t, 60) }),
+      makeMaterial({ id: 2, name: '安全早', expiryDate: addDays(t, 30) }),
+      makeMaterial({ id: 3, name: '过期', expiryDate: addDays(t, -1) }),
+      makeMaterial({ id: 4, name: '用完', status: MaterialStatus.EMPTY })
+    ];
+    const g = groupByStatus(list);
+    assert.deepEqual(g.expired.map(m => m.name), ['过期']);
+    assert.deepEqual(g.safe.map(m => m.name), ['安全早', '安全晚']);
+    assert.deepEqual(g.handled.map(m => m.name), ['用完']);
   });
 });
 

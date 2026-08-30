@@ -68,6 +68,7 @@ const RULE4_WHITELIST = {
   },
   common: {
     normalizeNullableText: '预留',
+    filterByKeyword: 'SearchFilter 管线内部组合件（被 applyListFilters 复用），Node 测试直测',
     pad2: 'toDateStr 内部件',
     // 审计复核新增（任务清单外）：InputNormalize 内部组合件，与 softDelete/pad2 同性质
     normalizeText: 'InputNormalize 内部组合件（被 normalizeNullableText/parseNonNegativeInteger 复用）',
