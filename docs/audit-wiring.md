@@ -92,7 +92,7 @@
 | L2 | 死 API：MaterialDb.listLocations / getCustomFieldById / MaterialFilter 全参数 |
 | L3 | 未使用 import ×5：Index.levelColor、ItemDetail.levelSoftColor/getActualStatus/DerivedStatus、AddItem.formatQuantityUnit |
 | L4 | handledType 写而不显（渲染仅用 status/handledAt） |
-| L5 | 测试空洞：MaterialDb 27 方法/Backup/Reminder/Scan/Notification/Settings 零直接测试；Settings.test 的 validateNearExpiryDays 是本地复刻而非 import 真实现 |
+| L5 | 测试空洞：MaterialDb 27 方法/Reminder/Scan/Notification/Settings 零直接测试；Settings.test 的 validateNearExpiryDays 是本地复刻而非 import 真实现。**Backup 导入决策已消解（2026-09-03）**：冲突裁决 + nameDefs 目标序下沉 `common/BackupPlan.ets` 纯函数，`test/BackupPlan.test.ts` 11 用例直测 |
 
 ### 待产品决策（证据矛盾格）
 
@@ -104,9 +104,11 @@
 
 ## 五、Phase 3 · CI 守护（wire-guard.js）
 
-五规则 + 白名单已固化进 `scripts/wire-guard.js`，`npm run ci` = design-guard + **wire-guard** + test（当前全绿）：
+规则 + 白名单已固化进 `scripts/wire-guard.js`，`npm run ci` = design-guard + **wire-guard** + docs-guard + test（当前全绿）。
 
-| 规则 | 拦截的断链形态 | 当前状态 |
+> 注：下表为 2026-08-27 审计时点的快照（五规则）。此后新增规则 6（custom_fields 键语义裸操作检测，#14/#18）与规则 7（文档 ⇄ 代码 .ets 双向校验，#17），现为七规则；统计数字以 `npm run wire:check` 实时输出为准。
+
+| 规则 | 拦截的断链形态 | 审计时点状态 |
 |---|---|---|
 | 1 Material 字段 ⇄ toRow/rowToMaterial 双向映射 | 中途断（字段蒸发） | 19/19 通过 |
 | 2 建表列 ⊆ toRow 键 | 中途断 | 19+9 通过 |

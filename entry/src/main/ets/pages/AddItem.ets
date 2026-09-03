@@ -8,11 +8,11 @@ import { CustomField, validateCustomFieldValue } from '../model/CustomField';
 import { MaterialDb } from '../db/MaterialDb';
 import { calcExpiryDate } from '../common/ExpiryService';
 import { toDateStr, todayStr, parseDate } from '../common/DateUtils';
-import { normalizeQuantityUnit, formatQuantityUnit } from '../common/QuantityUnit';
+import { formatQuantityUnit } from '../common/QuantityUnit';
 import { UsageService } from '../service/UsageService';
 import { parseNonNegativeInteger } from '../common/InputNormalize';
 import { scanForSuggestions, ScanFillResult } from '../service/ScanService';
-import { dateParamsFromMaterial, shelfLifeText, buildMaterialFromForm, MaterialFormInput, FormEditContext, DateParams } from '../common/MaterialForm';
+import { shelfLifeText, buildMaterialFromForm, prefillFromMaterial, MaterialFormInput, FormEditContext, DateParams, FormPrefill } from '../common/MaterialForm';
 import { MaterialWriteService } from '../service/MaterialWriteService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
@@ -218,25 +218,12 @@ struct AddItem {
       })
       .then((m?: Material) => {
         if (m) {
-          this.name = m.name;
-          this.category = m.category;
-          const normalized = normalizeQuantityUnit(m.quantity, m.unit);
-          this.quantityStr = normalized.quantity;
-          if (normalized.unit.length > 0) {
-            this.unit = normalized.unit;
-          }
-          this.location = m.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2];
-          // 日期口径回填（与联想/扫码共用唯一映射，common/MaterialForm）
-          this.applyDateParams(dateParamsFromMaterial(m));
-          this.note = m.note;
+          // 编辑回填（三入口唯一映射，common/MaterialForm.prefillFromMaterial）
+          this.applyPrefill(prefillFromMaterial(m, 'edit'));
           this.loadedCreatedAt = m.createdAt;
           this.loadedStatus = m.status ?? MaterialStatus.ACTIVE;
           this.loadedHandledType = m.handledType;
           this.loadedHandledAt = m.handledAt;
-          this.barcode = m.barcode || '';
-          if (m.customFields) {
-            this.customFieldValues = copyStringRecord(m.customFields);
-          }
         }
       })
       .catch((e: BusinessError) => {
@@ -278,19 +265,9 @@ struct AddItem {
   private applyNameCandidate(m: Material): void {
     UsageService.getInstance().logSuggestionApplied(m.name);
     // 联想候选名可能比已输入的长（输「脉」选「脉动零糖白桃」），名称必须回填完整
-    this.name = m.name;
-    this.category = m.category;
-    if (m.location && m.location.length > 0) {
-      this.location = m.location;
-    }
-    const normalized = normalizeQuantityUnit(m.quantity, m.unit);
-    this.quantityStr = normalized.quantity;
-    if (normalized.unit.length > 0) {
-      this.unit = normalized.unit;
-    }
-    // 日期口径跟随源记录（与编辑回填/扫码共用唯一映射，common/MaterialForm；
+    // （三入口唯一映射，common/MaterialForm.prefillFromMaterial；
     // 生产日期预填历史值而非今天——今天对生产日期是必错默认）
-    this.applyDateParams(dateParamsFromMaterial(m));
+    this.applyPrefill(prefillFromMaterial(m, 'suggestion'));
     this.suggestionApplied = true;
     this.nameCandidates = [];
     this.toast(m.productionDate.length === 0 ? '已按上次入库参数预填，请核对到期日' : '已按上次入库参数预填，请核对生产日期');
@@ -304,6 +281,31 @@ struct AddItem {
     this.shelfLifeStr = dp.shelfLifeStr;
     this.shelfLifeMonthsStr = dp.shelfLifeMonthsStr;
     this.directExpiryDate = dp.directExpiryDate;
+  }
+
+  /** 预填快照落表单（三入口唯一映射，common/MaterialForm.prefillFromMaterial）；undefined 字段保留当前值 */
+  private applyPrefill(p: FormPrefill): void {
+    this.name = p.name;
+    this.category = p.category;
+    if (p.quantityStr !== undefined) {
+      this.quantityStr = p.quantityStr;
+    }
+    if (p.unit.length > 0) {
+      this.unit = p.unit;
+    }
+    if (p.location.length > 0) {
+      this.location = p.location;
+    }
+    this.applyDateParams(p.dateParams);
+    if (p.note !== undefined) {
+      this.note = p.note;
+    }
+    if (p.customFields !== undefined) {
+      this.customFieldValues = copyStringRecord(p.customFields);
+    }
+    if (p.barcode !== undefined) {
+      this.barcode = p.barcode;
+    }
   }
 
   /** 共用日期选择包装（#22 去重）：只差 selected 与写回目标 */
@@ -417,15 +419,10 @@ struct AddItem {
   }
 
   private applyScanSuggestion(m: Material): void {
-    this.name = m.name;
-    this.category = m.category;
-    this.unit = m.unit;
-    // 日期口径跟随源记录（三入口共用唯一映射，common/MaterialForm；月数优先还原，避免 365×n 近似）
-    this.applyDateParams(dateParamsFromMaterial(m));
-    // 位置回填（历史记录有位置则带上；其位置已在 listEffectiveNames 合并结果内）
-    if (m.location && m.location.length > 0) {
-      this.location = m.location;
-    }
+    // 三入口唯一映射，common/MaterialForm.prefillFromMaterial：
+    // 名称/分类/单位/位置/日期跟随源记录（月数优先还原，避免 365×n 近似）；
+    // 不覆盖数量（数量留给用户按新批次填）；barcode 已在 handleScanBarcode 设置
+    this.applyPrefill(prefillFromMaterial(m, 'scan'));
     this.showScanSheet = false;
     this.toast(m.productionDate.length === 0 ? '已预填，请核对到期日和数量' : '已预填同款生产日期，不同批次请改日期');
   }

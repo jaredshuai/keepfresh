@@ -9,7 +9,8 @@ import {
   dateParamsFromMaterial,
   shelfLifeText,
   buildMaterialFromForm,
-  mergeIntoBatch
+  mergeIntoBatch,
+  prefillFromMaterial
 } from '../entry/src/main/ets/common/MaterialForm.ets';
 import type { MaterialFormInput, FormEditContext } from '../entry/src/main/ets/common/MaterialForm.ets';
 import { todayStr, addDays, addMonths } from '../entry/src/main/ets/common/DateUtils.ets';
@@ -158,5 +159,52 @@ describe('shelfLifeText（月数优先展示）', () => {
   it('63. 月数口径显示 N个月，无月数退回 N天', () => {
     assert.equal(shelfLifeText(makeRow({ id: 1, name: 'm', shelfLifeMonths: 10, shelfLifeDays: 3650 })), '保质期10个月');
     assert.equal(shelfLifeText(makeRow({ id: 2, name: 'd' })), '保质期217天');
+  });
+});
+
+describe('prefillFromMaterial（三入口预填唯一映射）', () => {
+  it('64. edit：全量回填（数量归一化/位置兜底/note/customFields/barcode）', () => {
+    const m = makeRow({
+      id: 1, name: '脉动', quantity: '500g', unit: '瓶', location: '',
+      note: '备注', barcode: '690123', customFields: { cf_a: '山东' }
+    });
+    const p = prefillFromMaterial(m, 'edit');
+    assert.equal(p.name, '脉动');
+    assert.equal(p.quantityStr, '500');      // 混合输入归一化
+    assert.equal(p.unit, 'g');
+    assert.equal(p.location, '橱柜');        // 空位置兜底 DEFAULT_LOCATIONS[2]
+    assert.equal(p.note, '备注');
+    assert.equal(p.barcode, '690123');
+    assert.deepEqual(p.customFields, { cf_a: '山东' });
+  });
+
+  it('65. suggestion：不带 note/customFields/barcode，位置空则留空（保留当前）', () => {
+    const m = makeRow({ id: 1, name: '脉动零糖白桃', location: '', note: '备注', barcode: '690123' });
+    const p = prefillFromMaterial(m, 'suggestion');
+    assert.equal(p.name, '脉动零糖白桃');
+    assert.equal(p.quantityStr, '1');
+    assert.equal(p.location, '');            // 空 = 页面保留当前位置
+    assert.equal(p.note, undefined);
+    assert.equal(p.customFields, undefined);
+    assert.equal(p.barcode, undefined);
+  });
+
+  it('66. scan：不覆盖数量（quantityStr 为 undefined），单位直取源值', () => {
+    const m = makeRow({ id: 1, name: '脉动', quantity: '2', unit: '瓶', location: '客厅' });
+    const p = prefillFromMaterial(m, 'scan');
+    assert.equal(p.name, '脉动');
+    assert.equal(p.quantityStr, undefined);  // 数量留给用户按新批次填
+    assert.equal(p.unit, '瓶');
+    assert.equal(p.location, '客厅');
+    assert.equal(p.note, undefined);
+  });
+
+  it('67. 三入口日期口径一致：月数优先还原（H3 防回归）', () => {
+    const m = makeRow({ id: 1, name: 'x', shelfLifeMonths: 10, shelfLifeDays: 3650 });
+    for (const entry of ['edit', 'suggestion', 'scan'] as const) {
+      const p = prefillFromMaterial(m, entry);
+      assert.equal(p.dateParams.shelfLifeMode, 'months');
+      assert.equal(p.dateParams.shelfLifeMonthsStr, '10');
+    }
   });
 });

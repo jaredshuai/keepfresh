@@ -36,12 +36,9 @@ const RULE2_WHITELIST = {
 
 // 规则 3：pages 硬编码预设行豁免。按「文件 + 行内容包含特异子串」匹配
 //（行号会漂移，不用行号；子串取足够特异的代码片段）。
+// 注：AddItem 编辑回填兜底（DEFAULT_LOCATIONS[2]）已下沉 common/MaterialForm.prefillFromMaterial，
+// 其白名单条目随之移除（2026-09-03 预填统一重构）。
 const RULE3_WHITELIST = [
-  {
-    file: 'pages/AddItem.ets',
-    substring: 'm.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2]',
-    reason: '编辑回填兜底：编辑历史记录无位置时的兜底默认',
-  },
   // 审计复核新增（任务清单外）：defaults() 提供者行，语义等价于 listEffectiveNames 的 defaults 参数
   {
     file: 'pages/CategoryManager.ets',
@@ -51,10 +48,9 @@ const RULE3_WHITELIST = [
 ];
 
 // 规则 4：零外部调用者的导出 API 豁免
-//（test/ 目录不算调用者；定义文件内部互调不算外部调用者，如 softDelete 被 remove 调）
+//（test/ 目录不算调用者；定义文件内部互调不算外部调用者，如 consolidateDuplicateBatches 被 init 调）
 const RULE4_WHITELIST = {
   MaterialDb: {
-    softDelete: 'remove() 内部转发的语义核心，保留 public',
     consolidateDuplicateBatches: 'init() 启动并条钩子内部调用的语义核心，保留 public（测试无法触达 db 层）',
   },
   ExpiryService: {
@@ -69,8 +65,10 @@ const RULE4_WHITELIST = {
   common: {
     normalizeNullableText: '预留',
     filterByKeyword: 'SearchFilter 管线内部组合件（被 applyListFilters 复用），Node 测试直测',
+    // 预填统一重构后页面改走 prefillFromMaterial，本函数成为其内部组合件（日期口径唯一映射），测试直测
+    dateParamsFromMaterial: 'MaterialForm 内部组合件（被 prefillFromMaterial 复用），Node 测试直测',
     pad2: 'toDateStr 内部件',
-    // 审计复核新增（任务清单外）：InputNormalize 内部组合件，与 softDelete/pad2 同性质
+    // 审计复核新增（任务清单外）：InputNormalize 内部组合件，与 pad2 同性质
     normalizeText: 'InputNormalize 内部组合件（被 normalizeNullableText/parseNonNegativeInteger 复用）',
     normalizeNonNegativeInteger: 'InputNormalize 内部组合件（被 parseNonNegativeInteger 复用）',
   },

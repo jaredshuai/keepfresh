@@ -15,7 +15,8 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
 import { MaterialDb, MaterialFilter, NameDef, NameKind } from '../db/MaterialDb';
 import { Material, MaterialStatus } from '../model/Material';
-import { CustomField, generateCustomFieldId, BackupDefNameIndex, buildBackupDefNameIndex, remapCustomFieldKeys } from '../model/CustomField';
+import { CustomField, BackupDefNameIndex, buildBackupDefNameIndex, remapCustomFieldKeys } from '../model/CustomField';
+import { planFieldDefs, planNameDefOrder } from '../common/BackupPlan';
 import { SettingsService } from './SettingsService';
 import { ReminderService, ReminderSettings } from './ReminderService';
 import { todayStr } from '../common/DateUtils';
@@ -410,9 +411,8 @@ export class BackupService {
 
   /**
    * 还原自定义分类/位置/单位定义（v2+ 备份）。
-   * - merge：导入名称按备份顺序在前，本地独有名称按现有顺序追加尾部；
-   * - overwrite：仅保留导入定义（与物资清空语义一致）。
-   * 实现：按目标顺序删除重插。name_defs.id 无外部引用（物资按文本名称关联），
+   * 目标序为纯决策，唯一实现在 common/BackupPlan.planNameDefOrder（Node 可测）；
+   * 本方法只负责按目标序删除重插。name_defs.id 无外部引用（物资按文本名称关联），
    * 删除重插只损失本地自增 id，不损失数据。
    */
   private async restoreNameDefs(
@@ -423,31 +423,20 @@ export class BackupService {
     const kinds: string[] = ['category', 'location', 'unit'];
     for (const kind of kinds) {
       const k: NameKind = kind as NameKind;
-      // 导入侧目标顺序（去空去重）
+      // 导入侧名称序列（顺序即备份序；去空去重由 plan 负责）
       const importedNames: string[] = [];
-      const seen: Set<string> = new Set<string>();
       for (const d of imported) {
-        if (d.kind !== kind) {
-          continue;
-        }
-        const n: string = (d.name ?? '').trim();
-        if (n.length > 0 && !seen.has(n)) {
-          seen.add(n);
-          importedNames.push(n);
+        if (d.kind === kind) {
+          importedNames.push(d.name ?? '');
         }
       }
       // 本地现有定义
       const existing: NameDef[] = await db.listNameDefs(k);
-      // 目标序列：导入在前；merge 时本地独有追加尾部
-      const target: string[] = importedNames.slice();
-      if (mode === 'merge') {
-        for (const def of existing) {
-          if (!seen.has(def.name)) {
-            seen.add(def.name);
-            target.push(def.name);
-          }
-        }
+      const existingNames: string[] = [];
+      for (const def of existing) {
+        existingNames.push(def.name);
       }
+      const target: string[] = planNameDefOrder(importedNames, existingNames, mode);
       // 删除现有全部，按目标顺序重插
       for (const def of existing) {
         await db.removeNameDef(def.id);
@@ -460,83 +449,22 @@ export class BackupService {
 
   /**
    * 处理自定义字段定义冲突，返回「导入字段名 → 现有字段 ID」映射。
-   *
-   * 规则（ticket #6）：
-   * - 同名同类型：保留现有定义，导入物资按字段名映射到现有定义 ID。
-   * - 同名不同类型：重命名导入字段为「原名_导入」，新建定义。
-   * - 不存在：直接新建定义。
-   * 新建定义的排序使用导入备份中的 order（还原用户排序），
-   * 与现有定义 order 冲突时按 (sort_order, created_at) 稳定排序，可接受。
+   * 冲突裁决为纯决策，唯一实现在 common/BackupPlan.planFieldDefs（Node 可测）；
+   * 本方法只负责按 plan 落库（规则见 planFieldDefs 注释，ticket #6）。
    */
   private async resolveCustomFieldDefs(
     db: MaterialDb,
     importedDefs: CustomField[]
   ): Promise<Map<string, string>> {
-    // 导入字段名 → 最终使用的字段 ID
-    const fieldIdMap = new Map<string, string>();
     if (!importedDefs || importedDefs.length === 0) {
-      return fieldIdMap;
+      return new Map<string, string>();
     }
-
     const existingDefs: CustomField[] = await db.listCustomFields();
-    // 现有定义按名称索引
-    const existingByName = new Map<string, CustomField>();
-    for (const def of existingDefs) {
-      existingByName.set(def.name, def);
+    const plan = planFieldDefs(existingDefs, importedDefs, todayStr());
+    for (const def of plan.toCreate) {
+      await db.insertCustomField(def);
     }
-
-    let maxOrder: number = existingDefs.length > 0
-      ? Math.max(...existingDefs.map((d: CustomField) => d.order))
-      : -1;
-
-    for (const imported of importedDefs) {
-      // 新建定义排序：优先还原备份中的 order（M5 修复：避免全部追加尾部打乱顺序）；
-      // 备份 order 缺失/非法时回退 maxOrder+1
-      const restoredOrder: number = (imported.order !== undefined && imported.order !== null && imported.order >= 0)
-        ? imported.order
-        : maxOrder + 1;
-      maxOrder = Math.max(maxOrder, restoredOrder);
-      const existing = existingByName.get(imported.name);
-      if (existing) {
-        if (existing.type === imported.type) {
-          // 同名同类型：保留现有，映射到现有 ID
-          fieldIdMap.set(imported.name, existing.id);
-        } else {
-          // 同名不同类型：重命名导入字段为「原名_导入」
-          const renamedName = `${imported.name}_导入`;
-          const newId = generateCustomFieldId();
-          const newDef: CustomField = {
-            id: newId,
-            name: renamedName,
-            type: imported.type,
-            options: imported.options,
-            order: restoredOrder,
-            createdAt: todayStr()
-          };
-          await db.insertCustomField(newDef);
-          // 映射：导入物资中原字段名 → 新定义 ID
-          fieldIdMap.set(imported.name, newId);
-          // 更新索引，防止后续导入的字段与被重命名的字段再冲突
-          existingByName.set(renamedName, newDef);
-        }
-      } else {
-        // 不存在：新建定义
-        const newId = generateCustomFieldId();
-        const newDef: CustomField = {
-          id: newId,
-          name: imported.name,
-          type: imported.type,
-          options: imported.options,
-          order: restoredOrder,
-          createdAt: todayStr()
-        };
-        await db.insertCustomField(newDef);
-        fieldIdMap.set(imported.name, newId);
-        existingByName.set(imported.name, newDef);
-      }
-    }
-
-    return fieldIdMap;
+    return plan.fieldIdMap;
   }
 
   /**

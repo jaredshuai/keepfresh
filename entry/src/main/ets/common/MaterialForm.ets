@@ -4,7 +4,7 @@
  * 与 save() 的并条策略此前各写一份且已漂移，此模块是唯一实现。
  */
 import type { Material } from '../model/Material';
-import { MaterialStatus, DateEntryMode, batchQuantitySum } from '../model/Material';
+import { MaterialStatus, DateEntryMode, batchQuantitySum, DEFAULT_LOCATIONS } from '../model/Material';
 import { normalizeQuantityUnit } from './QuantityUnit';
 import { parseNonNegativeInteger } from './InputNormalize';
 import { calcExpiryDate } from './ExpiryService';
@@ -49,6 +49,69 @@ export function shelfLifeText(m: Material): string {
     return `保质期${m.shelfLifeMonths}个月`;
   }
   return `保质期${m.shelfLifeDays}天`;
+}
+
+/** 预填入口：编辑回填 / 同名联想 / 扫码建议 */
+export type PrefillEntry = 'edit' | 'suggestion' | 'scan';
+
+/**
+ * 历史记录 → 表单预填快照（三入口唯一实现，收拢此前各写一份的字段集漂移，H3 同类病灶）。
+ * 字段语义（与既有行为对齐）：
+ * - edit：全量回填（数量归一化、位置空兜底 DEFAULT_LOCATIONS[2]、note/customFields/barcode）；
+ * - suggestion：名称补全 + 分类/数量/位置/日期，不带 note/customFields/barcode；
+ * - scan：名称/分类/单位/位置/日期，不覆盖数量（数量留给用户按新批次填），
+ *   barcode 由扫码流程在弹建议单前单独设置，不在本快照内。
+ * 返回字段为 undefined 表示「保留表单当前值」，页面仅对非 undefined 字段赋值。
+ */
+export interface FormPrefill {
+  name: string;
+  category: string;
+  quantityStr?: string;
+  /** 空串 = 保留当前单位（编辑/联想归一化后可能为空；扫码直取源单位） */
+  unit: string;
+  /** 空串 = 保留当前位置（编辑入口已含 DEFAULT_LOCATIONS[2] 兜底，恒非空） */
+  location: string;
+  dateParams: DateParams;
+  note?: string;
+  customFields?: Record<string, string>;
+  barcode?: string;
+}
+
+export function prefillFromMaterial(m: Material, entry: PrefillEntry): FormPrefill {
+  const dateParams: DateParams = dateParamsFromMaterial(m);
+  if (entry === 'edit') {
+    const normalized = normalizeQuantityUnit(m.quantity, m.unit);
+    return {
+      name: m.name,
+      category: m.category,
+      quantityStr: normalized.quantity,
+      unit: normalized.unit,
+      location: m.location && m.location.length > 0 ? m.location : DEFAULT_LOCATIONS[2],
+      dateParams: dateParams,
+      note: m.note,
+      customFields: m.customFields,
+      barcode: m.barcode || ''
+    };
+  }
+  if (entry === 'suggestion') {
+    const normalized = normalizeQuantityUnit(m.quantity, m.unit);
+    return {
+      name: m.name,
+      category: m.category,
+      quantityStr: normalized.quantity,
+      unit: normalized.unit,
+      location: m.location && m.location.length > 0 ? m.location : '',
+      dateParams: dateParams
+    };
+  }
+  // scan
+  return {
+    name: m.name,
+    category: m.category,
+    unit: m.unit,
+    location: m.location && m.location.length > 0 ? m.location : '',
+    dateParams: dateParams
+  };
 }
 
 /** 保存用的表单快照（页面 @State 的镜像；自定义字段校验依赖定义列表，留在页面层） */
