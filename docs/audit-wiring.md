@@ -88,9 +88,9 @@
 
 | # | 问题 |
 |---|---|
-| L1 | `NEAR_EXPIRY_DAYS`（Material.ets:49）死常量，与 `DEFAULT_NEAR_EXPIRY_DAYS` 双源 |
-| L2 | 死 API：MaterialDb.listLocations / getCustomFieldById / MaterialFilter 全参数 |
-| L3 | 未使用 import ×5：Index.levelColor、ItemDetail.levelSoftColor/getActualStatus/DerivedStatus、AddItem.formatQuantityUnit |
+| L1 | ~~`NEAR_EXPIRY_DAYS`（Material.ets:49）死常量，与 `DEFAULT_NEAR_EXPIRY_DAYS` 双源~~ **✅ 已删除（2026-09-03）**：全仓词边界核查零使用，实际生效阈值源为 `common/ExpiryService.DEFAULT_NEAR_EXPIRY_DAYS` |
+| L2 | ~~死 API：MaterialDb.listLocations / getCustomFieldById / MaterialFilter 全参数~~ **✅ 已消解（2026-09-03 核查）**：两个死 API 已随重构删除；MaterialFilter 现被 BackupService 全集快照（includeDeleted）实际使用，非死面 |
+| L3 | ~~未使用 import ×5：Index.levelColor、ItemDetail.levelSoftColor/getActualStatus/DerivedStatus、AddItem.formatQuantityUnit~~ **✅ 已清零（2026-09-03 核查）**：wire-guard 规则 5 白名单豁免 0 / 违规 0，存量已随重构清理 |
 | L4 | handledType 写而不显（渲染仅用 status/handledAt） |
 | L5 | 测试空洞：MaterialDb 27 方法/Reminder/Scan/Notification/Settings 零直接测试；Settings.test 的 validateNearExpiryDays 是本地复刻而非 import 真实现。**Backup 导入决策已消解（2026-09-03）**：冲突裁决 + nameDefs 目标序下沉 `common/BackupPlan.ets` 纯函数，`test/BackupPlan.test.ts` 11 用例直测 |
 

@@ -52,9 +52,6 @@ export enum ExpiryLevel {
   SAFE = 2       // 安全
 }
 
-/** 临期判定阈值（天） */
-export const NEAR_EXPIRY_DAYS: number = 7;
-
 export const DEFAULT_CATEGORIES: string[] = ['肉类', '水果', '蔬菜', '调味品', '谷物', '速食', '饮料'];
 
 export const DEFAULT_LOCATIONS: string[] = ['冷藏', '冷冻', '橱柜'];
