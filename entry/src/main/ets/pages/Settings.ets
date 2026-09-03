@@ -4,17 +4,13 @@
  */
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { ReminderService, ReminderSettings } from '../service/ReminderService';
+import { ReminderService } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
 import { BackupService, ImportPreview, ImportResult } from '../service/BackupService';
 import { Theme } from '../common/Theme';
 import { UsageService } from '../service/UsageService';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
-
-interface TimePickerResult {
-  hour?: number;
-  minute?: number;
-}
+import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
 
 const PRESET_THRESHOLDS: number[] = [3, 7, 14, 30];
 
@@ -67,9 +63,6 @@ struct Settings {
   @StorageProp('avoidBottomVp') avoidBottomVp: number = 0;
   @State nearExpiryDaysStr: string = '7';
   @State nearExpiryError: string = '';
-  @State reminderEnabled: boolean = true;
-  @State reminderHour: number = 8;
-  @State reminderMinute: number = 0;
   @State showImportPreview: boolean = false;
   @State importPreviewData: ImportPreview | undefined = undefined;
   @State importOverwriteMode: boolean = false;
@@ -95,11 +88,6 @@ struct Settings {
       await this.settingsService.init(ctx);
       const days = await this.settingsService.getNearExpiryDays();
       this.nearExpiryDaysStr = days.toString();
-
-      const reminderSettings: ReminderSettings = await this.reminderService.getSettings();
-      this.reminderEnabled = reminderSettings.enabled;
-      this.reminderHour = reminderSettings.hour;
-      this.reminderMinute = reminderSettings.minute;
     } catch (e) {
       console.error(`load settings failed: ${(e as BusinessError).message}`);
     }
@@ -139,53 +127,6 @@ struct Settings {
         /* 回滚失败至少给出失败提示 */
       }
       this.toast('阈值保存失败，请重试');
-    }
-  }
-
-  private formatTime(hour: number, minute: number): string {
-    const h = hour < 10 ? `0${hour}` : `${hour}`;
-    const m = minute < 10 ? `0${minute}` : `${minute}`;
-    return `${h}:${m}`;
-  }
-
-  private pickReminderTime(): void {
-    const selectedDate = new Date();
-    selectedDate.setHours(this.reminderHour, this.reminderMinute, 0, 0);
-    this.getUIContext().showTimePickerDialog({
-      selected: selectedDate,
-      useMilitaryTime: true,
-      onAccept: async (value: TimePickerResult) => {
-        if (value.hour !== undefined && value.minute !== undefined) {
-          this.reminderHour = value.hour;
-          this.reminderMinute = value.minute;
-          await this.saveReminderSettings();
-        }
-      }
-    });
-  }
-
-  private async saveReminderSettings(): Promise<void> {
-    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    try {
-      const settings: ReminderSettings = {
-        enabled: this.reminderEnabled,
-        hour: this.reminderHour,
-        minute: this.reminderMinute
-      };
-      // 编辑管线唯一入口在 ReminderService.editSettings（与首页共用，C5）
-      this.toast(await this.reminderService.editSettings(ctx, settings));
-    } catch (e) {
-      console.error(`save reminder settings failed: ${(e as BusinessError).message}`);
-      // 失败后回滚 UI 状态到持久化值并给出提示，避免开关/时间看起来成功但未保存（评审找回）
-      try {
-        const saved: ReminderSettings = await this.reminderService.getSettings();
-        this.reminderEnabled = saved.enabled;
-        this.reminderHour = saved.hour;
-        this.reminderMinute = saved.minute;
-      } catch (_) {
-        /* 回滚失败至少给出失败提示 */
-      }
-      this.toast('提醒设置保存失败，请重试');
     }
   }
 
@@ -412,57 +353,8 @@ struct Settings {
             .width('100%')
             .padding({ left: 4 })
 
-            HardShadowCard({shadowMode: 0}) {
-
-              Column() {
-                SettingsRowComponent({
-                  label: '每日临期汇总提醒',
-                  desc: '每天定时检查物资，有临期或过期物品时推送通知'
-                }) {
-                  Toggle({ type: ToggleType.Switch, isOn: this.reminderEnabled })
-                    .selectedColor(Theme.yellowDark)
-                    .onChange(async (isOn: boolean) => {
-                      this.reminderEnabled = isOn;
-                      await this.saveReminderSettings();
-                    })
-                }
-
-                if (this.reminderEnabled) {
-                  Divider().color(Theme.divider).strokeWidth(1)
-
-                  SettingsRowComponent({
-                    label: '每日提醒时间',
-                    desc: '设定每天触发后台提醒的时间'
-                  }) {
-                    Stack() {
-                      Column()
-                        .backgroundColor(Theme.ink)
-                        .margin({ left: Theme.hardShadowOffset, top: Theme.hardShadowOffset })
-
-                      Row({ space: Theme.smallGap }) {
-                        Text(this.formatTime(this.reminderHour, this.reminderMinute))
-                          .fontSize(Theme.textBody)
-                          .fontWeight(FontWeight.Bold)
-                          .fontColor(Theme.yellowDark)
-                        SymbolGlyph($r('sys.symbol.chevron_right'))
-                          .fontSize(16)
-                          .fontColor([Theme.textTertiary])
-                      }
-                      .padding({ left: 12, right: 8, top: 6, bottom: 6 })
-                      .backgroundColor(Theme.cardBg)
-                      .border(Theme.borderThin)
-                      .onClick(() => {
-                        this.pickReminderTime();
-                      })
-                    }
-                    .padding({ right: Theme.hardShadowOffset, bottom: Theme.hardShadowOffset })
-                  }
-                }
-              }
-              .width('100%')
-              .backgroundColor(Theme.cardBg)
-              .border(Theme.borderThin)
-            }
+            // 候选 3：提醒设置收拢为 components/ReminderSettingsPanel（与首页 Sheet 共用）
+            ReminderSettingsPanel()
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)

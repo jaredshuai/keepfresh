@@ -5,22 +5,20 @@
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { motion } from '@kit.MultimodalAwarenessKit';
-import { Material, ExpiryLevel, MaterialStatus, DEFAULT_CATEGORIES, materialCardKey } from '../model/Material';
+import { Material, DEFAULT_CATEGORIES, materialCardKey } from '../model/Material';
 import { MaterialDb } from '../db/MaterialDb';
 import {
   ExpiryStats,
-  levelOf,
-  remainingDays,
   statsOf
 } from '../common/ExpiryService';
 import { ensureNotificationEnabled, publishExpiryAlert, requestNotificationEnable } from '../service/NotificationService';
-import { ReminderService, ReminderSettings } from '../service/ReminderService';
 import { SettingsService } from '../service/SettingsService';
 import { Theme } from '../common/Theme';
 import { HardShadowBox, HardShadowCard } from '../common/HardShadow';
-import { getCategoryIcon } from '../common/CategoryIcons';
 import { UsageService } from '../service/UsageService';
 import { applyListFilters, groupByStatus, GroupedMaterials } from '../common/SearchFilter';
+import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
+import { MaterialCard } from '../components/MaterialCard';
 
 
 /**
@@ -100,11 +98,6 @@ struct GroupHeader {
   }
 }
 
-interface TimePickerResult {
-  hour?: number;
-  minute?: number;
-}
-
 /** 状态 Tab 定义（骨架来自 the-ai-menu PantryView 状态筛选） */
 interface StatusTab {
   id: string;     // 'all' | 'active' | 'opened' | 'expiring' | 'expired'
@@ -137,9 +130,6 @@ struct Index {
   @State groupedMaterials: GroupedMaterials = { expired: [], near: [], safe: [], handled: [] };
   @State loading: boolean = true;
   @State showSettingsDialog: boolean = false;
-  @State reminderEnabled: boolean = true;
-  @State reminderHour: number = 9;
-  @State reminderMinute: number = 0;
   @State safeCollapsed: boolean = true;   // 安全组默认折叠
   @State handledCollapsed: boolean = true; // 已处理组默认折叠
   // ── 筛选状态（骨架来自 the-ai-menu：关键词 + 状态 Tab + 分类 Chip）──
@@ -188,7 +178,6 @@ struct Index {
 
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     UsageService.getInstance().init(ctx);
-    this.loadReminderSettings(ctx);
 
     SettingsService.getInstance().init(ctx)
       .then(() => {
@@ -204,58 +193,13 @@ struct Index {
     this.setupNotification(ctx);
   }
 
-  private async loadReminderSettings(ctx: common.UIAbilityContext): Promise<void> {
-    try {
-      await ReminderService.getInstance().init(ctx);
-      const settings: ReminderSettings = await ReminderService.getInstance().getSettings();
-      this.reminderEnabled = settings.enabled;
-      this.reminderHour = settings.hour;
-      this.reminderMinute = settings.minute;
-    } catch (e) {
-      console.error(`load reminder settings failed: ${(e as BusinessError).message}`);
-    }
-  }
-
   private openReminderSettingsDialog(): void {
     this.showSettingsDialog = true;
   }
 
-  private formatTime(hour: number, minute: number): string {
-    const h = hour < 10 ? `0${hour}` : `${hour}`;
-    const m = minute < 10 ? `0${minute}` : `${minute}`;
-    return `${h}:${m}`;
-  }
-
-  private pickReminderTime(): void {
-    const selectedDate = new Date();
-    selectedDate.setHours(this.reminderHour, this.reminderMinute, 0, 0);
-    this.getUIContext().showTimePickerDialog({
-      selected: selectedDate,
-      useMilitaryTime: true,
-      onAccept: async (value: TimePickerResult) => {
-        if (value.hour !== undefined && value.minute !== undefined) {
-          this.reminderHour = value.hour;
-          this.reminderMinute = value.minute;
-          await this.saveReminderSettings();
-        }
-      }
-    });
-  }
-
-  private async saveReminderSettings(): Promise<void> {
-    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    try {
-      const settings: ReminderSettings = {
-        enabled: this.reminderEnabled,
-        hour: this.reminderHour,
-        minute: this.reminderMinute
-      };
-      // 编辑管线唯一入口在 ReminderService.editSettings（与 Settings 页共用，C5）
-      const msg: string = await ReminderService.getInstance().editSettings(ctx, settings);
-      this.getUIContext().getPromptAction().showToast({ message: msg });
-    } catch (e) {
-      console.error(`save reminder settings failed: ${(e as BusinessError).message}`);
-    }
+  /** 卡片点击进详情（候选 4：三卡片合一后唯一跳转入口） */
+  private openDetail(id: number): void {
+    this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: id } });
   }
 
   private async setupNotification(ctx: common.UIAbilityContext): Promise<void> {
@@ -354,7 +298,7 @@ struct Index {
                   })
                   Column({ space: Theme.smallGap }) {
                     ForEach(this.groupedMaterials.expired, (m: Material) => {
-                      this.expiredCard(m)
+                      MaterialCard({ material: m, onOpen: () => this.openDetail(m.id) })
                     }, materialCardKey)
                   }
                   .width('100%')
@@ -369,7 +313,7 @@ struct Index {
                   })
                   Column({ space: Theme.smallGap }) {
                     ForEach(this.groupedMaterials.near, (m: Material) => {
-                      this.materialCard(m)
+                      MaterialCard({ material: m, onOpen: () => this.openDetail(m.id) })
                     }, materialCardKey)
                   }
                   .width('100%')
@@ -390,11 +334,11 @@ struct Index {
                   })
                   if (!this.safeCollapsed || this.isFiltering()) {
                     Column({ space: Theme.smallGap }) {
-                      ForEach(this.groupedMaterials.safe, (m: Material) => {
-                        this.materialCard(m)
-                      }, materialCardKey)
-                    }
-                    .width('100%')
+                        ForEach(this.groupedMaterials.safe, (m: Material) => {
+                          MaterialCard({ material: m, onOpen: () => this.openDetail(m.id) })
+                        }, materialCardKey)
+                      }
+                      .width('100%')
                   }
                 }
 
@@ -413,11 +357,11 @@ struct Index {
                   })
                   if (!this.handledCollapsed || this.isFiltering()) {
                     Column({ space: Theme.smallGap }) {
-                      ForEach(this.groupedMaterials.handled, (m: Material) => {
-                        this.handledCard(m)
-                      }, materialCardKey)
-                    }
-                    .width('100%')
+                        ForEach(this.groupedMaterials.handled, (m: Material) => {
+                          MaterialCard({ material: m, onOpen: () => this.openDetail(m.id) })
+                        }, materialCardKey)
+                      }
+                      .width('100%')
                   }
                 }
               }
@@ -676,84 +620,6 @@ struct Index {
 
 
   /* ============================================================
-   * 已处理物资卡片：白底黑边 + 状态标签（已用完/已丢弃）
-   * ============================================================ */
-  @Builder
-  handledCard(m: Material) {
-    HardShadowCard({shadowMode: 72, onCardClick: () => {
-      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
-    }}) {
-
-      Row() {
-        Column() {
-          SymbolGlyph($r('sys.symbol.checkmark_circle'))
-            .fontSize(20)
-            .fontColor([Theme.textTertiary])
-        }
-        .width(36)
-        .height(36)
-        .justifyContent(FlexAlign.Center)
-        .border({ width: 2, color: Theme.ink })
-        .backgroundColor(Theme.cardBg)
-        .margin({ right: Theme.elementGap })
-
-        Column({ space: Theme.tinyGap }) {
-          Text(m.name)
-            .fontSize(Theme.textBody)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(Theme.textSecondary)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          Text(`${m.category} · ${m.quantity}${m.unit}`)
-            .fontSize(Theme.textCaption)
-            .fontColor(Theme.textTertiary)
-        }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
-
-        Text(m.status === MaterialStatus.DISCARDED ? '已丢弃' : '已用完')
-          .fontSize(Theme.textSmall)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.textWhite)
-          .padding({ left: 10, right: 10, top: 5, bottom: 5 })
-          .backgroundColor(Theme.textSecondary)
-          .border(Theme.borderThin)
-      }
-      .width('100%')
-      .padding(Theme.cardPadding)
-      .backgroundColor(Theme.cardBg)
-      .border(Theme.borderThin)
-      .opacity(0.7)
-    }
-  }
-
-  /* ============================================================
-   * 几何状态形状：过期=红圆 / 临期=橙三角 / 安全=蓝绿方
-   * ============================================================ */
-  @Builder
-  geoShape(level: ExpiryLevel) {
-    if (level === ExpiryLevel.EXPIRED) {
-      Circle({ width: Theme.geoSize, height: Theme.geoSize })
-        .fill(Theme.expired)
-        .stroke(Theme.ink)
-        .strokeWidth(2)
-    } else if (level === ExpiryLevel.NEAR) {
-      // 等腰三角形：原生 Polygon（画布坐标系不随 vp 缩放，高分屏上会画得又小又偏，勿回退 Canvas+Path）
-      Polygon({ width: Theme.geoSize, height: Theme.geoSize })
-        .points([[Theme.geoSize / 2, 0], [Theme.geoSize, Theme.geoSize], [0, Theme.geoSize]])
-        .fill(Theme.near)
-        .stroke(Theme.ink)
-        .strokeWidth(2)
-    } else {
-      // 正方形
-      Rect({ width: Theme.geoSize, height: Theme.geoSize })
-        .fill(Theme.safe)
-        .stroke(Theme.ink)
-        .strokeWidth(2)
-    }
-  }
-
-  /* ============================================================
    * 图标按钮：白底黑边，零圆角，4x4 硬阴影
    * ============================================================ */
   @Builder
@@ -771,150 +637,6 @@ struct Index {
       .backgroundColor(Theme.cardBg)
       .border(Theme.borderThin)
       .justifyContent(FlexAlign.Center)
-    }
-  }
-
-  /* ============================================================
-   * 过期物资卡片：红底白字 + 黑边 + 硬阴影
-   * ============================================================ */
-  @Builder
-  expiredCard(m: Material) {
-    HardShadowCard({shadowMode: 72, onCardClick: () => {
-      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
-    }}) {
-
-      // 主层：红底白字
-      Row() {
-        Column() {
-          SymbolGlyph(getCategoryIcon(m.category).symbol)
-            .fontSize(22)
-            .fontColor([Theme.textWhite])
-        }
-        .width(40)
-        .height(40)
-        .justifyContent(FlexAlign.Center)
-        .border({ width: 2, color: Theme.textWhite })
-        .margin({ right: Theme.elementGap })
-
-        Column({ space: Theme.tinyGap }) {
-          Row({ space: Theme.smallGap }) {
-            Text(m.name)
-              .fontSize(Theme.textBody)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(Theme.textWhite)
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .layoutWeight(1)
-            if (m.status === MaterialStatus.OPENED) {
-              this.openedBadge()
-            }
-          }
-          Text(`${m.category} · ${m.quantity}${m.unit} · ${m.expiryDate}`)
-            .fontSize(Theme.textCaption)
-            .fontColor(Theme.textWhiteDim)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
-
-        Column({ space: 2 }) {
-          Text(`-${-remainingDays(m)}天`)
-            .fontSize(Theme.textHeadline)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(Theme.textWhite)
-          Text('已过期')
-            .fontSize(Theme.textTiny)
-            .fontColor(Theme.textWhiteDim)
-        }
-        .alignItems(HorizontalAlign.End)
-      }
-      .width('100%')
-      .padding(Theme.cardPadding)
-      .backgroundColor(Theme.expired)
-      .border(Theme.borderThin)
-    }
-  }
-
-  /* ============================================================
-   * 开封标记：开封物品在卡片名称行尾部显示（黄底黑边小方标）
-   * ============================================================ */
-  @Builder
-  openedBadge() {
-    Text('开封')
-      .fontSize(Theme.textTiny)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(Theme.ink)
-      .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-      .backgroundColor(Theme.yellowDark)
-      .border(Theme.borderThin)
-  }
-
-  /* ============================================================
-   * 临期 / 安全物资卡片：白底黑边硬阴影 + 左侧几何标识
-   * ============================================================ */
-  @Builder
-  materialCard(m: Material) {
-    HardShadowCard({shadowMode: 72, onCardClick: () => {
-      this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: m.id } });
-    }}) {
-
-      // 主层
-      Row() {
-        Stack() {
-          this.geoShape(levelOf(m))
-        }
-        .margin({ right: Theme.elementGap })
-
-        Column() {
-          SymbolGlyph(getCategoryIcon(m.category).symbol)
-            .fontSize(20)
-            .fontColor([Theme.ink])
-        }
-        .width(36)
-        .height(36)
-        .justifyContent(FlexAlign.Center)
-        .border({ width: 2, color: Theme.ink })
-        .backgroundColor(getCategoryIcon(m.category).bgColor)
-        .margin({ right: Theme.elementGap })
-
-        Column({ space: Theme.tinyGap }) {
-          Row({ space: Theme.smallGap }) {
-            Text(m.name)
-              .fontSize(Theme.textBody)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(Theme.textPrimary)
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .layoutWeight(1)
-            if (m.status === MaterialStatus.OPENED) {
-              this.openedBadge()
-            }
-          }
-          Text(m.location.length > 0
-            ? `${m.category} · ${m.location} · ${m.quantity}${m.unit}`
-            : `${m.category} · ${m.quantity}${m.unit}`)
-            .fontSize(Theme.textCaption)
-            .fontColor(Theme.textSecondary)
-        }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
-
-        Column({ space: 2 }) {
-          Text(`${remainingDays(m)}天`)
-            .fontSize(Theme.textHeadline)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(levelOf(m) === ExpiryLevel.NEAR ? Theme.near : Theme.safe)
-          Text(m.expiryDate)
-            .fontSize(Theme.textTiny)
-            .fontColor(Theme.textTertiary)
-        }
-        .alignItems(HorizontalAlign.End)
-      }
-      .width('100%')
-      .padding(Theme.cardPadding)
-      .backgroundColor(Theme.cardBg)
-      .border(Theme.borderThin)
     }
   }
 
@@ -986,7 +708,8 @@ struct Index {
   }
 
   /* ============================================================
-   * 提醒设置底部 Sheet
+   * 提醒设置底部 Sheet（候选 3：面板收拢为 components/ReminderSettingsPanel，
+   * 与 Settings 页共用；本处只剩标题 + 面板 + 完成按钮）
    * ============================================================ */
   @Builder
   reminderSettingsSheet() {
@@ -1001,72 +724,7 @@ struct Index {
       .width('100%')
       .padding({ top: 8, bottom: 4 })
 
-      // 开关卡片
-      HardShadowCard({shadowMode: 0}) {
-        Row() {
-          Column({ space: Theme.tinyGap }) {
-            Text('每日临期汇总提醒')
-              .fontSize(Theme.textBody)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(Theme.textPrimary)
-            Text('每天定时检查物资，有临期或过期物品时推送通知')
-              .fontSize(Theme.textCaption)
-              .fontColor(Theme.textSecondary)
-          }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
-
-          Toggle({ type: ToggleType.Switch, isOn: this.reminderEnabled })
-            .selectedColor(Theme.yellowDark)
-            .onChange(async (isOn: boolean) => {
-              this.reminderEnabled = isOn;
-              await this.saveReminderSettings();
-            })
-        }
-        .width('100%')
-        .padding(Theme.cardPadding)
-        .backgroundColor(Theme.cardBg)
-        .border(Theme.borderThin)
-      }
-
-      if (this.reminderEnabled) {
-        // 时间选择卡片
-        HardShadowCard({shadowMode: 0}) {
-          Row() {
-            Column({ space: Theme.tinyGap }) {
-              Text('提醒时间')
-                .fontSize(Theme.textBody)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(Theme.textPrimary)
-              Text('设定每天触发离线提醒的时间')
-                .fontSize(Theme.textCaption)
-                .fontColor(Theme.textSecondary)
-            }
-            .alignItems(HorizontalAlign.Start)
-            .layoutWeight(1)
-
-            Row({ space: Theme.smallGap }) {
-              Text(this.formatTime(this.reminderHour, this.reminderMinute))
-                .fontSize(Theme.textBody)
-                .fontWeight(FontWeight.Bold)
-                .fontColor(Theme.yellowDark)
-              SymbolGlyph($r('sys.symbol.chevron_right'))
-                .fontSize(16)
-                .fontColor([Theme.textTertiary])
-            }
-            .padding({ left: 12, right: 10, top: 8, bottom: 8 })
-            .border(Theme.borderThin)
-            .backgroundColor(Theme.cardBg)
-            .onClick(() => {
-              this.pickReminderTime();
-            })
-          }
-          .width('100%')
-          .padding(Theme.cardPadding)
-          .backgroundColor(Theme.cardBg)
-          .border(Theme.borderThin)
-        }
-      }
+      ReminderSettingsPanel()
 
       // 完成按钮：深黄主按钮
       HardShadowCard({shadowMode: 44}) {

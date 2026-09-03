@@ -55,6 +55,10 @@
 
 - `entry/src/main/ets/service/UsageService.ets` — dogfood 使用日志（端侧 JSONL 追加写，写失败静默；检索见 docs/dogfood.md）。补登记于 2026-08-29 规则 7 反向校验上线时
 
+**components/（跨页共享 UI 组件，走 Theme 令牌）**
+- `entry/src/main/ets/components/MaterialCard.ets` — 物资卡片（过期红卡/临期・安全白卡/已处理灰卡合一，变体由状态派生；候选 4 深化）
+- `entry/src/main/ets/components/ReminderSettingsPanel.ets` — 提醒设置面板（开关+时间+editSettings 保存含失败回滚，首页 Sheet 与 Settings 共用；候选 3 深化）
+
 **pages/（UI，7 页，全部走 Theme 令牌）**
 
 - `entry/src/main/ets/pages/Index.ets` — 首页：状态分组列表 + 搜索筛选 + 提醒设置入口
