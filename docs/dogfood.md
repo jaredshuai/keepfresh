@@ -3,6 +3,19 @@
 > 目的：回答「这个 App 我到底用没用起来」——入库摩擦多大、提醒来了动不动。
 > 原则：端侧 JSONL、不上云、日志失败静默（可观测性永远不能影响产品功能）。
 
+## 真机日用安装（2026-09-27，决策见 docs/adr/0006-debug-profile-for-daily-install.md）
+
+- **设备**：HUAWEI Mate 80 Pro Max（API 26，无线 HDC `192.168.6.131:45507`）
+- **签名**：debug Profile，有效期至 **2027-08-19**；材料在 `~/.ohos/config/default_keepfresh_*.p7b/.cer/.p12`
+- **安装/更新命令**（覆盖安装不清数据，前提设备已开 USB/无线调试）：
+
+```bash
+devecocli run --module entry --device 192.168.6.131:45507 --product default --build-mode debug
+```
+
+- **验收记录**：安装后 `materials` 表 8 行保留、usage_log 连续、UI 树显示 `6项 · 1过期 · 0临期`。
+- **约束**：调试包只能装到 Profile 登记的 2 台设备；换机先「设置 → 数据备份 → 导出备份」再迁。
+
 ## 观测什么（事件协议）
 
 | 事件 | 字段 | 回答的问题 |
