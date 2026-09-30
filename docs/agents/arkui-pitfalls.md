@@ -161,7 +161,18 @@ design-guard 规则 6 拦截 pages/ 内一切 `Canvas()`（豁免在 scripts/des
 **症状**：详情页改状态（开封/用完）后**立刻**按返回，首页卡片不更新（徽标缺失/分组不动），再进再出才恢复；等待片刻再返回则一切正常。
 
 **根因**：`applyStatus` 里 `await db.updateStatus` 是异步提交；用户按返回时首页 `onPageShow → refresh()` 可能在写提交**之前**执行 `listAll()`，读到旧状态渲染。此后无任何触发再刷新——凝滞到下次 onPageShow。代码序（await 后再 back）防不住用户手势抢跑。
-
 **修法**：写方在 await 完成后 `AppStorage.setOrCreate('materialsVersion', 旧值+1)`；首页 `@StorageProp('materialsVersion') @Watch` 收到即重查（Index 在路由栈底被覆盖时 @Watch 照样触发）。onPageShow refresh 保留兜底。要点：**版本自增必须在写提交之后**，否则重查仍可能读旧。
 
 **第二层（渲染凝滞）**：数据刷对了卡片也可能不重绘——ForEach key 只用 `m.id` 时，状态翻转不改 key，ArkUI 复用旧组件不重跑 item builder，徽标/文案凝滞（切筛选 Tab 往返才恢复）。修法：key 编入可变展示字段（`materialCardKey = id_status_updatedAt`）。判别实验：改完状态切 Tab 再切回，卡片若恢复即此层。
+
+## <a id="launcher-icon-no-home-skill"></a>桌面图标点开跳应用详情页：EntryAbility 未声明 home skill（`#launcher-icon-no-home-skill`）
+
+**症状**：`devecocli run` 拉起一切正常（`Smoke: PASS`、UI 树渲染首页），但用户从桌面点图标却**每次都跳到"应用信息/通知管理"设置页**，看起来像"打不开"。
+
+**根因**：`module.json5` 的 `EntryAbility` 缺 `skills` 声明 `ohos.want.action.home` + `entity.system.home`。这是桌面启动入口的必需声明；缺失时桌面图标被系统兜底绑到 `AppDetailAbility`（长按图标节点 ID 可见 `...keepfreshAppDetailAbilityentry0`），点击即进应用详情。
+
+**判别**：CLI 拉起正常 + 图标必跳设置页，且长按图标无障碍节点 ID 含 `AppDetailAbility` 而非入口 Ability——即本坑。
+
+**修法**：`abilities[0]` 补 `"skills": [{ "entities": ["entity.system.home"], "actions": ["ohos.want.action.home"] }]`。**注意**：已装机的旧图标绑定不会因覆盖安装刷新，必须**卸载重装**（先导出备份）让系统重建图标，否则旧绑定残留继续跳设置。
+
+**实例**：2026-09-27 真机（Mate 80 Pro Max）实测——module.json5 自初建就缺 skills，图标从未可点；补声明 + 卸载重装后点击图标正常进首页。
