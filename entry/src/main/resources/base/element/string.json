@@ -11,6 +11,14 @@
     {
       "name": "EntryAbility_label",
       "value": "KeepFresh"
+    },
+    {
+      "name": "calendar_permission_reason",
+      "value": "用于在系统日历创建每日临期提醒日程"
+    },
+    {
+      "name": "gesture_permission_reason",
+      "value": "用于检测智感握姿以调整按钮位置"
     }
   ]
 }

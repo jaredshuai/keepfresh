@@ -202,12 +202,21 @@ struct Index {
     this.getUIContext().getRouter().pushUrl({ url: 'pages/ItemDetail', params: { id: id } });
   }
 
+  /** 每会话最多请求一次通知授权——requestEnableNotification 实际拉起系统设置页，
+   *  挂在 onPageShow 上无节流会让拒绝过的用户每次回首页都被弹设置（骚扰循环） */
+  private static notificationRequestedThisSession: boolean = false;
+
   private async setupNotification(ctx: common.UIAbilityContext): Promise<void> {
+    if (Index.notificationRequestedThisSession) {
+      return;
+    }
     try {
       const enabled: boolean = await ensureNotificationEnabled(ctx);
-      if (!enabled) {
-        await requestNotificationEnable(ctx);
+      if (enabled) {
+        return;
       }
+      Index.notificationRequestedThisSession = true;
+      await requestNotificationEnable(ctx);
     } catch (e) {
       console.error(`setup notification failed: ${(e as BusinessError).message}`);
     }

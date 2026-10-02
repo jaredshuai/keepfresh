@@ -1,11 +1,13 @@
 /**
- * 代理提醒服务：首选项配置管理与代理提醒调度。
+ * 日程提醒服务：基于 Calendar Kit 的每日提醒 + 首选项配置管理。
+ * （原 reminderAgentManager 代理提醒路径已废弃：PUBLISH_AGENT_REMINDER 为受限权限，
+ *  未授权时配额恒为 0，publish 必抛 1700002；日历日程是普通 user_grant 权限路径）
  */
 import { preferences } from '@kit.ArkData';
-import { Context } from '@kit.AbilityKit';
+import { abilityAccessCtrl, common, Context, PermissionRequestResult, Permissions } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { reminderAgentManager } from '@kit.BackgroundTasksKit';
+import { calendarManager } from '@kit.CalendarKit';
 import { MaterialDb } from '../db/MaterialDb';
 import { buildReminderText, splitByAlertLevel } from '../common/ExpiryService';
 import { UsageService } from './UsageService';
@@ -18,6 +20,11 @@ const KEY_ENABLED: string = 'reminder_enabled';
 const KEY_HOUR: string = 'reminder_hour';
 const KEY_MINUTE: string = 'reminder_minute';
 
+/** 每日提醒日程的标题与标识（filterByTitle 找旧日程，identifier 留作系统侧关联键） */
+const EVENT_TITLE: string = 'KeepFresh 临期提醒';
+const EVENT_IDENTIFIER: string = 'keepfresh-daily-reminder';
+const CALENDAR_ACCOUNT_NAME: string = 'keepfresh_reminder';
+
 export interface ReminderSettings {
   enabled: boolean;
   hour: number;    // 0~23, default 9
@@ -27,6 +34,8 @@ export interface ReminderSettings {
 export class ReminderService {
   private static instance?: ReminderService;
   private prefStore?: preferences.Preferences;
+  private syncPromise: Promise<void> | undefined;
+  private calendarContext?: Context;
 
   private constructor() {}
 
@@ -95,29 +104,92 @@ export class ReminderService {
     try {
       await this.syncDailyReminder(context);
     } catch (syncErr) {
-      // 设置已持久化；仅同步发布失败（如未授予通知权限）附提示
+      // 设置已持久化；仅同步失败（如未授予日历权限）附提示
       console.error(`reminder settings saved but sync failed: ${(syncErr as BusinessError).message}`);
-      hint = '，但提醒同步失败（检查通知权限）';
+      hint = '，但提醒同步失败（检查日历权限）';
     }
     return `已更新提醒设置${hint}`;
   }
 
+  /** 删除标题匹配的 KeepFresh 提醒日程（幂等清理；Calendar Kit 无 cancelAll 语义） */
   public async cancelAllReminders(): Promise<void> {
     try {
-      await reminderAgentManager.cancelAllReminders();
-      hilog.info(DOMAIN, TAG, 'All reminders cancelled successfully.');
+      const calendar: calendarManager.Calendar = await this.getOrCreateCalendar();
+      const filter: calendarManager.EventFilter = calendarManager.EventFilter.filterByTitle(EVENT_TITLE);
+      const events: calendarManager.Event[] = await calendar.getEvents(filter);
+      for (const e of events) {
+        if (e.id !== undefined) {
+          await calendar.deleteEvent(e.id);
+        }
+      }
+      hilog.info(DOMAIN, TAG, `Cleared ${events.length} reminder event(s).`);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, `Failed to cancel reminders: ${e.code}, message: ${e.message}`);
+      hilog.error(DOMAIN, TAG, `Failed to clear reminder events: ${e.code}, message: ${e.message}`);
       throw new Error(e.message);
     }
   }
 
-  public async syncDailyReminder(context: Context): Promise<void> {
+  /**
+   * 同步每日提醒（串行化）：onCreate + onForeground 同帧双触发会产生并发操作，
+   * 串行保证同一时刻只有一个同步任务在改日历。
+   */
+  public syncDailyReminder(context: Context): Promise<void> {
+    if (this.syncPromise) {
+      return this.syncPromise;
+    }
+    this.syncPromise = this.doSyncDailyReminder(context).finally(() => {
+      this.syncPromise = undefined;
+    });
+    return this.syncPromise;
+  }
+
+  private async ensureCalendarPermission(context: Context): Promise<boolean> {
+    const atManager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
+    const permissions: Permissions[] = ['ohos.permission.READ_CALENDAR', 'ohos.permission.WRITE_CALENDAR'];
+    try {
+      const result: PermissionRequestResult = await atManager.requestPermissionsFromUser(
+        context as common.UIAbilityContext, permissions);
+      const granted: boolean = result.authResults.every((code: number) => code === 0);
+      if (!granted) {
+        hilog.warn(DOMAIN, TAG, `Calendar permission denied: ${JSON.stringify(result.authResults)}`);
+      }
+      return granted;
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      hilog.error(DOMAIN, TAG, `requestPermissionsFromUser failed: ${e.code}, message: ${e.message}`);
+      return false;
+    }
+  }
+
+  /** 取应用专属日历账户；首次调用时创建（LOCAL 账户，不联网） */
+  private async getOrCreateCalendar(): Promise<calendarManager.Calendar> {
+    const mgr: calendarManager.CalendarManager = calendarManager.getCalendarManager(this.calendarContext!);
+    const account: calendarManager.CalendarAccount = {
+      name: CALENDAR_ACCOUNT_NAME,
+      type: calendarManager.CalendarType.LOCAL,
+      displayName: 'KeepFresh 提醒'
+    };
+    try {
+      return await mgr.getCalendar(account);
+    } catch {
+      return await mgr.createCalendar(account);
+    }
+  }
+
+  private async doSyncDailyReminder(context: Context): Promise<void> {
     await this.init(context);
     const settings: ReminderSettings = await this.getSettings();
+    this.calendarContext = context;
+
     if (!settings.enabled) {
       await this.cancelAllReminders();
+      return;
+    }
+
+    const granted: boolean = await this.ensureCalendarPermission(context);
+    if (!granted) {
+      hilog.warn(DOMAIN, TAG, 'Calendar permission not granted; skip reminder sync');
       return;
     }
 
@@ -135,46 +207,37 @@ export class ReminderService {
       return;
     }
 
+    // 旧日程先删再建：日历 Event 无就地更新语义，标题/文案/提醒时间以最新为准
     await this.cancelAllReminders();
 
-    // 文案点名具体物品（dogfood P0.5）：不打开 App 即可知道该处理什么
     const textContent: string = `${buildReminderText(materials)}，请及时处理`;
-    // 点通知直达对应状态列表：有过期优先「已过期」，否则「临期」。
-    // EntryAbility 会把该参数存入 AppStorage，Index onPageShow 读取后切 Tab。
-    const filterLevel: string = expiredCount > 0 ? 'expired' : 'expiring';
+    const now: Date = new Date();
+    const start: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), settings.hour, settings.minute, 0);
+    if (start.getTime() <= now.getTime()) {
+      start.setDate(start.getDate() + 1); // 今天已过点则排明天
+    }
+
+    const event: calendarManager.Event = {
+      type: calendarManager.EventType.NORMAL,
+      title: EVENT_TITLE,
+      description: textContent,
+      identifier: EVENT_IDENTIFIER,
+      startTime: start.getTime(),
+      endTime: start.getTime() + 30 * 60 * 1000,
+      reminderTime: [0], // 开始时刻即提醒（设置的 hour:minute）
+      recurrenceRule: {
+        recurrenceFrequency: calendarManager.RecurrenceFrequency.DAILY
+      }
+    };
 
     try {
-      const alarmReq: reminderAgentManager.ReminderRequestAlarm = {
-        reminderType: reminderAgentManager.ReminderType.REMINDER_TYPE_ALARM,
-        hour: settings.hour,
-        minute: settings.minute,
-        daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
-        title: 'KeepFresh 临期提醒',
-        content: textContent,
-        wantAgent: {
-          pkgName: 'com.jaredshuai.keepfresh',
-          abilityName: 'EntryAbility',
-          parameters: {
-            filterLevel: filterLevel
-          }
-        },
-        ringDuration: 5,
-        snoozeTimes: 0,
-        timeInterval: 0,
-        actionButton: [
-          {
-            title: '查看',
-            type: reminderAgentManager.ActionButtonType.ACTION_BUTTON_TYPE_CLOSE
-          }
-        ]
-      };
-
-      const reminderId: number = await reminderAgentManager.publishReminder(alarmReq);
-      hilog.info(DOMAIN, TAG, `Reminder published successfully, reminderId: ${reminderId}`);
+      const calendar: calendarManager.Calendar = await this.getOrCreateCalendar();
+      const eventId: number = await calendar.addEvent(event);
+      hilog.info(DOMAIN, TAG, `Reminder event published, eventId: ${eventId}`);
       UsageService.getInstance().logReminderPublished(expiredCount, nearCount);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, `Failed to publish reminder: ${e.code}, message: ${e.message}`);
+      hilog.error(DOMAIN, TAG, `Failed to publish reminder event: ${e.code}, message: ${e.message}`);
       throw new Error(e.message);
     }
   }

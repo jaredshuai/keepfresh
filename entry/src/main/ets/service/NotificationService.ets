@@ -19,7 +19,7 @@ export async function ensureNotificationEnabled(context: common.UIAbilityContext
   }
 }
 
-/** 弹出系统授权弹窗（用户此前拒绝过则直接失败） */
+/** 请求通知授权——实际行为是拉起系统「通知管理」设置页（非弹窗）；用户拒绝后调用方应节流，避免每次页面显示都跳设置 */
 export async function requestNotificationEnable(context: common.UIAbilityContext): Promise<boolean> {
   try {
     await notificationManager.requestEnableNotification(context);
